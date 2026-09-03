@@ -1400,7 +1400,8 @@ function renderHoldingStrategySummary(balance) {
     }
 }
 
-function renderHoldingRows() {
+/* Legacy holdings table renderer retained below only as migration reference.
+function renderHoldingRowsLegacy() {
     const tbodyHoldings = document.querySelector('#table-holdings tbody');
     if (!tbodyHoldings) {
         return;
@@ -1492,6 +1493,24 @@ function renderHoldingRows() {
         button.addEventListener('click', () => sellHoldingStrategyAttribution(button), { once: true });
     });
     updateHoldingSortHeaders();
+}
+*/
+
+function renderHoldingRows() {
+    return window.HanstockDashboardHoldingsScreen.render(sortedHoldings(), latestConfig, {
+        setTableMessage,
+        updateHeaders: updateHoldingSortHeaders,
+        pnlStatus: holdingPnlStatus,
+        createApproval: (button) => createApprovalFromButton(button),
+        sellAttribution: (button) => sellHoldingStrategyAttribution(button),
+        escapeHtml,
+        formatCurrency,
+        formatNumber,
+        formatPercent,
+        labels: {
+            empty: '\ubcf4\uc720 \uc885\ubaa9\uc774 \uc5c6\uc2b5\ub2c8\ub2e4', loss: '\uc190\uc2e4', profit: '\uc218\uc775', flat: '\ubcf4\ud569', sellable: '\ub9e4\ub3c4\uac00\ub2a5', pending: '\ub9e4\ub3c4 \uc9c4\ud589 \uc911', items: '\uc8fc', exceeded: '\ud55c\ub3c4 \ucd08\uacfc', sell: '\ub9e4\ub3c4', unattributed: '\uadc0\uc18d \ubbf8\ud655\uc778', sellAll: '\uc804\ub7c9',
+        },
+    });
 }
 
 function bindHoldingSortHeaders() {
