@@ -106,8 +106,17 @@ class NHPlugRestClient:
             data = self._decode(response, path)
         except NHPlugApiError:
             if request_kind == "query" and response.status_code == 401:
+                # Refresh once; rejected credentials must not cause recursion.
                 self._token = ""; self._expires_at = None
-                return self.post(path, body, request_kind=request_kind)
+                with self._lock:
+                    self._tokens.pop(self._cache_key(), None)
+                headers["Authorization"] = f"Bearer {self.access_token()}"
+                response = self._session.post(f"{self.base_url}/{path.lstrip('/')}",
+                                              json=payload, headers=headers, timeout=self.timeout)
+                return NHPlugPage(self._decode(response, path), {
+                    "cts": response.headers.get("cts", ""),
+                    "cts_flag": response.headers.get("cts_flag", ""),
+                })
             raise
         return NHPlugPage(data, {
             "cts": response.headers.get("cts", ""),
@@ -118,9 +127,20 @@ class NHPlugRestClient:
     def _decode(response: Any, operation: str) -> Mapping[str, Any]:
         try:
             response.raise_for_status()
+        except requests.RequestException as exc:
+            code, message = NHPlugRestClient._response_error(response)
+            detail = f" HTTP {response.status_code}"
+            if code:
+                detail += f" [{code}]"
+            if message:
+                detail += f" {message}"
+            raise NHPlugApiError(f"NHPLUG {operation} request failed{detail}") from exc
+        try:
             payload = response.json()
         except (requests.RequestException, ValueError) as exc:
-            raise NHPlugApiError(f"NHPLUG {operation} request failed") from exc
+            raise NHPlugApiError(
+                f"NHPLUG {operation} returned invalid JSON (HTTP {response.status_code})"
+            ) from exc
         if not isinstance(payload, Mapping):
             raise NHPlugApiError(f"NHPLUG {operation} returned invalid JSON")
         code = str(payload.get("rsp_cd") or "")
@@ -128,3 +148,17 @@ class NHPlugRestClient:
         if code and code not in {"00000", "00166", "00221", "13578"} and "완료" not in msg:
             raise NHPlugApiError(f"NHPLUG {operation} failed [{code}] {msg}")
         return payload
+
+    @staticmethod
+    def _response_error(response: Any) -> tuple[str, str]:
+        """Extract bounded broker diagnostics without logging the full payload."""
+        try:
+            payload = response.json()
+        except (requests.RequestException, ValueError):
+            return "", ""
+        if not isinstance(payload, Mapping):
+            return "", ""
+        code = str(payload.get("rsp_cd") or payload.get("rt_cd") or "").strip()
+        message = str(payload.get("rsp_msg") or payload.get("msg1") or
+                      payload.get("message") or "").strip()
+        return code[:40], message[:240]
