@@ -325,7 +325,7 @@ function buildCandidateStrategyMarkup(row) {
     }, row);
 }
 
-function buildAiModalMarkup(payload) {
+function buildAiModalMarkupLegacy(payload) {
     const reasons = Array.isArray(payload.reasons) ? payload.reasons : [];
     const summary = payload.reasoning_kr || aiActionGuide(payload.action, payload.name);
     const reasonItems = reasons.length
@@ -365,6 +365,17 @@ function buildAiModalMarkup(payload) {
             </p>
         </div>
     `;
+}
+
+function buildAiModalMarkup(payload) {
+    return window.HanstockDashboardAiDetailModal.render({
+        escapeHtml,
+        formatNumber,
+        formatCurrency,
+        aiActionGuide,
+        aiDecisionLabel,
+        strategyReasonLabel,
+    }, payload);
 }
 
 const legacySetTableMessage = (selector, colspan, message) => {
