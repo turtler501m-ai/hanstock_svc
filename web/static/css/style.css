@@ -544,6 +544,55 @@ h1 .highlight {
     .market-regime-simple-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* Legacy strategy workspaces now inherit the same visual shell. */
+#dashboard-tab-plunge-bounce .card,
+#dashboard-tab-heikin-ashi .card {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 14px;
+    background: #101d31;
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.16);
+}
+
+#dashboard-tab-plunge-bounce .card > h2,
+#dashboard-tab-plunge-bounce .card > h3,
+#dashboard-tab-heikin-ashi .card > h2,
+#dashboard-tab-heikin-ashi .card > h3 {
+    color: #f8fafc;
+    letter-spacing: -0.025em;
+}
+
+#dashboard-tab-plunge-bounce input,
+#dashboard-tab-plunge-bounce select,
+#dashboard-tab-plunge-bounce textarea,
+#dashboard-tab-heikin-ashi input,
+#dashboard-tab-heikin-ashi select,
+#dashboard-tab-heikin-ashi textarea {
+    border-color: rgba(148, 163, 184, 0.24) !important;
+    border-radius: 8px !important;
+    background: #0b1626 !important;
+    color: #f8fafc !important;
+}
+
+#dashboard-tab-plunge-bounce .table-responsive,
+#dashboard-tab-heikin-ashi .table-responsive {
+    border-radius: 10px;
+}
+
+#dashboard-tab-plunge-bounce .button-secondary,
+#dashboard-tab-heikin-ashi .button-secondary {
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 9px;
+    background: rgba(148, 163, 184, 0.12);
+    color: #dbeafe;
+}
+
+@media (max-width: 760px) {
+    #dashboard-tab-plunge-bounce .settings-grid,
+    #dashboard-tab-heikin-ashi .settings-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+}
+
 /* Schedule and AI strategy surfaces share the same operational card language. */
 .schedule-page-heading,
 .schedule-card-heading {
