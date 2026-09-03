@@ -956,7 +956,7 @@ async function saveStrategySettings(event) {
     }
 }
 
-function renderPortfolioChart(labels, data, colors) {
+function renderPortfolioChartLegacy(labels, data, colors) {
     if (typeof Chart === 'undefined') {
         return;
     }
@@ -1003,6 +1003,15 @@ function renderPortfolioChart(labels, data, colors) {
             cutout: '65%'
         }
     });
+}
+
+function renderPortfolioChart(labels, data, colors) {
+    return window.HanstockDashboardPortfolioChart.render({
+        getChart: () => portfolioChartInstance,
+        setChart: (value) => { portfolioChartInstance = value; },
+        escapeHtml,
+        formatNumber,
+    }, labels, data, colors);
 }
 
 /* Legacy runtime status renderer retained below only as migration reference.
