@@ -2041,19 +2041,8 @@ _KIWOOM_INDEX_CODES = {"KOSPI": "0001", "KOSDAQ": "1001"}
 
 def _safe_index_rows(rows: list[dict]) -> list[dict]:
     """Normalize benchmark observations without breaking the trading-day chain."""
-    result: list[dict] = []
-    for row in sorted(rows, key=lambda item: str(item.get("date") or "")):
-        try:
-            close = float(row.get("close") or 0)
-        except (TypeError, ValueError):
-            continue
-        date = str(row.get("date") or "")[:10]
-        if len(date) == 8 and date.isdigit():
-            date = f"{date[:4]}-{date[4:6]}-{date[6:8]}"
-        if len(date) != 10 or close <= 0:
-            continue
-        result.append({"date": date, "close": close})
-    return result
+    from src.dashboard.services.performance_metrics import safe_index_rows
+    return safe_index_rows(rows)
 
 
 def _load_index_rows() -> dict[str, list[dict]]:
@@ -2139,41 +2128,13 @@ def _load_index_rows() -> dict[str, list[dict]]:
 
 
 def _daily_market_context(index_rows: dict[str, list[dict]]) -> dict[str, dict]:
-    context: dict[str, dict] = {}
-    for name, rows in index_rows.items():
-        closes = [float(row["close"]) for row in rows]
-        for idx, row in enumerate(rows):
-            change_pct = None
-            if idx and closes[idx - 1] > 0:
-                change_pct = (closes[idx] / closes[idx - 1] - 1) * 100
-            day = context.setdefault(row["date"], {})
-            day[name.lower()] = round(float(row["close"]), 2)
-            day[f"{name.lower()}_change_pct"] = round(change_pct, 2) if change_pct is not None else None
-    return context
+    from src.dashboard.services.performance_metrics import daily_market_context
+    return daily_market_context(index_rows)
 
 
 def _monthly_market_context(index_rows: dict[str, list[dict]]) -> dict[str, dict]:
-    context: dict[str, dict] = {}
-    for name, rows in index_rows.items():
-        by_month: dict[str, list[float]] = {}
-        for row in rows:
-            date = str(row.get("date") or "")
-            close = float(row.get("close") or 0)
-            if len(date) >= 7 and close > 0:
-                by_month.setdefault(date[:7], []).append(close)
-        previous_close = None
-        for month, closes in sorted(by_month.items()):
-            close = closes[-1]
-            change_pct = None
-            if previous_close and previous_close > 0:
-                change_pct = (close / previous_close - 1) * 100
-            bucket = context.setdefault(month, {})
-            bucket[name.lower()] = round(close, 2)
-            bucket[f"{name.lower()}_change_pct"] = (
-                round(change_pct, 2) if change_pct is not None else None
-            )
-            previous_close = close
-    return context
+    from src.dashboard.services.performance_metrics import monthly_market_context
+    return monthly_market_context(index_rows)
 
 
 def _load_symbol_price_rows(symbols: set[str], *, limit: int = 1500) -> dict[str, list[dict]]:
