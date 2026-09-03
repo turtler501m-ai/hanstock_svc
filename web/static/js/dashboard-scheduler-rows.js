@@ -11,7 +11,7 @@
     function appendPlanRows(tbody, rows, deps) {
         if (!tbody) return;
         if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">?앹꽦??怨꾪쉷???놁뒿?덈떎.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">생성된 매매 계획이 없습니다.</td></tr>';
             return;
         }
         rows.forEach((row) => {
@@ -23,7 +23,7 @@
             tr.innerHTML = [
                 cell(deps.escapeHtml(row.symbol || '-')),
                 cell(`<div class="symbol-name" style="font-weight: 500;">${deps.escapeHtml(row.name || '-')}</div>`),
-                cell(deps.pill(row.strategy_name || row.strategy_id || '湲곕낯 遺꾪븷留ㅻℓ', 'hold')),
+                cell(deps.pill(row.strategy_name || row.strategy_id || '기본 분할매매', 'hold')),
                 cell(deps.pill(deps.toKorPlanCategory(row.category), 'hold')),
                 cell(deps.pill(deps.schedulerDecisionLabel(decision, row), kind)),
                 cell(deps.escapeHtml(deps.schedulerPlanQuantityText(row)), 'right'),
@@ -37,7 +37,7 @@
     function appendOrderRows(tbody, approved, approvalErrors, results, deps) {
         if (!tbody) return;
         if (!approved.length && !approvalErrors.length) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">?뱀씤 ?湲?二쇰Ц???녾굅???먮룞 ?뱀씤???앸왂?섏뿀?듬땲??</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">승인 대기 주문이 없거나 자동 승인이 취소되었습니다.</td></tr>';
             return;
         }
         const append = (row, isError) => {
@@ -48,9 +48,9 @@
             const action = row.action || matchingPlan?.action || (isError ? '-' : 'buy');
             const quantity = row.qty ?? matchingPlan?.qty ?? matchingPlan?.signal_qty ?? '-';
             const price = row.price ?? matchingPlan?.price ?? matchingPlan?.signal_price ?? '-';
-            const message = isError ? (row.message || '?ㅻ쪟 諛쒖깮') : (row.response_msg || row.message || '?뺤긽 泥섎━');
-            const strategy = row.strategy_name || matchingPlan?.strategy_name || row.strategy_id || matchingPlan?.strategy_id || '湲곕낯 遺꾪븷留ㅻℓ';
-            const status = isError ? deps.pill('?뱀씤?ㅻ쪟', 'sell') : (() => {
+            const message = isError ? (row.message || '오류 발생') : (row.response_msg || row.message || '정상 처리');
+            const strategy = row.strategy_name || matchingPlan?.strategy_name || row.strategy_id || matchingPlan?.strategy_id || '기본 분할매매';
+            const status = isError ? deps.pill('승인 오류', 'sell') : (() => {
                 const value = deps.schedulerApprovalStatus(row.status);
                 return deps.pill(value.label, value.kind);
             })();
@@ -63,7 +63,7 @@
                 cell(deps.pill(strategy, 'hold')),
                 cell(action !== '-' ? deps.pill(deps.toKorAction(action), action === 'sell' ? 'sell' : 'buy') : '-'),
                 cell(quantity !== '-' ? deps.formatNumber(quantity) : '-', 'right'),
-                cell(price !== '-' ? `${deps.formatNumber(price)} ??` : '-', 'right'),
+                cell(price !== '-' ? `${deps.formatNumber(price)} 원` : '-', 'right'),
                 cell(status),
                 cell(`<div class="reason-cell${isError ? ' text-danger' : ''}" style="max-width: 420px; white-space: pre-wrap; overflow-wrap: anywhere;" title="${deps.escapeHtml(message)}">${deps.escapeHtml(message)}</div>`),
             ].join('');

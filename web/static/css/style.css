@@ -5443,6 +5443,11 @@ th,
 
 /* Desktop navigation follows the content flow: horizontal tabs below the context strip. */
 @media (min-width: 769px) {
+    body.namuh-dashboard {
+        padding-right: clamp(1.5rem, 2.5vw, 3rem);
+        padding-left: clamp(1.5rem, 2.5vw, 3rem);
+    }
+
     body.namuh-dashboard .dashboard-tabs {
         position: static !important;
         width: 100% !important;
