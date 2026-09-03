@@ -1129,7 +1129,8 @@ async function renderConfig() {
     });
 }
 
-function renderRisk(balance) {
+/* Legacy risk summary renderer retained below only as migration reference.
+function renderRiskLegacy(balance) {
     const holdingValue = (balance.holdings || []).reduce((sum, holding) => {
         return sum + Number(holding.value || (Number(holding.qty || 0) * Number(holding.price || 0)));
     }, 0);
@@ -1154,6 +1155,17 @@ function renderRisk(balance) {
     document.getElementById('risk-cash-ratio').textContent = `${formatNumber(cashRatio * 100, 1)}%`;
     document.getElementById('risk-concentration').textContent = `${formatNumber(concentration * 100, 1)}%`;
     document.getElementById('risk-loss-usage').textContent = lossUsage > 0 ? `${formatNumber(lossUsage, 1)}% 사용` : '정상';
+}
+*/
+
+function renderRisk(balance) {
+    return window.HanstockDashboardRiskScreen.render(balance, {
+        config: latestConfig,
+        formatCurrency,
+        formatNumber,
+        setText: (id, value) => setElementText(id, value),
+        labels: { used: '\uc0ac\uc6a9', normal: '\uc815\uc0c1' },
+    });
 }
 
 function renderHoldingAccountSummary(balance, displayTotal, realizedPnl = 0) {
