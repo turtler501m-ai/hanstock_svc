@@ -6886,6 +6886,10 @@ async function renderScheduleInfo() {
                             || roundData.blocked.map(marketPolicyReasonLabel).join(', ');
                         
                         // Create card element
+                        const card = HanstockDashboardSchedulerRoundCard.create(round, roundData, isExpanded, {
+                            escapeHtml, marketRegimeLabel, marketRegimePercent, marketPolicyReasonLabel,
+                        });
+                        if (false) {
                         const card = document.createElement('div');
                         card.className = 'card glass scheduler-round-card';
                         card.style.cssText = 'margin-bottom: 1.25rem; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg-card); box-shadow: 0 4px 15px rgba(0,0,0,0.15);';
@@ -6979,6 +6983,7 @@ async function renderScheduleInfo() {
                             </div>
                         `;
 
+                        }
                         const analysisSummary = card.querySelector('.scheduler-analysis-summary');
                         const analysisDetails = card.querySelector('.scheduler-analysis-details');
                         if (analysisSummary && roundData.scannedCount > 0) {
