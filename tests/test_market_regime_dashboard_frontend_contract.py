@@ -8,6 +8,9 @@ APP_JS = (ROOT / "web" / "static" / "js" / "app.js").read_text(encoding="utf-8")
 MARKET_REGIME_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-market-regime.js"
 ).read_text(encoding="utf-8")
+STRATEGY_AUDIT_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-strategy-audit.js"
+).read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 
 
@@ -18,6 +21,13 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardMarketRegime", MARKET_REGIME_JS)
         self.assertNotIn("const MARKET_REGIME_LABELS = {", APP_JS)
+
+    def test_strategy_audit_helpers_load_before_app(self):
+        module_tag = '<script src="/static/js/dashboard-strategy-audit.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardStrategyAudit", STRATEGY_AUDIT_JS)
+        self.assertNotIn("function eventPayloadSummary(payload)", APP_JS)
 
     def test_dashboard_exposes_daily_market_regime_panel(self):
         required_markup = (

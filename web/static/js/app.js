@@ -1791,44 +1791,11 @@ async function renderStrategyContext() {
     }
 }
 
-function strategyOperationText(operation) {
-    if (operation?.ready) {
-        if (operation.mode === 'demo') return '운영 가능(DEMO)';
-        return operation.mode === 'dry_run' ? '운영 가능(DRY_RUN)' : '운영 가능';
-    }
-    if (operation?.mode === 'inactive') return '미선택';
-    return '운영 차단';
-}
-
-function strategyOperationKind(operation) {
-    if (operation?.ready) return operation.mode === 'dry_run' ? 'warn' : 'buy';
-    if (operation?.mode === 'inactive') return 'hold';
-    return 'sell';
-}
-
-function summarizeCounts(counts) {
-    return Object.entries(counts || {})
-        .map(([key, value]) => `${key}:${value}`)
-        .join(' / ') || '-';
-}
-
-function eventPayloadSummary(payload) {
-    if (!payload) return '-';
-    let data = payload;
-    if (typeof payload === 'string') {
-        try {
-            data = JSON.parse(payload);
-        } catch (_err) {
-            return payload.slice(0, 180);
-        }
-    }
-    if (data.message) return String(data.message);
-    if (data.result?.message) return String(data.result.message);
-    if (data.warnings?.length) return data.warnings.join(', ');
-    if (data.gate?.missing?.length) return `missing ${data.gate.missing.join(', ')}`;
-    if (data.performance?.candidate_count !== undefined) return `candidates ${data.performance.candidate_count}`;
-    return JSON.stringify(data).slice(0, 180);
-}
+const STRATEGY_AUDIT_MODULE = window.HanstockDashboardStrategyAudit;
+const strategyOperationText = STRATEGY_AUDIT_MODULE.operationText;
+const strategyOperationKind = STRATEGY_AUDIT_MODULE.operationKind;
+const summarizeCounts = STRATEGY_AUDIT_MODULE.summarizeCounts;
+const eventPayloadSummary = STRATEGY_AUDIT_MODULE.eventPayloadSummary;
 
 async function renderStrategyAudit(strategyId) {
     const id = strategyId || activeStrategyAuditId || document.getElementById('select-ai-ranker')?.value || '';
@@ -3187,9 +3154,7 @@ function renderStrategyPreviewCards(results, strategies = []) {
     });
 }
 
-function strategyLookupRunTime(value) {
-    return value ? String(value).replace('T', ' ').slice(0, 19) : '-';
-}
+const strategyLookupRunTime = STRATEGY_AUDIT_MODULE.runTime;
 
 async function openStrategyLookupRun(runId) {
     const envelope = await fetchJson(`/api/strategy-lookup/runs/${encodeURIComponent(runId)}`, 30000);
