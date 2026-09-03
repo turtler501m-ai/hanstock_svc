@@ -1005,7 +1005,8 @@ function renderPortfolioChart(labels, data, colors) {
     });
 }
 
-async function renderRuntime() {
+/* Legacy runtime status renderer retained below only as migration reference.
+async function renderRuntimeLegacy() {
     const health = await fetchJson('/api/health');
     document.getElementById('runtime-env').textContent = health.trading_env === 'real' ? '실전' : '모의';
     document.getElementById('runtime-dry-run').innerHTML = health.dry_run ? pill('차단 ON', 'warn') : pill('차단 OFF', 'buy');
@@ -1051,6 +1052,21 @@ async function renderRuntime() {
             btnSyncTrades.title = '';
         }
     }
+}
+*/
+
+async function renderRuntime() {
+    return window.HanstockDashboardRuntimeScreen.render({
+        fetchJson,
+        pill,
+        setText: (id, value) => setElementText(id, value),
+        setHtml: (id, value) => { const element = document.getElementById(id); if (element) element.innerHTML = value; },
+        labels: {
+            real: '\uc2e4\uc804', demo: '\ubaa8\uc758', on: '\ucc28\ub2e8 ON', off: '\ucc28\ub2e8 OFF', enabled: '\uac00\ub2a5', blocked: '\ucc28\ub2e8',
+            liveEnabled: '\uc2e4\uc8fc\ubb38 \uac00\ub2a5', liveBlocked: '\uc2e4\uc8fc\ubb38 \ucc28\ub2e8', disable: '\ub044\uae30', enable: '\ucf1c\uae30', calls: '\uac74',
+            syncBlocked: '\ub3d9\uae30\ud654 \ubd88\uac00', sync: '\uc99d\uad8c \uae30\ub85d \ub3d9\uae30\ud654', syncBlockedTitle: '\ubaa8\uc758 \uc2e4\ud589(DRY_RUN) \uc911\uc5d0\ub294 \uc99d\uad8c \ub4f1\uacc4\uc88c \ub3d9\uae30\ud654\ub97c \uc0ac\uc6a9\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.',
+        },
+    });
 }
 
 async function toggleRuntimeOrderMode(buttonId, key, label) {
