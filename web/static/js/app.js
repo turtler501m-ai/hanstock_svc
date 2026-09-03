@@ -927,7 +927,7 @@ function renderStrategySettingsForm(config) {
     `;
 }
 
-function renderAiStrategySummary(config) {
+function renderAiStrategySummaryLegacy(config) {
     const ai = config.ai_analysis || {};
     const enabled = Boolean(ai.enabled);
     const available = Boolean(ai.model_available);
@@ -953,6 +953,14 @@ function renderAiStrategySummary(config) {
         const items = (ai.flow || []).map((item) => `<span>${escapeHtml(item)}</span>`).join('');
         flowEl.innerHTML = items || '<span>현재 키움 계좌와 Seven Split 전략 기준으로 후보를 분석합니다.</span>';
     }
+}
+
+function renderAiStrategySummary(config) {
+    return window.HanstockDashboardAiStrategySummary.render({
+        setText: setElementText,
+        formatNumber,
+        escapeHtml,
+    }, config);
 }
 
 async function saveStrategySettings(event) {
