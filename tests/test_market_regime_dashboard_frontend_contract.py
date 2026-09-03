@@ -451,7 +451,7 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn("HanstockDashboardSchedulerRoundCard.create", APP_JS)
 
     def test_scheduler_analysis_isolated_from_app(self):
-        module_tag = '<script src="/static/js/dashboard-scheduler-analysis.js?v=1"></script>'
+        module_tag = '<script src="/static/js/dashboard-scheduler-analysis.js?v=2"></script>'
         app_tag = '<script src="/static/js/app.js?v=72"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerAnalysis", SCHEDULER_ANALYSIS_JS)

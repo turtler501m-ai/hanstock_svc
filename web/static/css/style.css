@@ -4206,6 +4206,52 @@ tbody tr:hover {
     font-size: 0.9rem;
 }
 
+.scheduler-analysis-title {
+    margin: 0 0 0.75rem;
+}
+
+.scheduler-analysis-details {
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 10px;
+    background: rgba(7, 16, 29, 0.22);
+}
+
+.scheduler-analysis-details > summary {
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+    color: #fdba74;
+}
+
+.scheduler-analysis-table-wrap {
+    margin-top: 0;
+    border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.scheduler-analysis-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+}
+
+.scheduler-analysis-table th,
+.scheduler-analysis-table td {
+    padding: 0.55rem 0.7rem;
+    vertical-align: top;
+}
+
+.scheduler-analysis-table tbody tr + tr {
+    border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.scheduler-analysis-check.is-pass {
+    color: #86efac;
+}
+
+.scheduler-analysis-check.is-fail {
+    color: #fca5a5;
+}
+
 @media (max-width: 768px) {
     .scheduler-round-header {
         align-items: flex-start;
