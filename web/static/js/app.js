@@ -480,7 +480,7 @@ function setPerformanceDetailPanelOpen(open) {
     panel.style.display = open ? 'block' : 'none';
 }
 
-function renderPerformanceDetailPanel(item) {
+function renderPerformanceDetailPanelLegacy(item) {
     const panel = document.getElementById('performance-detail-panel');
     const titleEl = document.getElementById('performanceDetailTitle');
     const subtitleEl = document.getElementById('performanceDetailSubtitle');
@@ -618,6 +618,17 @@ function renderPerformanceDetailPanel(item) {
     });
     setPerformanceDetailPanelOpen(true);
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderPerformanceDetailPanel(item) {
+    return window.HanstockDashboardPerformanceDetail.render({
+        escapeHtml,
+        formatCurrency,
+        formatPercent,
+        toKorAction,
+        translateReason,
+        setOpen: setPerformanceDetailPanelOpen,
+    }, item);
 }
 
 function buildScanErrorModalMarkup(errorMsg) {
