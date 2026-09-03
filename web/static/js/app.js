@@ -5130,69 +5130,6 @@ async function renderTrades() {
     }
 }
 
-/* Legacy trade cleanup renderer retained below only as migration reference.
-async function renderTradeCleanupLegacy() {
-    const tbody = document.querySelector('#table-trade-cleanup tbody');
-    if (!tbody) return;
-    try {
-        const result = await fetchJson('/api/trades/local-cleanup?limit=200', 15000);
-        const trades = Array.isArray(result.trades) ? result.trades : [];
-        tbody.innerHTML = '';
-        if (!trades.length) {
-            tbody.innerHTML = '<tr><td colspan="7">정리할 로컬 불일치 거래가 없습니다.</td></tr>';
-            return;
-        }
-
-        trades.forEach((trade) => {
-            const [datePart = '-', timePart = '-'] = String(trade.ts || '').split(' ');
-            const action = String(trade.action || '').toLowerCase();
-            const actionLabel = action === 'buy' ? '매수' : action === 'sell' ? '매도' : action || '-';
-            const riskLabel = trade.cleanup_risk === 'low' ? '낮음' : '높음';
-            const reason = trade.response_msg || trade.cleanup_reason || '-';
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>
-                    <div>${escapeHtml(datePart)}</div>
-                    <div class="time-muted">${escapeHtml(timePart.substring(0, 5))}</div>
-                </td>
-                <td>
-                    <span class="symbol-name">${escapeHtml(trade.name || trade.symbol || '-')}</span>
-                    <div class="time-muted">${escapeHtml(trade.symbol || '-')}</div>
-                </td>
-                <td>${escapeHtml(actionLabel)}</td>
-                <td>${Number(trade.qty || 0).toLocaleString()}</td>
-                <td>
-                    <span class="badge">${escapeHtml(orderStatusLabel(trade.order_status))}</span>
-                    <div class="time-muted">정리 위험도 ${escapeHtml(riskLabel)}</div>
-                </td>
-                <td><div class="reason-cell" title="${escapeHtml(reason)}">${escapeHtml(reason)}</div></td>
-                <td>
-                    <button type="button" class="button-ghost delete-cleanup-trade"
-                            data-id="${Number(trade.id)}">로컬삭제</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-
-        tbody.querySelectorAll('.delete-cleanup-trade').forEach((button) => {
-            button.addEventListener('click', async () => {
-                const tradeId = Number(button.dataset.id || 0);
-                if (!tradeId || !window.confirm('이 불일치 기록을 로컬 DB에서만 삭제할까요? 증권사 주문은 취소되지 않습니다.')) return;
-                try {
-                    const response = await fetch(`/api/trades/local/${tradeId}?confirm=true`, { method: 'DELETE' });
-                    const payload = await response.json();
-                    if (!response.ok) throw new Error(payload.detail || '로컬 거래 삭제 실패');
-                    await renderTrades();
-                } catch (error) {
-                    window.alert(error.message || '로컬 거래 삭제 실패');
-                }
-            });
-        });
-    } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="7">${escapeHtml(error.message || '불일치 거래 조회 실패')}</td></tr>`;
-    }
-}
-*/
 
 async function renderTradeCleanup() {
     return window.HanstockDashboardTradeCleanupScreen.render({
@@ -5216,56 +5153,6 @@ async function renderTradeCleanup() {
     });
 }
 
-/* Legacy periodic performance renderer retained below as migration reference.
-async function renderPeriodicPerformanceLegacy() {
-    try {
-        const periodicData = await fetchJson(performancePath('/api/performance/periodic'), 30000);
-        periodicData.strategy_forward = [];
-        periodicDataCache = periodicData;
-        
-        // Attach sub-tab event listeners once
-        const dailyBtn = document.getElementById('btn-perf-daily');
-        const monthlyBtn = document.getElementById('btn-perf-monthly');
-        
-        if (dailyBtn && !dailyBtn.dataset.listenerAttached) {
-            dailyBtn.dataset.listenerAttached = 'true';
-            dailyBtn.addEventListener('click', () => {
-                periodicActiveTab = 'daily';
-                dailyBtn.classList.add('active');
-                if (monthlyBtn) monthlyBtn.classList.remove('active');
-                updatePeriodicPerformanceUI();
-            });
-        }
-        if (monthlyBtn && !monthlyBtn.dataset.listenerAttached) {
-            monthlyBtn.dataset.listenerAttached = 'true';
-            monthlyBtn.addEventListener('click', () => {
-                periodicActiveTab = 'monthly';
-                monthlyBtn.classList.add('active');
-                if (dailyBtn) dailyBtn.classList.remove('active');
-                updatePeriodicPerformanceUI();
-            });
-        }
-        
-        updatePeriodicPerformanceUI();
-        try {
-            const forwardData = await fetchJson(performancePath('/api/performance/forward'), 30000);
-            periodicData.strategy_forward = [
-                ...(forwardData.account ? [forwardData.account] : []),
-                ...(forwardData.strategies || []),
-            ];
-            renderStrategyForwardPerformance(periodicData.strategy_forward);
-        } catch (forwardError) {
-            console.error('Forward performance render failed:', forwardError);
-            const tbody = document.querySelector('#table-strategy-validation tbody');
-            if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="11">전략 모의성과 조회 실패: ${escapeHtml(forwardError.message)}</td></tr>`;
-            }
-        }
-    } catch (err) {
-        console.error('Periodic performance render failed:', err);
-    }
-}
-*/
 
 async function renderPeriodicPerformance() {
     return window.HanstockDashboardPeriodicPerformanceScreen.render({
