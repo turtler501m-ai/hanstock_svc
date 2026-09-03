@@ -1,7 +1,6 @@
 import math
 import os
 import yfinance as yf
-from pathlib import Path
 from typing import Callable
 
 from src.config import config
@@ -31,6 +30,7 @@ from src.strategy.momentum_metrics import (
 )
 from src.strategy.universe_service import build_scan_universe as _build_scan_universe
 from src.strategy.portfolio_service import generate_optimizer_plan as _generate_optimizer_plan
+from src.strategy.allocation_service import generate_ai_weight_plan as _generate_ai_weight_plan
 
 WATCHLIST = []
 
@@ -470,184 +470,16 @@ def generate_ai_weight_plan(holdings: list[dict], total_eval: int) -> dict:
     """FinRL-inspired Target Weight Allocation & Visualization logic.
     Loads trained PPO model if available, calculates weights, and returns reasoning string.
     """
-    import numpy as np
-
-    investable_weight = max(0.0, 1 - config.cash_buffer)
-    if total_eval <= 0 or not holdings:
-        return {"cash_weight": 1.0, "positions": []}
-
-    scored = []
-    holding_map = {}
-    for item in holdings:
-        prices = item.get("prices", [])
-        highs = item.get("highs", [])
-        volumes = item.get("volumes", [])
-        profile = calc_strategy_profile(prices, highs, volumes, symbol=item.get("symbol", "")) if prices else calc_strategy_profile([], symbol=item.get("symbol", ""))
-        current_price = float(item.get("price", 0) or (prices[-1] if prices else 0))
-        sma60 = profile.get("sma60", 0) or current_price
-        trend = ((current_price / sma60) - 1) if sma60 > 0 else 0
-        vol = calc_volatility(prices)
-        raw_score = profile["score"] + (trend * 10) + max(profile["macd_hist"], 0) / max(current_price, 1) * 100
-        risk_adjusted = max(0.0, raw_score - (vol * 20))
-        
-        item_data = {**item, "profile": profile, "score": round(risk_adjusted, 4), "volatility": vol, "trend": trend}
-        scored.append(item_data)
-        holding_map[item.get("symbol", "")] = item_data
-
-    # Attempt to load AI Model
-    model = None
-    try:
-        from stable_baselines3 import PPO
-        model_path = Path("data/trained_models/ppo_kr_stock.zip")
-        if model_path.exists():
-            model = PPO.load(str(model_path))
-    except Exception as e:
-        logger.info(f"[WARN] Failed to load PPO model: {e}. Falling back to heuristic.")
-
-    ai_weights = {}
-    if model:
-        raw_ratings = {}
-        for ticker in WATCHLIST:
-            if ticker in holding_map:
-                it = holding_map[ticker]
-                price = (it.get("price", 0) or 0.0) / 100000.0
-                rsi = (it["profile"].get("rsi", 50.0) or 50.0) / 100.0
-                macd = (it["profile"].get("macd_hist", 0.0) or 0.0) / 1000.0
-                trend = float(it.get("trend", 0.0) or 0.0)
-                obs = [price, rsi, macd, trend]
-            else:
-                obs = [0.0, 0.5, 0.0, 0.0]
-            
-            obs_arr = np.array(obs, dtype=np.float32)
-            try:
-                action, _ = model.predict(obs_arr, deterministic=True)
-                raw_ratings[ticker] = float(action[0])
-            except Exception as e:
-                logger.info(f"[ERROR] AI prediction failed for {ticker}: {e}")
-                raw_ratings[ticker] = -1.0
-                
-        try:
-            ratings_arr = np.array([raw_ratings[t] for t in WATCHLIST], dtype=np.float32)
-            exp_r = np.exp(ratings_arr)
-            target_w = exp_r / np.sum(exp_r)
-            for i, ticker in enumerate(WATCHLIST):
-                ai_weights[ticker] = float(target_w[i])
-        except Exception as e:
-            logger.info(f"[ERROR] Softmax normalization failed: {e}")
-    else:
-        # [Fallback for WinError 1114 / Missing Model environments]
-        # Simulate neural-network-like target weights inversely proportional to volatility for UI demonstration.
-        score_sum = sum(item["score"] for item in scored)
-        for item in scored:
-            ticker = item.get("symbol", "")
-            if score_sum > 0:
-                ai_weights[ticker] = item["score"] / score_sum
-            else:
-                ai_weights[ticker] = 0.0
-
-    score_sum = sum(item["score"] for item in scored)
-    positions = []
-    
-    for item in scored:
-        symbol = item.get("symbol", "")
-        current_value = float(item.get("value", 0))
-        current_weight = current_value / total_eval if total_eval else 0
-        
-        used_ai = False
-        if symbol in ai_weights:
-            target_weight = min(config.max_single_weight, investable_weight * float(ai_weights[symbol]))
-            used_ai = True
-        else:
-            target_weight = min(config.max_single_weight, investable_weight * item["score"] / score_sum) if score_sum > 0 else 0.0
-
-        target_value = total_eval * target_weight
-        delta_value = target_value - current_value
-        price = float(item.get("price", 0))
-        rebalance_qty = math.floor(abs(delta_value) / price) if price > 0 else 0
-        
-        if rebalance_qty <= 0:
-            action = "hold"
-        else:
-            action = "buy" if delta_value > 0 else "sell"
-
-        # 시각화(대시보드) UI 전용 판단 근거 요약문 만들기
-        reasons_list = item["profile"].get("reasons", [])
-        reason_kr = ""
-        
-        if used_ai:
-            trend_pct = item.get("trend", 0) * 100
-            vol_pct = item.get("volatility", 0) * 100
-            
-            tags = []
-            rsi = item["profile"].get("rsi", 50)
-            if rsi < 40 or rsi > 60:
-                tags.append(f"[RSI {int(rsi)}]")
-                
-            if item["profile"].get("macd_hist", 0) >= 0:
-                tags.append("[MACD+]")
-            else:
-                tags.append("[MACD-]")
-                
-            sma20 = item["profile"].get("sma20", 0)
-            sma60 = item["profile"].get("sma60", 0)
-            if sma20 > 0 and sma60 > 0:
-                if sma20 > sma60:
-                    tags.append("[SMA20>60]")
-                else:
-                    tags.append("[SMA20<60]")
-            
-            tag_str = " ".join(tags)
-
-            if action == 'buy':
-                ai_strategy_name = f"🤖 매수({target_weight*100:.1f}%) | {tag_str}"
-                reason_kr = f"[AI 매수 가이드] 전체 투자금의 {target_weight*100:.1f}% 까지 이 종목을 담는 것이 안전하고 유리합니다. "
-            elif action == 'sell':
-                ai_strategy_name = f"🤖 축소({target_weight*100:.1f}%) | {tag_str}"
-                reason_kr = f"[AI 비중축소 가이드] 위험 관리를 위해 보유 비중을 {target_weight*100:.1f}% 로 줄여서 수익을 챙기거나 손실을 방어하세요. "
-            else:
-                ai_strategy_name = f"🤖 관망 | {tag_str}"
-                reason_kr = f"[AI 관망 가이드] 섣불리 움직이기보다 현재 비중({current_weight*100:.1f}%)을 우직하게 유지하는 것이 좋습니다. "
-                
-            reason_kr += f"(분석: 60일 평균선 대비 {trend_pct:.1f}% 위치, 최근 변동성 {vol_pct:.1f}%) "
-            
-            rsi = item["profile"].get("rsi", 50)
-            if rsi < 35:
-                reason_kr += "최근 주가가 평균보다 너무 가파르게 하락해 곧 바닥을 치고 반등할 에너지가 모이고 있습니다. "
-            elif rsi > 65:
-                reason_kr += "최근 주가가 쉬지 않고 폭등하여, 조만간 사람들이 차익을 실현하며 주가가 한숨을 돌릴(하락) 위험이 있습니다. "
-                
-            if item["profile"].get("macd_bull_cross"):
-                reason_kr += "여기에 덧붙여, 깊은 하락장을 끝내고 다시 상승세로 올라타는 가장 확실한 신호(골든크로스)가 방금 포착되었습니다! "
-            elif item["profile"].get("macd_bear_cross"):
-                reason_kr += "주의해야 할 점은, 상승세가 꺾이고 본격적인 하락 추세로 떨어질 조짐이 보이고 있다는 것입니다. "
-                
-            reason_kr += "👉 종합: 인공지능은 수천 번의 모의 투자를 통해 이런 상황에서 위 비율대로 비중을 맞추는 것이 가장 수익률이 좋았음을 학습했습니다."
-        else:
-            ai_strategy_name = "기본 룰베이스 대응"
-            reason_kr = ", ".join(reasons_list) if reasons_list else "데이터 부족 (지표 확인 불가)"
-
-        positions.append({
-            "symbol": symbol,
-            "name": item.get("name", symbol),
-            "price": int(price),
-            "qty": int(item.get("qty", 0)),
-            "current_value": round(current_value),
-            "current_weight": round(current_weight, 4),
-            "target_weight": round(target_weight, 4),
-            "target_value": round(target_value),
-            "delta_value": round(delta_value),
-            "rebalance_action": action,
-            "rebalance_qty": rebalance_qty,
-            "score": item["score"],
-            "volatility": round(item["volatility"], 4),
-            "strategy_score": item["profile"].get("score", 0),
-            "reasons": reasons_list,
-            "reasoning_kr": reason_kr,
-            "ai_strategy_name": ai_strategy_name,
-        })
-
-
-    return {"cash_weight": config.cash_buffer, "positions": positions, "ai_active": bool(model)}
+    return _generate_ai_weight_plan(
+        holdings,
+        total_eval,
+        watchlist=WATCHLIST,
+        cash_buffer=config.cash_buffer,
+        max_single_weight=config.max_single_weight,
+        build_profile=calc_strategy_profile,
+        volatility=calc_volatility,
+        logger=logger,
+    )
 
 
 def generate_portfolio_optimizer_plan(holdings: list[dict], total_eval: int) -> dict:
