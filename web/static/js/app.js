@@ -3149,7 +3149,7 @@ async function createStrategyLookupManualBuy(button) {
     }
 }
 
-function renderStrategyPreviewCards(results, strategies = []) {
+function renderStrategyPreviewCardsLegacy(results, strategies = []) {
     const container = document.getElementById('strategy-preview-results');
     const legacyTable = document.querySelector('.panel-candidates .candidate-legacy-table');
     if (!container) return;
@@ -3292,6 +3292,30 @@ function renderStrategyPreviewCards(results, strategies = []) {
     container.querySelectorAll('.strategy-manual-buy').forEach((button) => {
         button.addEventListener('click', () => createStrategyLookupManualBuy(button));
     });
+}
+
+function renderStrategyPreviewCards(results, strategies = []) {
+    return window.HanstockDashboardStrategyPreviewScreen.render({
+        setCache: (nextResults, nextCatalog) => {
+            strategyPreviewResultsCache = nextResults;
+            strategyPreviewCatalogCache = nextCatalog;
+        },
+        getCache: () => strategyPreviewResultsCache,
+        getCatalog: () => strategies || strategyPreviewCatalogCache || [],
+        displayName: strategyDisplayName,
+        evaluation: strategyAnalysisEvaluation,
+        sortRows: sortStrategyAnalysisRows,
+        excludedRows: strategyExcludedRowsMarkup,
+        escapeHtml,
+        formatNumber,
+        formatCurrency,
+        pill,
+        reasonLabel: strategyReasonLabel,
+        manualBuy: strategyManualBuyButton,
+        bindManualBuy: (container) => container.querySelectorAll('.strategy-manual-buy').forEach((button) => button.addEventListener('click', () => createStrategyLookupManualBuy(button))),
+        getSortKey: (id) => strategyAnalysisSortState.get(id) || 'score_desc',
+        setSortKey: (id, value) => strategyAnalysisSortState.set(id, value),
+    }, results, strategies);
 }
 
 const strategyLookupRunTime = STRATEGY_AUDIT_MODULE.runTime;

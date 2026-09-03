@@ -113,6 +113,9 @@ SCHEDULER_ACTIONS_JS = (
 STRATEGY_ANALYSIS_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-strategy-analysis.js"
 ).read_text(encoding="utf-8")
+STRATEGY_PREVIEW_SCREEN_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-strategy-preview-screen.js"
+).read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 
 
@@ -371,6 +374,13 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardStrategyAnalysis", STRATEGY_ANALYSIS_JS)
         self.assertIn("HanstockDashboardStrategyAnalysis.evaluate", APP_JS)
+
+    def test_strategy_preview_screen_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-strategy-preview-screen.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardStrategyPreviewScreen", STRATEGY_PREVIEW_SCREEN_JS)
+        self.assertIn("HanstockDashboardStrategyPreviewScreen.render", APP_JS)
 
     def test_dashboard_exposes_daily_market_regime_panel(self):
         required_markup = (
