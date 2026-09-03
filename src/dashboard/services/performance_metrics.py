@@ -106,6 +106,9 @@ def trade_is_sync_adjustment(trade: dict) -> bool:
         return True
     if any(token in reason for token in ("\ub3d9\uae30\ud654", "\ubcf4\uc815", "\uc870\uc815")):
         return True
+    legacy_tokens = ("\uf9dd\uc577\ud152", "\u5a9b\ubea4\uc823", "\uc206\ub9b0", "\u8e42\ub301\uc819", "\uc10e\ub8de", "\uafa8\uc52b\u907a")
+    if any(token in reason for token in legacy_tokens):
+        return True
     return False
 
 

@@ -61,6 +61,7 @@ class DashboardPeriodicPerformanceTests(unittest.TestCase):
     def test_sync_adjustments_exclude_synthetic_rows_but_keep_imports(self):
         self.assertTrue(trade_is_sync_adjustment({"reason": "balance sync"}))
         self.assertTrue(trade_is_sync_adjustment({"reason": "\ubcf4\uc815"}))
+        self.assertTrue(trade_is_sync_adjustment({"reason": "\uf9dd\uc577\ud152"}))
         self.assertFalse(trade_is_sync_adjustment({"reason": "broker history import"}))
 
     def test_live_holding_change_creates_quiet_day_and_month_rows(self):
