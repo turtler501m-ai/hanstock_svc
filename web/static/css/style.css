@@ -5726,6 +5726,48 @@ th,
     border-collapse: collapse;
 }
 
+.ai-strategy-table {
+    min-width: 760px;
+    table-layout: fixed;
+}
+
+.ai-strategy-table th,
+.ai-strategy-table td {
+    vertical-align: middle;
+}
+
+.ai-strategy-table th:nth-child(1),
+.ai-strategy-table td:nth-child(1) { width: 58px; }
+
+.ai-strategy-table th:nth-child(3),
+.ai-strategy-table td:nth-child(3) { width: 92px; }
+
+.ai-strategy-table th:nth-child(4),
+.ai-strategy-table td:nth-child(4) { width: 124px; }
+
+.ai-strategy-table th:nth-child(6),
+.ai-strategy-table td:nth-child(6) { width: 150px; }
+
+.ai-strategy-table .symbol-name,
+.ai-strategy-table .symbol-code,
+.ai-strategy-table .strategy-core-criteria,
+.ai-strategy-table .time-muted {
+    overflow-wrap: anywhere;
+}
+
+.ai-strategy-list-column tbody tr.is-selected {
+    background: rgba(249, 115, 22, 0.14);
+    box-shadow: inset 3px 0 #f97316;
+}
+
+.ai-strategy-list-column tbody tr.has-pending-selection {
+    background: rgba(245, 158, 11, 0.09);
+}
+
+.strategy-check-column input {
+    accent-color: #f97316;
+}
+
 .ai-strategy-table th,
 .strategy-events-table th {
     white-space: nowrap;
