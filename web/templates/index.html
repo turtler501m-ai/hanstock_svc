@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=68">
+    <link rel="stylesheet" href="/static/css/style.css?v=69">
 </head>
 
 <body class="namuh-dashboard">
@@ -1944,42 +1944,42 @@
                             </div>
                         </section>
 
-                        <section class="card glass">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <h2 style="margin: 0;">전략 파라미터</h2>
+                        <section class="card glass pb-settings-card">
+                            <div class="pb-settings-heading">
+                                <h2>전략 파라미터</h2>
                                 <button type="button" class="button-ghost compact-button" id="btn-save-ha-settings">설정 저장</button>
                             </div>
                             <p class="section-help">실제 주문에 적용되는 EMA 기울기, ADX 추세 강도와 ATR 변동성 범위를 조정합니다.</p>
-                            <div class="settings-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 1.25rem;">
+                            <div class="settings-grid pb-settings-grid">
                                 <div>
-                                    <span style="font-size:0.75rem; color:rgba(255,255,255,0.4); display:block; margin-bottom:4px;">EMA 기간</span>
-                                    <input type="number" id="ha-input-ema-period" value="200" min="50" style="width:100%; padding: 6px; border-radius: 4px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; font-family:'JetBrains Mono';">
+                                    <span>EMA 기간</span>
+                                    <input type="number" id="ha-input-ema-period" value="200" min="50">
                                 </div>
                                 <div>
-                                    <span style="font-size:0.75rem; color:rgba(255,255,255,0.4); display:block; margin-bottom:4px;">EMA 기울기 비교 봉</span>
-                                    <input type="number" id="ha-input-slope-bars" value="20" min="1" style="width:100%; padding: 6px; border-radius: 4px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; font-family:'JetBrains Mono';">
+                                    <span>EMA 기울기 비교 봉</span>
+                                    <input type="number" id="ha-input-slope-bars" value="20" min="1">
                                 </div>
                                 <div>
-                                    <span style="font-size:0.75rem; color:rgba(255,255,255,0.4); display:block; margin-bottom:4px;">ADX 최소값</span>
-                                    <input type="number" id="ha-input-adx-min" value="20" min="0" style="width:100%; padding: 6px; border-radius: 4px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; font-family:'JetBrains Mono';">
+                                    <span>ADX 최소값</span>
+                                    <input type="number" id="ha-input-adx-min" value="20" min="0">
                                 </div>
                                 <div>
-                                    <span style="font-size:0.75rem; color:rgba(255,255,255,0.4); display:block; margin-bottom:4px;">ATR% 최소값</span>
-                                    <input type="number" step="0.1" id="ha-input-atr-min" value="0.5" min="0" max="20" style="width:100%; padding: 6px; border-radius: 4px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; font-family:'JetBrains Mono';">
+                                    <span>ATR% 최소값</span>
+                                    <input type="number" step="0.1" id="ha-input-atr-min" value="0.5" min="0" max="20">
                                 </div>
-                                <div style="grid-column: span 2;">
-                                    <span style="font-size:0.75rem; color:rgba(255,255,255,0.4); display:block; margin-bottom:4px;">ATR% 최대값</span>
-                                    <input type="number" step="0.1" id="ha-input-atr-max" value="5.0" min="0.1" style="width:100%; padding: 6px; border-radius: 4px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; font-family:'JetBrains Mono';">
-                                </div>
-                                <div>
-                                    <span style="font-size:0.75rem; color:rgba(255,255,255,0.4); display:block; margin-bottom:4px;">최대 손절폭 (%)</span>
-                                    <input type="number" step="0.1" id="ha-input-max-stop-distance" value="8.0" min="0.1" max="30" style="width:100%; padding: 6px; border-radius: 4px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; font-family:'JetBrains Mono';">
-                                    <small style="color:rgba(255,255,255,0.45);">실제 주문가에서 손절가까지 허용할 최대 거리</small>
+                                <div class="pb-settings-wide">
+                                    <span>ATR% 최대값</span>
+                                    <input type="number" step="0.1" id="ha-input-atr-max" value="5.0" min="0.1">
                                 </div>
                                 <div>
-                                    <span style="font-size:0.75rem; color:rgba(255,255,255,0.4); display:block; margin-bottom:4px;">최대 추격 진입폭 (%)</span>
-                                    <input type="number" step="0.1" id="ha-input-max-entry-premium" value="2.0" min="0.1" max="20" style="width:100%; padding: 6px; border-radius: 4px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; font-family:'JetBrains Mono';">
-                                    <small style="color:rgba(255,255,255,0.45);">신호가보다 주문가가 높아질 때 허용할 최대 상승폭</small>
+                                    <span>최대 손절폭 (%)</span>
+                                    <input type="number" step="0.1" id="ha-input-max-stop-distance" value="8.0" min="0.1" max="30">
+                                    <small>실제 주문가에서 손절가까지 허용할 최대 거리</small>
+                                </div>
+                                <div>
+                                    <span>최대 추격 진입폭 (%)</span>
+                                    <input type="number" step="0.1" id="ha-input-max-entry-premium" value="2.0" min="0.1" max="20">
+                                    <small>신호가보다 주문가가 높아질 때 허용할 최대 상승폭</small>
                                 </div>
                             </div>
                         </section>
