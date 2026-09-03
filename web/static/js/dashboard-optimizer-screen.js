@@ -45,11 +45,11 @@
             bindQueueButtons();
             const hasOrders = data.positions.some((row) => String(row.rebalance_action || 'hold').toLowerCase() !== 'hold');
             const batchBtn = document.getElementById('btn-optimizer-batch');
-            if (batchBtn) batchBtn.style.display = hasOrders ? 'inline-block' : 'none';
+            if (batchBtn) batchBtn.hidden = !hasOrders;
         } catch (err) {
             setTableMessage('#table-optimizer tbody', 7, err.message);
             const batchBtn = document.getElementById('btn-optimizer-batch');
-            if (batchBtn) batchBtn.style.display = 'none';
+            if (batchBtn) batchBtn.hidden = true;
         } finally {
             setButtonBusy('btn-optimizer', false);
         }
