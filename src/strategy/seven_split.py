@@ -29,6 +29,7 @@ from src.strategy.momentum_metrics import (
     relative_momentum_score as _relative_momentum_score,
     volatility as calc_volatility,
 )
+from src.strategy.universe_service import build_scan_universe as _build_scan_universe
 
 WATCHLIST = []
 
@@ -707,26 +708,16 @@ def build_scan_universe(api, held_symbols: set[str]) -> list[str]:
     """
     from src.strategy.condition_monitor import get_fresh_condition_symbols
 
-    monitored_codes = get_fresh_condition_symbols("KR")
-    condition_codes = list(dict.fromkeys(monitored_codes))
-    if condition_codes:
-        logger.info(f"[SCAN] 조건 모니터 {len(condition_codes)}종목 수집 완료")
-        base = condition_codes
-    else:
-        volume_rank = api.fetch_volume_rank(top_n=config.scan_universe_size)
-        if volume_rank:
-            logger.info(f"[SCAN] 키움 거래량 상위 {len(volume_rank)}종목 수집 완료")
-            base = volume_rank
-        else:
-            logger.info(f"[SCAN] 키움 거래량 API 실패 → KOSPI_UNIVERSE {len(KOSPI_UNIVERSE)}종목으로 폴백")
-            base = KOSPI_UNIVERSE
-
-    # WATCHLIST 항상 포함, 중복 제거, 보유 종목 제외
-    merged = list(dict.fromkeys(WATCHLIST + base))
-    excluded = excluded_symbols()
-    universe = [code for code in merged if code not in held_symbols and code not in excluded]
-    logger.info(f"[SCAN] 최종 스캔 대상: {len(universe)}종목 (WATCHLIST {len(WATCHLIST)} + 동적 {len(base)}종목 병합)")
-    return universe
+    return _build_scan_universe(
+        api,
+        held_symbols,
+        watchlist=WATCHLIST,
+        static_universe=KOSPI_UNIVERSE,
+        excluded_symbols=excluded_symbols,
+        scan_size=config.scan_universe_size,
+        monitor_symbols=get_fresh_condition_symbols,
+        logger=logger,
+    )
 
 
 from datetime import datetime, timedelta, timezone
