@@ -5675,6 +5675,57 @@ th,
 .watchlist-auto-toggle p { margin: 2px 0 0; color: #8fa3bb; font-size: 0.72rem; line-height: 1.2; }
 .watchlist-auto-toggle .switch-toggle { margin-bottom: 0; }
 
+.switch-toggle {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 24px;
+}
+
+.switch-toggle input {
+    width: 0;
+    height: 0;
+    opacity: 0;
+}
+
+.switch-toggle .slider-toggle {
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.15);
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.switch-toggle .slider-toggle::before {
+    position: absolute;
+    bottom: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    content: "";
+    transition: 0.25s;
+}
+
+.switch-toggle input:checked + .slider-toggle {
+    background: #10b981;
+}
+
+.switch-toggle input:checked + .slider-toggle::before {
+    transform: translateX(22px);
+}
+
+#table-watchlist thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #182234;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+}
+
 .watchlist-threshold,
 .watchlist-add-form {
     display: flex;
