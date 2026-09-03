@@ -775,7 +775,7 @@ let periodicActiveTab = 'daily';
 let periodicDataCache = null;
 let latestConfig = null;
 
-function strategySettingGroups(config) {
+function strategySettingGroupsLegacy(config) {
     return [
         {
             id: 'entry',
@@ -823,6 +823,10 @@ function strategySettingGroups(config) {
             ],
         },
     ];
+}
+
+function strategySettingGroups(config) {
+    return window.HanstockDashboardStrategySettingsSchema.groups(config);
 }
 
 function strategySettingFields(config) {

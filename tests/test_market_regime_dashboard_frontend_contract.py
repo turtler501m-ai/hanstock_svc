@@ -83,6 +83,9 @@ CANDIDATE_MESSAGES_JS = (
 CANDIDATE_STRATEGY_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-candidate-strategy.js"
 ).read_text(encoding="utf-8")
+STRATEGY_SETTINGS_SCHEMA_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-strategy-settings-schema.js"
+).read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 
 
@@ -270,6 +273,13 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardCandidateStrategy", CANDIDATE_STRATEGY_JS)
         self.assertIn("HanstockDashboardCandidateStrategy.render", APP_JS)
+
+    def test_strategy_settings_schema_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-strategy-settings-schema.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardStrategySettingsSchema", STRATEGY_SETTINGS_SCHEMA_JS)
+        self.assertIn("HanstockDashboardStrategySettingsSchema.groups", APP_JS)
 
     def test_dashboard_exposes_daily_market_regime_panel(self):
         required_markup = (

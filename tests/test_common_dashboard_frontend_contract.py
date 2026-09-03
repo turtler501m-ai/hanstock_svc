@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 APP_JS = (ROOT / "web" / "static" / "js" / "app.js").read_text(encoding="utf-8")
+SETTINGS_SCHEMA_JS = (ROOT / "web" / "static" / "js" / "dashboard-strategy-settings-schema.js").read_text(encoding="utf-8")
 COMMON_ANALYSIS_JS = (
     ROOT / "web" / "static" / "js" / "common-analysis.js"
 ).read_text(encoding="utf-8")
@@ -211,13 +212,14 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
 
     def test_overview_strategy_settings_are_grouped_and_readiness_is_collapsible(self):
         self.assertIn("function strategySettingGroups(config)", APP_JS)
-        self.assertIn("title: '기본 매매'", APP_JS)
-        self.assertIn("title: '손절·수익 보호'", APP_JS)
-        self.assertIn("title: '후보 선별'", APP_JS)
-        self.assertIn("title: '자금·리스크'", APP_JS)
+        self.assertIn("HanstockDashboardStrategySettingsSchema.groups", APP_JS)
+        self.assertIn("id: 'entry'", SETTINGS_SCHEMA_JS)
+        self.assertIn("id: 'exit'", SETTINGS_SCHEMA_JS)
+        self.assertIn("id: 'candidate'", SETTINGS_SCHEMA_JS)
+        self.assertIn("id: 'risk'", SETTINGS_SCHEMA_JS)
         self.assertIn('class="strategy-settings-shell"', APP_JS)
         self.assertIn('class="strategy-readiness-details"', APP_JS)
-        self.assertIn("진입 이후 최고가 기준", APP_JS)
+        self.assertIn("고정 손절과 진입 이후 최고가 기준", SETTINGS_SCHEMA_JS)
         self.assertIn("전략 설정 저장", APP_JS)
 
     def test_watchlist_exposes_summary_policy_and_filters(self):
