@@ -19,9 +19,26 @@ from src.dashboard.routes.stock_performance import (
     _merge_current_holding_change,
     _merge_stored_holding_changes,
 )
+from src.dashboard.services.performance_metrics import (
+    filled_price_matches_order,
+    trade_is_dry_run,
+    trade_is_ok,
+)
 
 
 class DashboardPeriodicPerformanceTests(unittest.TestCase):
+    def test_trade_quality_helpers_are_safe_for_malformed_values(self):
+        self.assertTrue(trade_is_ok({"ok": "1"}))
+        self.assertFalse(trade_is_ok({"ok": "0"}))
+        self.assertTrue(trade_is_ok({"ok": "invalid"}))
+        self.assertTrue(trade_is_dry_run({"dry_run": "1"}))
+        self.assertFalse(trade_is_dry_run({"dry_run": "invalid"}))
+
+    def test_filled_price_matches_order_uses_tolerance(self):
+        self.assertTrue(filled_price_matches_order({"price": 100, "filled_price": 125}))
+        self.assertFalse(filled_price_matches_order({"price": 100, "filled_price": 140}))
+        self.assertTrue(filled_price_matches_order({"price": 0, "filled_price": 999}))
+
     def test_live_holding_change_creates_quiet_day_and_month_rows(self):
         result = {"daily": [], "monthly": [], "strategy_validation": []}
 

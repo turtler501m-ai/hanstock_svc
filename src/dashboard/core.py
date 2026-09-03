@@ -1837,11 +1837,15 @@ def _resolved_trade_strategy_id(trade: dict) -> str:
 
 
 def _trade_is_ok(trade: dict) -> bool:
-    return bool(_to_int(trade.get("ok"), 1))
+    from src.dashboard.services.performance_metrics import trade_is_ok
+
+    return trade_is_ok(trade)
 
 
 def _trade_is_dry_run(trade: dict) -> bool:
-    return bool(_to_int(trade.get("dry_run"), 0))
+    from src.dashboard.services.performance_metrics import trade_is_dry_run
+
+    return trade_is_dry_run(trade)
 
 
 def _trade_is_sync_adjustment(trade: dict) -> bool:
@@ -1864,11 +1868,9 @@ def _trade_is_sync_adjustment(trade: dict) -> bool:
 
 
 def _filled_price_matches_order(trade: dict, *, tolerance: float = 0.30) -> bool:
-    filled_price = _to_int(trade.get("filled_price"))
-    order_price = _to_int(trade.get("price"))
-    if filled_price <= 0 or order_price <= 0:
-        return True
-    return order_price * (1.0 - tolerance) <= filled_price <= order_price * (1.0 + tolerance)
+    from src.dashboard.services.performance_metrics import filled_price_matches_order
+
+    return filled_price_matches_order(trade, tolerance=tolerance)
 
 
 def _account_trades(trades: list[dict]) -> list[dict]:

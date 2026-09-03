@@ -70,3 +70,28 @@ def monthly_market_context(index_rows: dict[str, list[dict]]) -> dict[str, dict]
             bucket[f"{name.lower()}_change_pct"] = round(change_pct, 2) if change_pct is not None else None
             previous_close = close
     return context
+
+
+def trade_is_ok(trade: dict) -> bool:
+    try:
+        return bool(int(trade.get("ok", 1)))
+    except (TypeError, ValueError):
+        return True
+
+
+def trade_is_dry_run(trade: dict) -> bool:
+    try:
+        return bool(int(trade.get("dry_run", 0)))
+    except (TypeError, ValueError):
+        return False
+
+
+def filled_price_matches_order(trade: dict, *, tolerance: float = 0.30) -> bool:
+    try:
+        filled_price = int(float(trade.get("filled_price") or 0))
+        order_price = int(float(trade.get("price") or 0))
+    except (TypeError, ValueError):
+        return True
+    if filled_price <= 0 or order_price <= 0:
+        return True
+    return order_price * (1.0 - tolerance) <= filled_price <= order_price * (1.0 + tolerance)
