@@ -49,6 +49,57 @@
         return rows;
     }
 
+    const brokerFieldLabels = Object.freeze({
+        rsp_cd: '응답 코드',
+        rsp_msg: '응답 메시지',
+        dca: '예수금',
+        nxt2_dd_dca: 'D+2 예수금',
+        orr_pbl_amt: '주문 가능 금액',
+        orr_pbl_amt1: '주문 가능 금액',
+        tot_aet_amt: '총자산 금액',
+        tot_eal_amt: '총 평가금액',
+        tot_eal_pls: '총 평가손익',
+        iem_cd: '종목코드',
+        iem_nm: '종목명',
+        itg_bnc_qty: '통합 잔고수량',
+        ny_stl_qty: '결제 반영 수량',
+        rsdl_qty: '잔존 수량',
+        phs_pr: '평균 매입단가',
+        now_pr: '현재가',
+        eal_amt: '평가금액',
+        eal_pls_amt: '평가손익',
+        pft_rt: '수익률',
+    });
+    const brokerNumericFields = new Set([
+        'dca', 'nxt2_dd_dca', 'orr_pbl_amt', 'orr_pbl_amt1', 'tot_aet_amt',
+        'tot_eal_amt', 'tot_eal_pls', 'itg_bnc_qty', 'ny_stl_qty', 'rsdl_qty',
+        'phs_pr', 'now_pr', 'eal_amt', 'eal_pls_amt', 'pft_rt',
+    ]);
+
+    function brokerFieldPresentation(item) {
+        const holdingMatch = item.path.match(/^Output_1\[(\d+)]\.(.+)$/);
+        const summaryMatch = item.path.match(/^Output_0\.(.+)$/);
+        let group = '응답 정보';
+        let field = item.path;
+        if (holdingMatch) {
+            group = `보유종목 ${Number(holdingMatch[1]) + 1}`;
+            field = holdingMatch[2];
+        } else if (summaryMatch) {
+            group = '계좌 요약';
+            field = summaryMatch[1];
+        }
+        const fieldName = field.split('.').pop();
+        const label = brokerFieldLabels[fieldName] || fieldName;
+        let displayValue = item.value === null
+            ? '값 없음'
+            : (typeof item.value === 'string' ? item.value : JSON.stringify(item.value));
+        if (brokerNumericFields.has(fieldName)
+            && item.value !== '' && item.value !== null && Number.isFinite(Number(item.value))) {
+            displayValue = Number(item.value).toLocaleString('ko-KR');
+        }
+        return { group, label, field: item.path, value: displayValue };
+    }
+
     function renderBrokerResponse(response, deps) {
         const tbody = document.querySelector('#table-holding-broker-response tbody');
         const count = document.getElementById('holding-broker-response-count');
@@ -61,11 +112,9 @@
             return;
         }
         rows.forEach((item) => {
+            const presented = brokerFieldPresentation(item);
             const row = document.createElement('tr');
-            const displayValue = item.value === null
-                ? 'null'
-                : (typeof item.value === 'string' ? item.value : JSON.stringify(item.value));
-            row.innerHTML = `<td><code>${deps.escapeHtml(item.path)}</code></td><td class="broker-response-value">${deps.escapeHtml(displayValue)}</td>`;
+            row.innerHTML = `<td><span class="broker-response-group">${deps.escapeHtml(presented.group)}</span></td><td><strong>${deps.escapeHtml(presented.label)}</strong></td><td class="broker-response-value">${deps.escapeHtml(presented.value)}</td><td><code>${deps.escapeHtml(presented.field)}</code></td>`;
             tbody.appendChild(row);
         });
         if (count) count.textContent = `${rows.length.toLocaleString()}개 필드`;

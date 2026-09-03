@@ -116,7 +116,11 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
     def test_holdings_tab_displays_complete_namuh_balance_response(self):
         self.assertIn('id="table-holding-broker-response"', INDEX_HTML)
         self.assertIn('id="holding-broker-response-count"', INDEX_HTML)
+        self.assertIn('<details class="holding-broker-response-detail">', INDEX_HTML)
+        self.assertNotIn('<section class="card glass holding-broker-response-panel">', INDEX_HTML)
+        self.assertIn('<th>구분</th><th>항목</th><th>값</th><th>API 필드</th>', INDEX_HTML)
         self.assertIn("renderBrokerResponse(balance.broker_response", FRONTEND_JS)
+        self.assertIn("brokerFieldLabels", FRONTEND_JS)
         self.assertIn("await renderBalance()", APP_JS)
 
     def test_holdings_tab_exposes_broker_authoritative_sync(self):

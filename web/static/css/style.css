@@ -963,24 +963,48 @@ button:not(:disabled):active {
     grid-row: 1 / 2;
 }
 
-.holding-broker-response-panel {
-    margin-top: 1rem;
+.holding-broker-response-detail {
+    margin-top: 1.25rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    padding-top: 1rem;
 }
 
-.holding-broker-response-panel summary {
+.holding-broker-response-detail summary {
     cursor: pointer;
     list-style-position: inside;
+    padding: 0.5rem 0;
 }
 
-.holding-broker-response-panel summary > span:first-child {
+.holding-broker-response-detail summary > span:first-child {
     display: inline-flex;
     flex-direction: column;
     gap: 0.25rem;
 }
 
+.holding-broker-response-detail[open] summary {
+    margin-bottom: 0.75rem;
+}
+
 #table-holding-broker-response code {
-    color: var(--accent, #60a5fa);
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.75rem;
     white-space: nowrap;
+}
+
+#table-holding-broker-response td:nth-child(2),
+#table-holding-broker-response td:nth-child(3) {
+    white-space: nowrap;
+}
+
+.broker-response-group {
+    display: inline-flex;
+    border: 1px solid rgba(96, 165, 250, 0.25);
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.1);
+    color: #93c5fd;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 700;
 }
 
 #table-holding-broker-response .broker-response-value {
