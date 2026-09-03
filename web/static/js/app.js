@@ -6585,6 +6585,7 @@ async function renderScheduleInfo() {
         await renderSchedulerStrategyChecklist(data.strategy_dispatch?.schedules || []);
         const aiSchedule = await loadAiScheduleSettings();
         const dispatch = data.strategy_dispatch || {};
+        window.HanstockDashboardSchedulerOverview.render(data, aiSchedule);
 
         const scheduleStateEl = document.getElementById('sched-overview-schedule-state');
         if (scheduleStateEl) {
