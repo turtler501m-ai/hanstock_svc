@@ -544,6 +544,118 @@ h1 .highlight {
     .market-regime-simple-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* Schedule and AI strategy surfaces share the same operational card language. */
+.schedule-page-heading,
+.schedule-card-heading {
+    align-items: flex-start;
+}
+
+.schedule-safety-note {
+    border: 1px solid rgba(245, 158, 11, 0.34);
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.1);
+    color: #fcd34d;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.schedule-overview-grid {
+    gap: 0.55rem;
+}
+
+.schedule-overview-item,
+.schedule-result-metric {
+    border-color: rgba(148, 163, 184, 0.16);
+    background: #101d31;
+    box-shadow: none;
+}
+
+.schedule-overview-item strong,
+.schedule-result-metric strong {
+    font-family: var(--font-mono);
+}
+
+.schedule-mode-card {
+    border-radius: 11px;
+    box-shadow: none;
+}
+
+.schedule-mode-card.is-safe {
+    border-color: rgba(34, 197, 94, 0.3);
+    background: rgba(20, 83, 45, 0.16);
+}
+
+.schedule-mode-card.is-auto {
+    border-color: rgba(249, 115, 22, 0.34);
+    background: rgba(124, 45, 18, 0.16);
+}
+
+.schedule-mode-card.is-execute {
+    border-color: rgba(239, 68, 68, 0.32);
+    background: rgba(127, 29, 29, 0.16);
+}
+
+.schedule-running-panel {
+    border-left: 3px solid #f59e0b;
+}
+
+.schedule-running-log {
+    border-radius: 9px;
+    background: #07101d;
+    font-family: var(--font-mono);
+}
+
+.ai-strategy-control-bar {
+    border-color: rgba(249, 115, 22, 0.24) !important;
+    border-radius: 10px !important;
+    background: rgba(20, 36, 59, 0.8) !important;
+}
+
+.ai-strategy-editor-layout {
+    gap: 0.8rem;
+}
+
+.ai-strategy-list-column,
+.ai-strategy-detail-panel {
+    border-color: rgba(148, 163, 184, 0.16) !important;
+    border-radius: 13px !important;
+    background: #101d31 !important;
+    box-shadow: none !important;
+}
+
+.ai-strategy-list-column tbody tr.is-selected {
+    background: rgba(249, 115, 22, 0.13);
+    box-shadow: inset 3px 0 #f97316;
+}
+
+.ai-strategy-detail-panel {
+    border-left: 3px solid rgba(249, 115, 22, 0.7) !important;
+}
+
+.ai-strategy-detail-form input,
+.ai-strategy-detail-form select,
+.ai-strategy-detail-form textarea,
+.schedule-field input,
+.schedule-field select {
+    border-color: rgba(148, 163, 184, 0.24);
+    border-radius: 8px;
+    background: #0b1626;
+    color: #f8fafc;
+}
+
+@media (max-width: 760px) {
+    .schedule-page-heading,
+    .schedule-card-heading {
+        flex-direction: column;
+    }
+    .schedule-safety-note {
+        align-self: flex-start;
+    }
+    .ai-strategy-editor-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 /* Final interaction polish for dense trading screens. */
 :where(button, a, input, select, textarea):focus-visible {
     outline: 2px solid #fdba74;
