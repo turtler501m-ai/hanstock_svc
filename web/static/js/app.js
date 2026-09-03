@@ -844,7 +844,7 @@ function strategySettingFields(config) {
     return strategySettingGroups(config).flatMap((group) => group.fields);
 }
 
-function renderStrategySettingsForm(config) {
+function renderStrategySettingsFormLegacy(config) {
     const groups = strategySettingGroups(config);
     const readiness = config.technical_strategy_readiness || {};
     const readinessPct = Math.max(0, Math.min(100, Number(readiness.current_pct || 0)));
@@ -936,6 +936,13 @@ function renderStrategySettingsForm(config) {
             </form>
         </div>
     `;
+}
+
+function renderStrategySettingsForm(config) {
+    return window.HanstockDashboardStrategySettingsScreen.render({
+        groups: strategySettingGroups,
+        escapeHtml,
+    }, config);
 }
 
 function renderAiStrategySummaryLegacy(config) {
