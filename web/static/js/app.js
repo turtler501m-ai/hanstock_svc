@@ -2968,7 +2968,7 @@ async function renderSignals() {
     });
 }
 
-function strategyAnalysisChecks(row) {
+function strategyAnalysisChecksLegacy(row) {
     const risk = row.strategy_risk || {};
     const params = risk.effective_parameters || {};
     const value = (label, passed, detail = '') => ({ label, passed: Boolean(passed), detail });
@@ -2997,7 +2997,7 @@ function strategyAnalysisChecks(row) {
     return (row.reasons || []).map((reason) => value(strategyReasonLabel(reason), row.passed));
 }
 
-function strategyAnalysisChecklistMarkup(row) {
+function strategyAnalysisChecklistMarkupLegacy(row) {
     return strategyAnalysisChecks(row).map((check) => `
         <li class="${check.passed ? 'is-pass' : 'is-fail'}">
             <span aria-hidden="true">${check.passed ? '✓' : '✕'}</span>
@@ -3007,7 +3007,7 @@ function strategyAnalysisChecklistMarkup(row) {
     `).join('');
 }
 
-function strategyAnalysisEvaluation(row) {
+function strategyAnalysisEvaluationLegacy(row) {
     const checks = strategyAnalysisChecks(row);
     const passedChecks = checks.filter((check) => check.passed).length;
     const checklistScore = checks.length ? Math.round((passedChecks / checks.length) * 100) : 0;
@@ -3023,7 +3023,7 @@ function strategyAnalysisEvaluation(row) {
     };
 }
 
-function sortStrategyAnalysisRows(rows, sortKey) {
+function sortStrategyAnalysisRowsLegacy(rows, sortKey) {
     return [...rows].sort((left, right) => {
         const a = strategyAnalysisEvaluation(left);
         const b = strategyAnalysisEvaluation(right);
@@ -3035,7 +3035,7 @@ function sortStrategyAnalysisRows(rows, sortKey) {
     });
 }
 
-function strategyExcludedRowsMarkup(rows) {
+function strategyExcludedRowsMarkupLegacy(rows) {
     if (!rows.length) return '<tr><td colspan="8" class="table-message">분석 세부내역이 없습니다.</td></tr>';
     return rows.map((row) => {
         const evaluation = strategyAnalysisEvaluation(row);
@@ -3052,6 +3052,37 @@ function strategyExcludedRowsMarkup(rows) {
             <td>${strategyManualBuyButton(row, evaluation.verdict)}</td>
         </tr>`;
     }).join('');
+}
+
+function strategyAnalysisDeps() {
+    return {
+        formatNumber,
+        formatCurrency,
+        reasonLabel: strategyReasonLabel,
+        escapeHtml,
+        pill,
+        manualBuy: strategyManualBuyButton,
+    };
+}
+
+function strategyAnalysisChecks(row) {
+    return window.HanstockDashboardStrategyAnalysis.checks(strategyAnalysisDeps(), row);
+}
+
+function strategyAnalysisChecklistMarkup(row) {
+    return window.HanstockDashboardStrategyAnalysis.checklistMarkup(strategyAnalysisDeps(), row);
+}
+
+function strategyAnalysisEvaluation(row) {
+    return window.HanstockDashboardStrategyAnalysis.evaluate(strategyAnalysisDeps(), row);
+}
+
+function sortStrategyAnalysisRows(rows, sortKey) {
+    return window.HanstockDashboardStrategyAnalysis.sort(strategyAnalysisDeps(), rows, sortKey);
+}
+
+function strategyExcludedRowsMarkup(rows) {
+    return window.HanstockDashboardStrategyAnalysis.excludedRows(strategyAnalysisDeps(), rows);
 }
 
 function strategyManualBuyButton(row, verdict) {
