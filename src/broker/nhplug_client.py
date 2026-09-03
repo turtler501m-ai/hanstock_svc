@@ -30,7 +30,7 @@ class NHPlugPage:
 class NHPlugRestClient:
     """Small dependency-injectable client following the official NHPLUG wire format."""
 
-    _tokens: dict[tuple[str, str], tuple[str, datetime]] = {}
+    _tokens: dict[tuple[str, str, str], tuple[str, datetime]] = {}
     _lock = threading.Lock()
     _token_issue_lock = threading.Lock()
     _last_call = 0.0
@@ -62,8 +62,8 @@ class NHPlugRestClient:
         with cls._lock:
             cls._tokens.clear()
 
-    def _cache_key(self) -> tuple[str, str]:
-        return self.app_key, hashlib.sha256(self._app_secret.encode()).hexdigest()
+    def _cache_key(self) -> tuple[str, str, str]:
+        return self.environment, self.app_key, hashlib.sha256(self._app_secret.encode()).hexdigest()
 
     def access_token(self) -> str:
         now = datetime.now(timezone.utc)
@@ -123,8 +123,10 @@ class NHPlugRestClient:
                                       json=payload, headers=headers, timeout=self.timeout)
         try:
             data = self._decode(response, path)
-        except NHPlugApiError:
-            if request_kind == "query" and response.status_code == 401:
+        except NHPlugApiError as exc:
+            if request_kind == "query" and (
+                response.status_code == 401 or "IGW40043" in str(exc)
+            ):
                 # Refresh once; rejected credentials must not cause recursion.
                 self._token = ""; self._expires_at = None
                 with self._lock:
