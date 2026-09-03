@@ -3904,7 +3904,8 @@ function reconciliationReasonLabel(reason) {
     return value || '-';
 }
 
-async function renderReconciliationIssues() {
+/* Legacy reconciliation renderer retained below only as migration reference.
+async function renderReconciliationIssuesLegacy() {
     const tbody = document.querySelector('#table-reconciliation-issues tbody');
     if (!tbody) return;
     try {
@@ -3942,6 +3943,22 @@ async function renderReconciliationIssues() {
         reconciliationIssueCount = 0;
         setTableMessage('#table-reconciliation-issues tbody', 7, err.message);
     }
+}
+*/
+
+async function renderReconciliationIssues() {
+    reconciliationIssueCount = await window.HanstockDashboardReconciliationScreen.render({
+        fetchJson,
+        escapeHtml,
+        setTableMessage,
+        reasonLabel: reconciliationReasonLabel,
+        formatCheckedAt: formatOrderCheckedAt,
+        labels: {
+            openIssues: '\uac74\uc758 \uc870\uc815 \ud544\uc694 \uc774\uc288',
+            noIssues: '\ubd88\uc77c\uce58 \uc774\uc288\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.',
+            quantity: '\uc8fc',
+        },
+    });
 }
 
 async function applyBrokerBalanceReconciliation(options = {}) {
