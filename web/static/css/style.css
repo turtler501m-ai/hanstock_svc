@@ -5802,6 +5802,32 @@ th,
     font-weight: 600;
 }
 
+.ha-performance-summary {
+    margin-bottom: 2rem;
+}
+
+.ha-performance-chart {
+    height: 300px;
+}
+
+.ha-performance-table-wrap {
+    margin-top: 1rem;
+}
+
+.ha-performance-table {
+    width: 100%;
+}
+
+.ha-trades-card {
+    margin-top: 2rem;
+}
+
+.ha-trades-table-wrap {
+    max-height: 400px;
+    margin-top: 1.5rem;
+    overflow-y: auto;
+}
+
 .pb-run-actions {
     display: flex;
     gap: 0.75rem;

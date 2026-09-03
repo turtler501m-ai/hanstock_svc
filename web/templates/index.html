@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=67">
+    <link rel="stylesheet" href="/static/css/style.css?v=68">
 </head>
 
 <body class="namuh-dashboard">
@@ -2077,7 +2077,7 @@
                 </section>
 
                 <section class="pb-section" id="ha-tab-performance">
-                    <section class="summary-grid" style="margin-bottom: 2rem;">
+                    <section class="summary-grid ha-performance-summary">
                         <div class="card glass"><h3>누적 실현 손익</h3><div class="value" id="ha-perf-pnl">-</div></div>
                         <div class="card glass"><h3>승률</h3><div class="value" id="ha-perf-winrate">-</div></div>
                         <div class="card glass"><h3>총 체결 주문</h3><div class="value" id="ha-perf-trades">-</div></div>
@@ -2087,23 +2087,23 @@
                         <section class="card glass panel-chart">
                             <h2>전략 누적 손익 추이</h2>
                             <p class="section-help">알파 하이킨아시 전략으로 확정 체결된 실현 손익 추세입니다.</p>
-                            <div class="chart-container" style="height: 300px;"><canvas id="haChart"></canvas></div>
+                            <div class="chart-container ha-performance-chart"><canvas id="haChart"></canvas></div>
                         </section>
                         <section class="card glass">
                             <h2>월별 손익 분석</h2>
-                            <div class="table-responsive" style="margin-top: 1rem;">
-                                <table id="table-ha-monthly" style="width:100%;">
+                            <div class="table-responsive ha-performance-table-wrap">
+                                <table id="table-ha-monthly" class="ha-performance-table">
                                     <thead><tr><th>기준월</th><th style="text-align: right;">실현 손익</th></tr></thead>
                                     <tbody><tr><td colspan="2" style="text-align:center; color:rgba(255,255,255,0.4); padding:2rem 0;">데이터가 없습니다.</td></tr></tbody>
                                 </table>
                             </div>
                         </section>
                     </div>
-                    <section class="card glass" style="margin-top: 2rem;">
+                    <section class="card glass ha-trades-card">
                         <h2>전략 매매 히스토리</h2>
                         <p class="section-help">알파 하이킨아시 전략의 실전 및 시뮬레이션 체결 이력입니다.</p>
-                        <div class="table-responsive" style="margin-top: 1.5rem; max-height: 400px; overflow-y: auto;">
-                            <table id="table-ha-trades" style="width:100%;">
+                        <div class="table-responsive ha-trades-table-wrap">
+                            <table id="table-ha-trades" class="ha-performance-table">
                                 <thead>
                                     <tr>
                                         <th>일시</th>
