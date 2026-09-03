@@ -30,5 +30,14 @@
         return '가격 미산출';
     }
 
-    global.HanstockDashboardSchedulerFormatters = { approvalStatus, planQuantity, planPrice };
+    function kstTime(value) {
+        if (!value) return '-';
+        try {
+            return new Date(value).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+        } catch (_error) {
+            return value;
+        }
+    }
+
+    global.HanstockDashboardSchedulerFormatters = { approvalStatus, planQuantity, planPrice, kstTime };
 })(window);

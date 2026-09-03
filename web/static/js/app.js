@@ -7227,13 +7227,7 @@ function schedulerPlanPriceText(row) {
 }
 
 function formatKstTime(isoStr) {
-    if (!isoStr) return '-';
-    try {
-        const d = new Date(isoStr);
-        return d.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
-    } catch (e) {
-        return isoStr;
-    }
+    return window.HanstockDashboardSchedulerFormatters.kstTime(isoStr);
 }
 
 async function triggerScheduleLegacy(mode) {

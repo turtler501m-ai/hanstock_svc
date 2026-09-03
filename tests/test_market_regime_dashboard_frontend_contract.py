@@ -370,6 +370,7 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerFormatters", SCHEDULER_FORMATTERS_JS)
         self.assertIn("HanstockDashboardSchedulerFormatters.approvalStatus", APP_JS)
+        self.assertIn("HanstockDashboardSchedulerFormatters.kstTime", APP_JS)
 
     def test_scheduler_actions_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-scheduler-actions.js?v=1"></script>'
