@@ -34,6 +34,25 @@
         <main>
             <section class="status-banner" id="status-banner" hidden></section>
 
+            <section class="dashboard-context-strip" aria-label="현재 운용 컨텍스트">
+                <div class="context-item">
+                    <span>운용 환경</span>
+                    <strong id="context-env">확인 중</strong>
+                </div>
+                <div class="context-item">
+                    <span>주문 상태</span>
+                    <strong id="context-order">확인 중</strong>
+                </div>
+                <div class="context-item">
+                    <span>승인 정책</span>
+                    <strong id="context-approval">확인 중</strong>
+                </div>
+                <div class="context-item context-item-time">
+                    <span>상태 확인</span>
+                    <strong id="context-updated">-</strong>
+                </div>
+            </section>
+
             <nav class="dashboard-tabs" role="tablist" aria-label="대시보드 기능 메뉴">
                 <button type="button" role="tab" id="tab-overview" aria-selected="true" class="dashboard-tab active" data-dashboard-tab="overview">개요</button>
                 <button type="button" role="tab" id="tab-portfolio" aria-selected="false" class="dashboard-tab" data-dashboard-tab="portfolio">보유종목</button>

@@ -3,6 +3,14 @@
     async function renderRuntime(deps) {
         const health = await deps.fetchJson('/api/health');
         deps.setText('runtime-env', health.trading_env === 'real' ? deps.labels.real : deps.labels.demo);
+        deps.setText('context-env', health.trading_env === 'real' ? deps.labels.real : deps.labels.demo);
+        deps.setText(
+            'context-order',
+            health.real_orders_enabled ? deps.labels.liveEnabled :
+                (health.order_submission_enabled ? deps.labels.demoOrder : deps.labels.blocked)
+        );
+        deps.setText('context-approval', health.auto_approval_enabled ? deps.labels.autoApproval : deps.labels.manualApproval);
+        deps.setText('context-updated', new Date().toLocaleTimeString('ko-KR'));
         deps.setHtml('runtime-dry-run', health.dry_run ? deps.pill(deps.labels.on, 'warn') : deps.pill(deps.labels.off, 'buy'));
         deps.setHtml('runtime-order', health.order_submission_enabled ? deps.pill(deps.labels.enabled, 'buy') : deps.pill(deps.labels.blocked, 'warn'));
         deps.setHtml('runtime-real', health.real_orders_enabled ? deps.pill(deps.labels.liveEnabled, 'sell') : deps.pill(deps.labels.liveBlocked, 'hold'));
