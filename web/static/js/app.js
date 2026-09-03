@@ -7094,7 +7094,7 @@ window.toggleRoundCollapse = function(round) {
     }
 };
 
-function disableTriggerButtons(disabled) {
+function disableTriggerButtonsLegacy(disabled) {
     const ids = [
         'btn-run-daily-auto', 'btn-run-analysis-only', 'btn-run-execute'
     ];
@@ -7174,7 +7174,7 @@ function formatKstTime(isoStr) {
     }
 }
 
-async function triggerSchedule(mode) {
+async function triggerScheduleLegacy(mode) {
     const btnId = mode === 'daily_auto' ? 'btn-run-daily-auto' : (mode === 'analysis_only' ? 'btn-run-analysis-only' : 'btn-run-execute');
     const btn = document.getElementById(btnId);
     if (!btn) return;
@@ -7219,7 +7219,7 @@ async function triggerSchedule(mode) {
     }
 }
 
-function startSchedulerPolling(mode) {
+function startSchedulerPollingLegacy(mode) {
     if (schedulerPollInterval) return; // Already polling
     
     disableTriggerButtons(true);
@@ -7270,6 +7270,36 @@ function startSchedulerPolling(mode) {
             console.error("Failed to fetch scheduler status", e);
         }
     }, 3000);
+}
+
+function disableTriggerButtons(disabled) {
+    return window.HanstockDashboardSchedulerActions.disableButtons(disabled);
+}
+
+async function triggerSchedule(mode) {
+    return window.HanstockDashboardSchedulerActions.trigger({
+        setButtonBusy,
+        postJson,
+        getStrategyIds: getScheduledStrategyIds,
+        getActiveStrategyId,
+        setStatus,
+        startPolling: startSchedulerPolling,
+    }, mode);
+}
+
+function startSchedulerPolling(mode) {
+    return window.HanstockDashboardSchedulerActions.createPolling({
+        fetchJson,
+        getActiveStrategyId,
+        setStatus,
+        refreshAll: async () => {
+            await renderScheduleInfo();
+            if (typeof refreshOverview === 'function') refreshOverview();
+            if (typeof renderSignals === 'function') renderSignals();
+            if (typeof renderApprovals === 'function') renderApprovals();
+            if (typeof renderWatchlist === 'function') renderWatchlist();
+        },
+    }, mode, () => schedulerPollInterval, (value) => { schedulerPollInterval = value; });
 }
 
 function copySchedulerLog() {
