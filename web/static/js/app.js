@@ -1103,7 +1103,8 @@ async function toggleAutoApproval() {
     }
 }
 
-async function renderConfig() {
+/* Legacy configuration renderer retained below only as migration reference.
+async function renderConfigLegacy() {
     const config = await fetchJson('/api/config');
     latestConfig = config;
     setElementText('val-account', config.kiwoom_account || '-');
@@ -1114,6 +1115,18 @@ async function renderConfig() {
     if (form) {
         form.addEventListener('submit', saveStrategySettings);
     }
+}
+*/
+
+async function renderConfig() {
+    return window.HanstockDashboardConfigScreen.render({
+        fetchJson,
+        setLatestConfig: (config) => { latestConfig = config; },
+        setText: (id, value) => setElementText(id, value),
+        renderSummary: renderAiStrategySummary,
+        renderForm: renderStrategySettingsForm,
+        saveSettings: saveStrategySettings,
+    });
 }
 
 function renderRisk(balance) {
