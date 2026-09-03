@@ -30,6 +30,7 @@ from src.strategy.momentum_metrics import (
     volatility as calc_volatility,
 )
 from src.strategy.universe_service import build_scan_universe as _build_scan_universe
+from src.strategy.portfolio_service import generate_optimizer_plan as _generate_optimizer_plan
 
 WATCHLIST = []
 
@@ -655,47 +656,14 @@ def generate_portfolio_optimizer_plan(holdings: list[dict], total_eval: int) -> 
     This avoids importing PyPortfolioOpt's optional dependency stack while
     preserving the practical output shape: target weights and rebalance deltas.
     """
-    investable_weight = max(0.0, 1 - config.cash_buffer)
-    if total_eval <= 0 or not holdings:
-        return {"method": "score_tilted_inverse_vol", "cash_weight": 1.0, "positions": []}
-
-    weighted = []
-    for item in holdings:
-        prices = item.get("prices", [])
-        profile = calc_strategy_profile(prices, item.get("highs", []), item.get("volumes", []), symbol=item.get("symbol", "")) if prices else calc_strategy_profile([], symbol=item.get("symbol", ""))
-        vol = calc_volatility(prices) or 0.02
-        expected_score = max(0.1, 1 + profile["score"])
-        weight_signal = expected_score / vol
-        weighted.append({**item, "profile": profile, "volatility": vol, "weight_signal": weight_signal})
-
-    signal_sum = sum(item["weight_signal"] for item in weighted) or 1
-    positions = []
-    for item in weighted:
-        price = float(item.get("price", 0))
-        current_value = float(item.get("value", 0))
-        current_weight = current_value / total_eval if total_eval else 0
-        target_weight = min(config.max_single_weight, investable_weight * item["weight_signal"] / signal_sum)
-        target_value = total_eval * target_weight
-        delta_value = target_value - current_value
-        rebalance_qty = math.floor(abs(delta_value) / price) if price > 0 else 0
-        action = "hold" if rebalance_qty <= 0 else ("buy" if delta_value > 0 else "sell")
-        positions.append({
-            "symbol": item.get("symbol", ""),
-            "name": item.get("name", item.get("symbol", "")),
-            "price": int(price),
-            "qty": int(item.get("qty", 0)),
-            "current_value": round(current_value),
-            "current_weight": round(current_weight, 4),
-            "target_weight": round(target_weight, 4),
-            "target_value": round(target_value),
-            "delta_value": round(delta_value),
-            "rebalance_action": action,
-            "rebalance_qty": rebalance_qty,
-            "score": round(item["profile"]["score"], 4),
-            "volatility": round(item["volatility"], 4),
-            "reasons": item["profile"].get("reasons", []),
-        })
-    return {"method": "score_tilted_inverse_vol", "cash_weight": config.cash_buffer, "positions": positions}
+    return _generate_optimizer_plan(
+        holdings,
+        total_eval,
+        cash_buffer=config.cash_buffer,
+        max_single_weight=config.max_single_weight,
+        build_profile=calc_strategy_profile,
+        volatility=calc_volatility,
+    )
 
 
 def build_scan_universe(api, held_symbols: set[str]) -> list[str]:
