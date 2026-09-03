@@ -4955,7 +4955,8 @@ async function renderTradeCleanup() {
     }
 }
 
-async function renderPeriodicPerformance() {
+/* Legacy periodic performance renderer retained below only as migration reference.
+async function renderPeriodicPerformanceLegacy() {
     try {
         const periodicData = await fetchJson(performancePath('/api/performance/periodic'), 30000);
         periodicData.strategy_forward = [];
@@ -5002,6 +5003,24 @@ async function renderPeriodicPerformance() {
     } catch (err) {
         console.error('Periodic performance render failed:', err);
     }
+}
+*/
+
+async function renderPeriodicPerformance() {
+    return window.HanstockDashboardPeriodicPerformanceScreen.render({
+        fetchJson,
+        performancePath,
+        escapeHtml,
+        setPeriodicData: (data) => { periodicDataCache = data; },
+        activateTab: (tab, activeButton, otherButton) => {
+            periodicActiveTab = tab;
+            activeButton.classList.add('active');
+            if (otherButton) otherButton.classList.remove('active');
+            updatePeriodicPerformanceUI();
+        },
+        updatePeriodicUi: updatePeriodicPerformanceUI,
+        renderForward: renderStrategyForwardPerformance,
+    });
 }
 
 function renderPeriodicCanvasFallback(canvas, dataList) {
