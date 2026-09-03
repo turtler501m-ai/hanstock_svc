@@ -6978,6 +6978,12 @@ async function renderScheduleInfo() {
                             if (roundData.results.length === 0) {
                                 plansTbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">생성된 계획이 없습니다.</td></tr>';
                             } else {
+                                HanstockDashboardSchedulerRows.appendPlanRows(plansTbody, roundData.results, {
+                                    escapeHtml, pill, formatNumber, toKorAction, toKorPlanCategory,
+                                    schedulerDecisionLabel, schedulerReasonText,
+                                    schedulerPlanQuantityText, schedulerPlanPriceText,
+                                });
+                                if (false) {
                                 roundData.results.forEach(row => {
                                     const tr = document.createElement('tr');
                                     tr.style.borderBottom = '1px solid var(--border)';
@@ -6998,6 +7004,7 @@ async function renderScheduleInfo() {
                                     `;
                                     plansTbody.appendChild(tr);
                                 });
+                                }
                             }
                         }
                         
@@ -7007,6 +7014,10 @@ async function renderScheduleInfo() {
                             if (roundData.approved.length === 0 && roundData.approvalErrors.length === 0) {
                                 ordersTbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">승인 대기 주문이 없거나 자동 승인이 생략되었습니다.</td></tr>';
                             } else {
+                                HanstockDashboardSchedulerRows.appendOrderRows(ordersTbody, roundData.approved, roundData.approvalErrors, roundData.results, {
+                                    escapeHtml, pill, formatNumber, toKorAction, schedulerApprovalStatus,
+                                });
+                                if (false) {
                                 // 1. Render approvalErrors first so they appear at the very top
                                 roundData.approvalErrors.forEach(err => {
                                     const tr = document.createElement('tr');
@@ -7064,6 +7075,7 @@ async function renderScheduleInfo() {
                                     `;
                                     ordersTbody.appendChild(tr);
                                 });
+                                }
                             }
                         }
                         
