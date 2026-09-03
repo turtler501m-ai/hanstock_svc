@@ -2049,7 +2049,17 @@ def get_trade_sync_status():
     if runs[0].get("status") == "running":
         with _trade_sync_lock:
             thread_alive = _trade_sync_thread is not None and _trade_sync_thread.is_alive()
-        if not thread_alive:
+        # The POST handler persists the running row just before starting the
+        # daemon thread. A status request can arrive in that tiny window; do
+        # not misclassify it as a process restart. Only an old, orphaned run
+        # is eligible for interruption recovery.
+        startup_grace = 15.0
+        try:
+            started_at = trader.datetime.fromisoformat(str(runs[0].get("started_at")))
+            run_age = (trader.datetime.now(trader.KST) - started_at).total_seconds()
+        except (TypeError, ValueError):
+            run_age = startup_grace
+        if not thread_alive and run_age >= startup_grace:
             interrupted = {
                 **runs[0],
                 "status": "failed",
