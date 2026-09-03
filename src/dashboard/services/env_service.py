@@ -10,7 +10,11 @@ def account_format_warning(account: str) -> str:
     digits = "".join(char for char in str(account or "") if char.isdigit())
     if not digits:
         return "Namuh account is required"
-    if len(digits) not in {8, 10}:
+    # NHPLUG returns the broker account identifier as ``acct_no`` and the
+    # value can include an account/product suffix.  In practice Namuh
+    # account identifiers are 8 to 12 digits; do not reject a valid 11-digit
+    # identifier merely because the legacy validator only knew 8/10 digits.
+    if not 8 <= len(digits) <= 12:
         return "Namuh account format is invalid"
     return ""
 
