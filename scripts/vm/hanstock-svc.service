@@ -15,6 +15,7 @@ Restart=always
 RestartSec=5
 Environment=PATH=/home/ubuntu/hanstock_svc/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 EnvironmentFile=/home/ubuntu/hanstock_svc/.env
+Environment=HANSTOCK_CONSOLE_LOG_SCOPE=dashboard
 
 [Install]
 WantedBy=multi-user.target
