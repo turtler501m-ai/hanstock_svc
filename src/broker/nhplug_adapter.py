@@ -69,11 +69,38 @@ class NHPlugBrokerAdapter:
                      _num(row.get("bidp1") or row.get("bidp")), _num(row.get("hts_avls")), raw=row)
 
     def fetch_daily_bars(self, symbol: str, count: int = 60) -> list[DailyBar]:
-        page = self.client.post("/krstock/quote/v1/currentDaily", {
-            "market_cd": "KRX", "iem_cd": symbol, "array_cnt": str(max(1, count))})
-        return [DailyBar(str(r.get("bsop_date") or ""), _num(r.get("stck_oprc")), _num(r.get("stck_hgpr")),
-                         _num(r.get("stck_lwpr")), _num(r.get("stck_clpr")), _num(r.get("acml_vol")), r)
-                for r in _rows(getattr(page, "data", page), "Output_0")[:max(0, count)]]
+        try:
+            page = self.client.post("/krstock/quote/v1/currentDaily", {
+                "market_cd": "KRX", "iem_cd": symbol, "array_cnt": str(max(1, count))})
+            rows = _rows(getattr(page, "data", page), "Output_0")[:max(0, count)]
+            return [DailyBar(str(r.get("bsop_date") or ""), _num(r.get("stck_oprc")), _num(r.get("stck_hgpr")),
+                             _num(r.get("stck_lwpr")), _num(r.get("stck_clpr")), _num(r.get("acml_vol")), r)
+                    for r in rows]
+        except Exception as exc:
+            # NHPLUG mock accounts do not expose currentDaily. Historical
+            # analysis is read-only, so use Yahoo's public KRX series in demo
+            # mode while keeping all orders on the NHPLUG mock account.
+            if self.client.environment != "mock" or "IGW40023" not in str(exc):
+                raise
+            import yfinance as yf
+
+            frame = yf.download(f"{symbol}.KS", period="1y", interval="1d",
+                                progress=False, auto_adjust=False)
+            if frame is None or frame.empty:
+                frame = yf.download(f"{symbol}.KQ", period="1y", interval="1d",
+                                    progress=False, auto_adjust=False)
+            if frame is None or frame.empty:
+                return []
+            if getattr(frame.columns, "nlevels", 1) > 1:
+                frame.columns = frame.columns.get_level_values(0)
+            result = []
+            for index, row in frame.tail(max(0, count)).iterrows():
+                result.append(DailyBar(
+                    str(index.date()), _num(row.get("Open")), _num(row.get("High")),
+                    _num(row.get("Low")), _num(row.get("Close")), _num(row.get("Volume")),
+                    {"source": "yfinance", "symbol": symbol},
+                ))
+            return result
 
     def fetch_volume_rank(self, top_n: int = 50) -> list[str]:
         return []  # NHPLUG has no direct equivalent to the former ranking endpoint.
