@@ -5277,3 +5277,74 @@ th,
         grid-column: 2;
     }
 }
+
+.watchlist-action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-color: rgba(249, 115, 22, 0.24) !important;
+    background: rgba(20, 36, 59, 0.8) !important;
+}
+
+.watchlist-auto-controls,
+.watchlist-manual-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.8rem 1.1rem;
+}
+
+.watchlist-auto-controls { flex: 1 1 320px; }
+.watchlist-manual-controls { flex: 1.5 1 480px; justify-content: flex-end; }
+.watchlist-auto-toggle { display: flex; align-items: center; gap: 0.7rem; }
+.watchlist-auto-toggle h3 { margin: 0; color: #f4f7fb; font-size: 0.92rem; }
+.watchlist-auto-toggle p { margin: 2px 0 0; color: #8fa3bb; font-size: 0.72rem; line-height: 1.2; }
+.watchlist-auto-toggle .switch-toggle { margin-bottom: 0; }
+
+.watchlist-threshold,
+.watchlist-add-form {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.watchlist-threshold {
+    padding: 0.4rem 0.65rem;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 8px;
+    background: rgba(7, 16, 29, 0.45);
+    color: #aebed0;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.watchlist-threshold span:last-child { color: #71859d; font-weight: 400; }
+.watchlist-threshold input { width: 62px; text-align: center; }
+.watchlist-add-form > span { color: #b7c4d3; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+.watchlist-add-form input { width: 110px; }
+.watchlist-add-form button,
+.watchlist-scan-button {
+    min-height: 36px;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.watchlist-add-form button { background: rgba(249, 115, 22, 0.16); color: #fdba74; border: 1px solid rgba(249, 115, 22, 0.36); }
+.watchlist-add-form button:hover { background: rgba(249, 115, 22, 0.28); }
+.watchlist-scan-button { background: rgba(67, 201, 149, 0.14); color: #8ce7c4; border: 1px solid rgba(67, 201, 149, 0.34); }
+.watchlist-scan-button:hover { background: rgba(67, 201, 149, 0.25); }
+.watchlist-action-divider { width: 1px; height: 28px; background: rgba(148, 163, 184, 0.18); }
+
+@media (max-width: 760px) {
+    .watchlist-manual-controls,
+    .watchlist-add-form { width: 100%; justify-content: stretch; }
+    .watchlist-add-form input { flex: 1; width: auto; }
+    .watchlist-action-divider { display: none; }
+    .watchlist-scan-button { width: 100%; }
+}
