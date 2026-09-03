@@ -44,7 +44,10 @@ class NHPlugBrokerAdapter:
         )
         stock_value = sum(x.market_value for x in holdings)
         total = _num(summary.get("tot_aet_amt") or summary.get("tot_eal_amt"))
-        cash = _num(summary.get("dca") or summary.get("orr_pbl_amt"))
+        # dca is the gross deposit figure in the mock response.  nxt2_dd_dca
+        # is the settlement-adjusted cash component and reconciles with
+        # tot_aet_amt - tot_eal_amt for the account overview.
+        cash = _num(summary.get("nxt2_dd_dca") or summary.get("dca") or summary.get("orr_pbl_amt"))
         orderable_cash = _num(summary.get("orr_pbl_amt1") or summary.get("orr_pbl_amt"))
         return AccountBalance(holdings, cash, orderable_cash, total or cash + stock_value,
                               stock_value, _num(summary.get("tot_eal_pls")), raw=dict(getattr(page, "data", page)))
