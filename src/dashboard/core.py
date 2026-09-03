@@ -602,6 +602,13 @@ def _balance_cache_age_seconds(balance_data: dict) -> float | None:
     cached_at = balance_data.get("_cache", {}).get("cached_at", "")
     if not cached_at:
         return None
+    try:
+        return (
+            trader.datetime.now(trader.KST)
+            - trader.datetime.fromisoformat(cached_at)
+        ).total_seconds()
+    except DashboardOperationError:
+        return None
 
 
 def _mark_balance_cache_fresh(balance_data: dict) -> dict:
@@ -610,10 +617,6 @@ def _mark_balance_cache_fresh(balance_data: dict) -> dict:
     metadata["stale"] = False
     result["_cache"] = metadata
     return result
-    try:
-        return (trader.datetime.now(trader.KST) - trader.datetime.fromisoformat(cached_at)).total_seconds()
-    except DashboardOperationError:
-        return None
 
 
 def _run_with_timeout(func, timeout_seconds: float):

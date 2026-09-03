@@ -1,11 +1,30 @@
 import unittest
 from contextlib import ExitStack
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import src.dashboard as dashboard
 
 
 class DashboardHelperTests(unittest.TestCase):
+    def test_balance_cache_age_returns_elapsed_seconds(self):
+        captured_at = (datetime.now(dashboard.trader.KST) - timedelta(seconds=12)).isoformat()
+
+        age = dashboard._balance_cache_age_seconds(
+            {"_cache": {"cached_at": captured_at}}
+        )
+
+        self.assertIsNotNone(age)
+        self.assertGreaterEqual(age, 11)
+        self.assertLess(age, 20)
+
+    def test_balance_cache_age_returns_none_for_invalid_timestamp(self):
+        self.assertIsNone(
+            dashboard._balance_cache_age_seconds(
+                {"_cache": {"cached_at": "not-a-timestamp"}}
+            )
+        )
+
     def test_daily_history_uses_shared_chart_cache_without_broker_call(self):
         api = MagicMock()
         cached = [
