@@ -32,6 +32,7 @@ from src.strategy.universe_service import build_scan_universe as _build_scan_uni
 from src.strategy.portfolio_service import generate_optimizer_plan as _generate_optimizer_plan
 from src.strategy.allocation_service import generate_ai_weight_plan as _generate_ai_weight_plan
 from src.strategy.scoring_service import score_default_strategy
+from src.strategy.profile_service import calculate_profile_inputs
 
 WATCHLIST = []
 
@@ -279,29 +280,31 @@ def calc_strategy_profile(prices: list[float], highs: list[float] | None = None,
     opens = opens or []
     lows = lows or []
     volumes = volumes or []
-    current = prices[-1] if prices else 0
-    prev = prices[-2] if len(prices) >= 2 else current
-    rsi14 = calc_rsi(prices, 14)
-    rsi2 = calc_rsi(prices, 2)
-    sma20 = calc_sma(prices, 20)
-    sma60 = calc_sma(prices, 60)
-    sma120 = calc_sma(prices, 120)
-    bb_lo, bb_mid, bb_hi = calc_bollinger(prices, 20)
-    macd = calc_macd(prices)
-    ma_cross = moving_average_cross(prices)
-    momentum = _relative_momentum_score(prices)
-    atr = calc_atr(highs, lows, prices)
-    atr_pct = round(atr / current * 100, 2) if current > 0 and atr > 0 else 0.0
-    value_surge = trade_value_surge(
-        prices, volumes, minimum_ratio=config.trade_value_surge_ratio
+    inputs = calculate_profile_inputs(
+        prices, highs, lows, volumes,
+        config=config,
+        calc_rsi=calc_rsi, calc_sma=calc_sma, calc_bollinger=calc_bollinger,
+        calc_macd=calc_macd, calc_atr=calc_atr,
+        moving_average_cross=moving_average_cross,
+        relative_momentum=_relative_momentum_score,
+        trade_value_surge=trade_value_surge,
+        first_wave_pullback=first_wave_pullback,
     )
-    wave_pullback = first_wave_pullback(
-        prices,
-        volumes,
-        minimum_wave_pct=config.first_wave_min_pct,
-        minimum_pullback_pct=config.first_wave_pullback_min_pct,
-        maximum_pullback_pct=config.first_wave_pullback_max_pct,
-    )
+    current = inputs["current"]
+    prev = inputs["previous"]
+    rsi14 = inputs["rsi14"]
+    rsi2 = inputs["rsi2"]
+    sma20 = inputs["sma20"]
+    sma60 = inputs["sma60"]
+    sma120 = inputs["sma120"]
+    bb_lo, bb_mid, bb_hi = inputs["bb_lo"], inputs["bb_mid"], inputs["bb_hi"]
+    macd = inputs["macd"]
+    ma_cross = inputs["ma_cross"]
+    momentum = inputs["momentum"]
+    atr = inputs["atr"]
+    atr_pct = inputs["atr_pct"]
+    value_surge = inputs["value_surge"]
+    wave_pullback = inputs["wave_pullback"]
 
     score = 0.0
     reasons = []
