@@ -5774,6 +5774,10 @@ th,
     margin: 0 0 1rem;
 }
 
+.trade-sync-last-result[hidden] {
+    display: none;
+}
+
 .performance-cashflow-form {
     display: flex;
     flex-wrap: wrap;
