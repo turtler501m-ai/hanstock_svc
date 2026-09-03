@@ -35,6 +35,9 @@ TRADE_CLEANUP_SCREEN_JS = (
 TRADE_SYNC_SCREEN_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-trade-sync-screen.js"
 ).read_text(encoding="utf-8")
+APPROVAL_QUEUE_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-approval-queue.js"
+).read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 
 
@@ -110,6 +113,13 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardTradeSyncScreen", TRADE_SYNC_SCREEN_JS)
         self.assertIn("HanstockDashboardTradeSyncScreen.render", APP_JS)
+
+    def test_approval_queue_loader_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-approval-queue.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardApprovalQueue", APPROVAL_QUEUE_JS)
+        self.assertIn("HanstockDashboardApprovalQueue.load", APP_JS)
 
     def test_dashboard_exposes_daily_market_regime_panel(self):
         required_markup = (

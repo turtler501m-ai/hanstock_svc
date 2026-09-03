@@ -4173,10 +4173,7 @@ async function renderOpenOrders() {
 
 async function renderApprovals() {
     try {
-        const [data, orderHealth] = await Promise.all([
-            fetchJson('/api/approvals?limit=50'),
-            fetchJson('/api/operations/order-health'),
-        ]);
+        const { data, orderHealth } = await window.HanstockDashboardApprovalQueue.load(fetchJson);
         const healthBanner = document.getElementById('order-health-banner');
         if (healthBanner) {
             const blockers = (orderHealth.blockers || []).map((item) => `${item.code} ${item.count}건`);
