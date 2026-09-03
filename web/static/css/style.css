@@ -5085,9 +5085,9 @@ th,
 }
 
 .strategy-category-selector .easy-strategy-preset.is-active {
-    border-color: rgba(96, 165, 250, 0.7);
-    background: rgba(59, 130, 246, 0.16);
-    box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.22);
+    border-color: rgba(249, 115, 22, 0.7);
+    background: rgba(249, 115, 22, 0.14);
+    box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.22);
 }
 
 #strategy-selection-summary.is-pending {
@@ -5103,7 +5103,7 @@ th,
     width: 17px;
     height: 17px;
     cursor: pointer;
-    accent-color: #3b82f6;
+    accent-color: #f97316;
 }
 
 .strategy-check-column input:disabled {
