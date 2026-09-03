@@ -7141,20 +7141,7 @@ function getScheduledStrategyIdsLegacy() {
 }
 
 window.toggleRoundCollapse = function(round) {
-    const body = document.getElementById(`round-body-${round}`);
-    if (!body) return;
-    const isExpanded = body.style.display !== 'none';
-    const icon = document.getElementById(`toggle-icon-${round}`);
-    
-    if (isExpanded) {
-        body.style.display = 'none';
-        if (icon) icon.style.transform = 'rotate(0deg)';
-        if (window._expandedRounds) window._expandedRounds.delete(round);
-    } else {
-        body.style.display = 'block';
-        if (icon) icon.style.transform = 'rotate(180deg)';
-        if (window._expandedRounds) window._expandedRounds.add(round);
-    }
+    return window.HanstockDashboardSchedulerCollapse.toggle(round, window._expandedRounds);
 };
 
 function disableTriggerButtonsLegacy(disabled) {
