@@ -19,7 +19,7 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("left: auto", STYLE)
         self.assertNotIn("margin-left: 190px", STYLE)
         self.assertNotIn("margin-left: 164px", STYLE)
-        self.assertIn('href="/static/css/style.css?v=61"', TEMPLATE)
+        self.assertIn('href="/static/css/style.css?v=62"', TEMPLATE)
 
     def test_ai_strategy_workspace_uses_shared_layout_classes(self):
         self.assertIn('class="ai-strategy-header-actions"', TEMPLATE)
@@ -49,6 +49,8 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("runningPanel.hidden = true", APP_JS)
         self.assertNotIn("#table-watchlist thead th", TEMPLATE)
         self.assertNotIn(".switch-toggle { position: relative", TEMPLATE)
+        self.assertNotIn("CSS styles specific to Plunge Bounce Strategy", TEMPLATE)
+        self.assertIn(".pb-tabs-container", STYLE)
 
     def test_mobile_navigation_remains_bottom_navigation(self):
         self.assertIn("@media (max-width: 768px)", STYLE)
