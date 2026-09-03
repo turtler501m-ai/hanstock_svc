@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=64">
+    <link rel="stylesheet" href="/static/css/style.css?v=65">
 </head>
 
 <body class="namuh-dashboard">
@@ -1632,29 +1632,29 @@
                             <h2>전략 실행 및 파라미터 제어</h2>
                             <p class="section-help">급락반등 5중 필터 매매 엔진을 수동으로 즉시 구동하거나 설정을 점검합니다.</p>
                             
-                            <div style="display: flex; gap: 12px; margin-top: 1.5rem; margin-bottom: 1rem;">
-                                <button type="button" class="button-primary" id="btn-pb-run-execute" style="flex: 1;">
-                                    <span class="loading-spinner" id="spin-pb-run-execute" style="display:none;"></span>실전 자동매매 강제 실행
+                            <div class="pb-run-actions">
+                                <button type="button" class="button-primary" id="btn-pb-run-execute">
+                                    <span class="loading-spinner" id="spin-pb-run-execute" hidden></span>실전 자동매매 강제 실행
                                 </button>
-                                <button type="button" class="button-secondary" id="btn-pb-run-analysis" style="flex: 1;">
-                                    <span class="loading-spinner" id="spin-pb-run-analysis" style="display:none;"></span>스캔 분석 (시뮬레이션)
+                                <button type="button" class="button-secondary" id="btn-pb-run-analysis">
+                                    <span class="loading-spinner" id="spin-pb-run-analysis" hidden></span>스캔 분석 (시뮬레이션)
                                 </button>
                             </div>
 
                             <!-- 스케쥴 연결 상태 표시 카드 -->
-                            <div id="pb-schedule-status-box" style="margin-bottom: 2rem; padding: 12px; border-radius: 6px; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
-                                <span class="dot" id="pb-schedule-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: #9ca3af;"></span>
-                                <span id="pb-schedule-status-text" style="font-size: 0.85rem; color: rgba(255,255,255,0.85);">
+                            <div id="pb-schedule-status-box" class="pb-schedule-status">
+                                <span class="dot" id="pb-schedule-status-dot"></span>
+                                <span id="pb-schedule-status-text">
                                     스케쥴 상태를 조회하는 중...
                                 </span>
                             </div>
 
-                            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 8px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                    <h3 style="margin: 0;">5중 수익 극대화 필터 설정</h3>
+                            <div class="pb-settings-panel">
+                                <div class="pb-settings-heading">
+                                    <h3>5중 수익 극대화 필터 설정</h3>
                                     <button type="button" class="button-ghost compact-button" id="btn-save-pb-settings">설정 저장</button>
                                 </div>
-                                <div class="settings-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top:12px;">
+                                <div class="settings-grid pb-settings-grid">
                                     <div>
                                         <span style="font-size:0.75rem; color:rgba(255,255,255,0.4); display:block; margin-bottom:4px;">일봉 이격도 진입 트리거 (%)</span>
                                         <input type="number" step="0.1" id="pb-input-dev" style="width:100%; padding: 6px; border-radius: 4px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; font-family:'JetBrains Mono';" value="-15.0">
@@ -1674,9 +1674,9 @@
                                             <option value="0">미사용 (하락장도 매수)</option>
                                         </select>
                                     </div>
-                                    <div style="grid-column: span 2;">
+                                    <div class="pb-settings-wide">
                                         <span style="font-size:0.75rem; color:rgba(255,255,255,0.4); display:block; margin-bottom:4px;">거래대금 허용 범위 (최저 ~ 최고 KRW)</span>
-                                        <div style="display:flex; gap: 8px; align-items:center;">
+                                        <div class="pb-settings-range">
                                             <input type="number" id="pb-input-val-min" style="flex:1; padding: 6px; border-radius: 4px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; font-family:'JetBrains Mono';" value="1000000" placeholder="최저">
                                             <span style="color:rgba(255,255,255,0.4);">~</span>
                                             <input type="number" id="pb-input-val-max" style="flex:1; padding: 6px; border-radius: 4px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:white; font-family:'JetBrains Mono';" value="500000000" placeholder="최고">
@@ -2610,7 +2610,7 @@
             const btn = document.getElementById('btn-realtime-scan');
             const spinner = document.getElementById('spin-realtime-scan');
             if (btn) btn.disabled = true;
-            if (spinner) spinner.style.display = 'inline-block';
+            if (spinner) spinner.hidden = false;
 
             try {
                 const data = await fetchJson('/api/strategy/plunge_bounce/scan');
@@ -2629,7 +2629,7 @@
                 alert("통신 지연이 발생했거나 스캔에 실패했습니다.");
             } finally {
                 if (btn) btn.disabled = false;
-                if (spinner) spinner.style.display = 'none';
+                if (spinner) spinner.hidden = true;
             }
         }
 

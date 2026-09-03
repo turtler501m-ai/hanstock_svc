@@ -5802,6 +5802,118 @@ th,
     font-weight: 600;
 }
 
+.pb-run-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin: 1.5rem 0 1rem;
+}
+
+.pb-run-actions > button {
+    flex: 1 1 0;
+}
+
+.pb-schedule-status {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-bottom: 2rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.pb-schedule-status .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #9ca3af;
+}
+
+.pb-schedule-status > span:last-child {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.85rem;
+}
+
+.pb-settings-panel {
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.pb-settings-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.pb-settings-heading h3 {
+    margin: 0;
+}
+
+.pb-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.pb-settings-grid > div {
+    min-width: 0;
+}
+
+.pb-settings-grid > div > span {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.75rem;
+}
+
+.pb-settings-grid input,
+.pb-settings-grid select {
+    width: 100%;
+    min-height: 33px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-family: var(--font-mono);
+    padding: 0.4rem 0.5rem;
+}
+
+.pb-settings-wide {
+    grid-column: 1 / -1;
+}
+
+.pb-settings-range {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pb-settings-range input {
+    flex: 1;
+}
+
+@media (max-width: 680px) {
+    .pb-run-actions,
+    .pb-settings-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .pb-settings-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pb-settings-wide {
+        grid-column: auto;
+    }
+}
+
 .metric-value.positive {
     color: #10b981;
     text-shadow: 0 0 10px rgba(16, 185, 129, 0.2);

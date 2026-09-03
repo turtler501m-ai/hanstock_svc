@@ -19,7 +19,9 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("left: auto", STYLE)
         self.assertNotIn("margin-left: 190px", STYLE)
         self.assertNotIn("margin-left: 164px", STYLE)
-        self.assertIn('href="/static/css/style.css?v=64"', TEMPLATE)
+        self.assertIn('href="/static/css/style.css?v=65"', TEMPLATE)
+        self.assertIn(".pb-run-actions", STYLE)
+        self.assertNotIn('id="btn-pb-run-execute" style=', TEMPLATE)
         self.assertIn(".pb-history-card", STYLE)
         self.assertNotIn('id="table-pb-sched-history" style=', TEMPLATE)
 
