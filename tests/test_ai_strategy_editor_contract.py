@@ -17,6 +17,7 @@ class AiStrategyEditorContractTests(unittest.TestCase):
 
     def test_editor_supports_full_profile_and_patch_update(self):
         script = (ROOT / "web/static/js/app.js").read_text(encoding="utf-8")
+        scheduler_card = (ROOT / "web/static/js/dashboard-scheduler-round-card.js").read_text(encoding="utf-8")
 
         self.assertIn("function fillStrategyDetail(strategy)", script)
         self.assertIn("async function patchStrategyJson(id, payload)", script)
@@ -24,7 +25,7 @@ class AiStrategyEditorContractTests(unittest.TestCase):
         self.assertIn("MARKET_REGIME_EDITOR_OPTIONS", script)
         self.assertIn("profile.market_regime_max_pct", script)
         self.assertIn("신규매수 차단", script)
-        self.assertIn("scheduler-regime-policy", script)
+        self.assertIn("scheduler-regime-policy", scheduler_card)
         self.assertIn("method: 'PATCH'", script)
 
     def test_strategy_selection_supports_category_manual_schedule_apply_and_delete(self):

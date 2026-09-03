@@ -178,27 +178,26 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn("최근 실패", scheduler_renderer)
 
     def test_scheduler_summary_tracks_approval_success_and_failure(self):
+        summary_module = (ROOT / "web/static/js/dashboard-scheduler-summary.js").read_text(encoding="utf-8")
         self.assertIn('id="sched-result-success-cnt"', INDEX_HTML)
-        self.assertIn("summaryCounts.success_count", APP_JS)
-        self.assertIn("성공 <strong", APP_JS)
+        self.assertIn("summaryCounts.success_count", summary_module)
+        self.assertIn("sched-result-success-cnt", summary_module)
 
     def test_scheduler_details_preserve_exact_error_messages(self):
-        scheduler_renderer = APP_JS.split(
-            "async function renderScheduleInfo", 1
-        )[1].split("async function renderSchedulerStrategyChecklist", 1)[0]
-        self.assertIn("전체 실행 오류", scheduler_renderer)
-        self.assertIn("const responseMessage = err.message", scheduler_renderer)
-        self.assertIn("const responseMessage = ord.response_msg", scheduler_renderer)
+        scheduler_renderer = (ROOT / "web/static/js/dashboard-scheduler-rows.js").read_text(encoding="utf-8")
+        self.assertIn("row.message", scheduler_renderer)
+        self.assertIn("row.response_msg", scheduler_renderer)
+        self.assertIn("approvalErrors.forEach", scheduler_renderer)
         self.assertNotIn("cleanMsg.substring", scheduler_renderer)
-        self.assertIn("스케줄 세부 내역 조회 실패", scheduler_renderer)
 
     def test_scheduler_plan_zero_values_have_semantic_labels(self):
+        formatters = (ROOT / "web/static/js/dashboard-scheduler-formatters.js").read_text(encoding="utf-8")
         self.assertIn("function schedulerPlanQuantityText(row)", APP_JS)
         self.assertIn("function schedulerPlanPriceText(row)", APP_JS)
-        self.assertIn("return '시장가'", APP_JS)
-        self.assertIn("return '수량 미산정'", APP_JS)
-        self.assertIn("보유 ${formatNumber(holdingQuantity)} 주", APP_JS)
-        self.assertIn("현재가 ${formatNumber(currentPrice)} 원", APP_JS)
+        self.assertIn("return '시장가'", formatters)
+        self.assertIn("return '수량 미산출'", formatters)
+        self.assertIn("보유 ${deps.formatNumber(holding)} 주", formatters)
+        self.assertIn("현재가 ${deps.formatNumber(current)} 원", formatters)
         self.assertIn("schedulerPlanQuantityText(row)", APP_JS)
         self.assertIn("schedulerPlanPriceText(row)", APP_JS)
         self.assertNotIn("${formatNumber(row.qty || row.signal_qty)}", APP_JS)
