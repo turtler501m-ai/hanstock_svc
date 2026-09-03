@@ -71,11 +71,11 @@ def _scheduled_market_regime_policy(strategy_id: str | None) -> dict:
         snapshot = MarketRegimeRepository().current()
     except SchedulerOperationError:
         snapshot_lookup_failed = True
+    fallback_multiplier = min(
+        1.0,
+        _env_float("HANSTOCK_MISSING_REGIME_MULTIPLIER", 0.5),
+    )
     if snapshot is None and not snapshot_lookup_failed:
-        fallback_multiplier = min(
-            1.0,
-            _env_float("HANSTOCK_MISSING_REGIME_MULTIPLIER", 0.5),
-        )
         policy = {
             "allowed": fallback_multiplier > 0,
             "regime": "unknown",
@@ -85,6 +85,22 @@ def _scheduled_market_regime_policy(strategy_id: str | None) -> dict:
         }
     else:
         policy = evaluate_new_risk(snapshot, allowed, max_pct_by_regime).to_dict()
+        # The preflight can produce an explicit insufficient_data snapshot when
+        # there is not enough market history yet. Treat that the same as a
+        # missing snapshot so demo/scheduled buys remain testable. Explicit
+        # bear/crash, stale, invalid, or disallowed regimes still fail closed.
+        snapshot_regime = str((snapshot or {}).get("regime") or "unknown").strip().lower()
+        if (
+            snapshot_regime in {"unknown", "insufficient_data"}
+            and policy.get("reason") in {"market_regime_insufficient", "market_regime_missing"}
+        ):
+            policy = {
+                **policy,
+                "allowed": fallback_multiplier > 0,
+                "quality": "missing_fallback",
+                "multiplier": fallback_multiplier,
+                "reason": "market_regime_missing_default_sizing",
+            }
     regime = str(policy.get("regime") or "")
     configured_pct = (
         max_pct_by_regime.get(regime)
