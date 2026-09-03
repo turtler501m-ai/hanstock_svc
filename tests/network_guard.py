@@ -33,7 +33,6 @@ def install_network_guard() -> None:
         {
             "HANSTOCK_TESTING": "1",
             "SLACK_WEBHOOK_URL": "",
-            "MISTOCK_SLACK_WEBHOOK_URL": "",
             "DASHBOARD_SNAPSHOT_REFRESH_ENABLED": "false",
             "DASHBOARD_AUTO_APPROVAL_SWEEP_ENABLED": "false",
         }

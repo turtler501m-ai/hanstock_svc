@@ -14,34 +14,6 @@ from src.utils.logger import logger
 STATE_KEY = "technical_condition_monitor_v1"
 
 
-def _load_us_condition_symbols(api) -> tuple[list[str], str, str | None]:
-    """Use Kiwoom ranking when supported, otherwise keep US monitoring useful."""
-    ranker = getattr(api, "get_overseas_volume_rank", None)
-    if callable(ranker):
-        try:
-            symbols = list(dict.fromkeys(
-                list(ranker(excd="NAS", cnt=50) or [])
-                + list(ranker(excd="NYS", cnt=50) or [])
-            ))
-            if symbols:
-                return symbols, "kiwoom_overseas_volume_rank", None
-        except Exception as exc:
-            rank_error = f"{type(exc).__name__}:{exc}"
-        else:
-            rank_error = "empty overseas volume ranking"
-    else:
-        rank_error = "Kiwoom US volume ranking is not supported"
-
-    from src.mistock.config import config as mistock_config
-
-    fallback = list(dict.fromkeys(
-        str(symbol or "").upper().strip()
-        for symbol in (mistock_config.universe_list or [])
-        if str(symbol or "").strip()
-    ))
-    return fallback[:100], "mistock_config_universe", rank_error
-
-
 def save_condition_symbols(market: str, symbols: list[str], *, source: str) -> dict:
     normalized = list(dict.fromkeys(str(symbol or "").upper().strip() for symbol in symbols if symbol))
     if not normalized:
@@ -84,7 +56,7 @@ def condition_monitor_status(*, max_age_seconds: float = 180, now: float | None 
     state = runtime_state_store.get(STATE_KEY, {"markets": {}})
     current = time.time() if now is None else float(now)
     markets = {}
-    for market in ("KR", "US"):
+    for market in ("KR",):
         row = (state.get("markets") or {}).get(market) or {}
         updated = float(row.get("updated_at_epoch") or 0)
         age = round(max(0.0, current - updated), 1) if updated > 0 else None
@@ -110,7 +82,7 @@ def condition_monitor_status(*, max_age_seconds: float = 180, now: float | None 
         "running_data_available": any(row["symbol_count"] > 0 for row in markets.values()),
         "fresh": any(row["fresh"] for row in markets.values()),
         "max_age_seconds": max_age_seconds,
-        "market_open": state.get("market_open") or {"KR": False, "US": False},
+        "market_open": state.get("market_open") or {"KR": False},
         "heartbeat_epoch": heartbeat_epoch or None,
         "heartbeat_age_seconds": heartbeat_age,
         "markets": markets,
@@ -118,10 +90,11 @@ def condition_monitor_status(*, max_age_seconds: float = 180, now: float | None 
 
 
 def run_condition_monitor_cycle(markets: set[str] | None = None) -> dict:
-    active_markets = {"KR", "US"} if markets is None else {
+    active_markets = {"KR"} if markets is None else {
         str(market).upper() for market in markets
+        if str(market).upper() == "KR"
     }
-    result = {"KR": {"symbols": [], "source": ""}, "US": {"symbols": [], "source": ""}, "errors": []}
+    result = {"KR": {"symbols": [], "source": ""}, "errors": []}
     if "KR" in active_markets:
         try:
             from src.broker.factory import create_domestic_stock_broker
@@ -134,28 +107,12 @@ def run_condition_monitor_cycle(markets: set[str] | None = None) -> dict:
             result["errors"].append(f"KR:{type(exc).__name__}:{exc}")
             logger.info(f"[CONDITION_MONITOR] KR unavailable: {exc}")
 
-    if "US" in active_markets:
-        try:
-            from src.mistock.trader import _get_broker_client
-
-            api = _get_broker_client()
-            symbols, source, fallback_reason = _load_us_condition_symbols(api)
-            result["US"] = save_condition_symbols("US", symbols, source=source)
-            if fallback_reason:
-                result["US"]["fallback_reason"] = fallback_reason
-                logger.info(
-                    f"[CONDITION_MONITOR] US fallback source={source}: {fallback_reason}"
-                )
-        except Exception as exc:
-            result["errors"].append(f"US:{type(exc).__name__}:{exc}")
-            logger.info(f"[CONDITION_MONITOR] US unavailable: {exc}")
-    result["ok"] = bool(result["KR"].get("symbols") or result["US"].get("symbols"))
+    result["ok"] = bool(result["KR"].get("symbols"))
     return result
 
 
 def market_open_status() -> dict[str, bool]:
     kr_open = False
-    us_open = False
     try:
         from src.utils.market_calendar import is_market_session
 
@@ -168,13 +125,7 @@ def market_open_status() -> dict[str, bool]:
         )
     except Exception:
         pass
-    try:
-        from src.mistock.scheduler import is_us_market_open
-
-        us_open = bool(is_us_market_open())
-    except Exception:
-        pass
-    return {"KR": kr_open, "US": us_open}
+    return {"KR": kr_open}
 
 
 def is_any_market_open() -> bool:
@@ -185,7 +136,6 @@ def save_monitor_heartbeat(market_open: dict[str, bool]) -> None:
     state = runtime_state_store.get(STATE_KEY, {"markets": {}})
     state["market_open"] = {
         "KR": bool(market_open.get("KR")),
-        "US": bool(market_open.get("US")),
     }
     state["heartbeat_epoch"] = time.time()
     runtime_state_store.set(STATE_KEY, state)

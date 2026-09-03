@@ -467,8 +467,7 @@ def _default_kr_broker() -> ReadOnlyBroker:
 
 
 def _default_us_balance_reader() -> Mapping[str, Any]:
-    from src.mistock.trader import get_balance
-    return get_balance()
+    raise RuntimeError("hanstock_svc does not provide a US balance reader")
 
 
 def _default_kill_switch_reader() -> bool:

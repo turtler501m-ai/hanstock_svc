@@ -43,11 +43,11 @@ class ApiAuditTests(unittest.TestCase):
         self.assertTrue(api_audit_service.should_log_api_audit("GET", 500))
 
     def test_successful_get_is_not_logged(self):
-        scope = _scope("GET", "/api/mistock/health")
+        scope = _scope("GET", "/api/health")
 
         async def app(inner_scope, _receive, send):
             inner_scope["route"] = SimpleNamespace(
-                name="mistock_health", path="/api/mistock/health"
+                name="health", path="/api/health"
             )
             await send({"type": "http.response.start", "status": 200, "headers": []})
             await send({"type": "http.response.body", "body": b'{"ok":true}'})

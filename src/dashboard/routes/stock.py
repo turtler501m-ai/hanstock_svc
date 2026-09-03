@@ -83,7 +83,6 @@ STRATEGY_DISPLAY_NAMES = {
     "rule_only_default": "기본 기술룰",
     "gpt_5_mini_default": "GPT-5 미니 기본 전략",
     "ai_stock_default_v1": "AI 기본 종목발굴",
-    "narrative_momentum_strategy": "내러티브 모멘텀",
     "plunge_bounce_strategy": "급락 반등",
     "rsi_limit_strategy": "RSI 과매도 반등",
     "heikin_ashi_scalping_strategy": "알파 하이킨아시",

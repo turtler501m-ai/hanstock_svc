@@ -92,10 +92,6 @@ def send_slack(text: str = "", blocks: list | None = None, color: str | None = N
     _send_slack_to(config.slack_webhook_url, text=text, blocks=blocks, color=color)
 
 
-def send_mistock_slack(text: str = "", blocks: list | None = None, color: str | None = None) -> None:
-    _send_slack_to(config.mistock_slack_webhook_url, text=text, blocks=blocks, color=color)
-
-
 def _send_slack_to(webhook_url: str | None, text: str = "", blocks: list | None = None, color: str | None = None) -> None:
     payload = {}
     if text:
@@ -155,32 +151,6 @@ def slack_order(
 ) -> None:
     payload = build_order_summary_payload(name, symbol, action, qty, price, reason, ok, indicators)
     post_slack_payload(config.slack_webhook_url, payload, HTTP, log_fn=logger.warning)
-
-
-def mistock_slack_order(
-    name: str,
-    symbol: str,
-    action: str,
-    qty: float,
-    price: float,
-    reason: str,
-    ok: bool,
-    indicators: dict,
-) -> None:
-    from src.utils.exchange_rate import get_usd_krw_rate
-    rate = get_usd_krw_rate()
-    payload = build_order_summary_payload(
-        name,
-        symbol,
-        action,
-        qty,
-        price,
-        reason,
-        ok,
-        indicators,
-        exchange_rate=rate,
-    )
-    post_slack_payload(config.mistock_slack_webhook_url or "", payload, HTTP, log_fn=logger.warning)
 
 
 def slack_candidates(candidates: list[dict]) -> None:

@@ -18,28 +18,12 @@ class Settings(BaseSettings):
     kiwoom_domestic_demo_account: str = ""
     kiwoom_domestic_demo_app_key: str = ""
     kiwoom_domestic_demo_app_secret: str = ""
-    kiwoom_us_demo_account: str = ""
-    kiwoom_us_demo_app_key: str = ""
-    kiwoom_us_demo_app_secret: str = ""
     kiwoom_domestic_real_account: str = ""
     kiwoom_domestic_real_app_key: str = ""
     kiwoom_domestic_real_app_secret: str = ""
-    kiwoom_us_real_account: str = ""
-    kiwoom_us_real_app_key: str = ""
-    kiwoom_us_real_app_secret: str = ""
-
-    # LS Securities API
-    ls_api_enabled: bool = False
-    ls_app_key: str = ""
-    ls_app_secret: str = ""
-    ls_account_no: str = ""
-    ls_trading_env: str = "demo"
-
-
 
     # Notifications
     slack_webhook_url: Optional[str] = ""
-    mistock_slack_webhook_url: Optional[str] = ""
     
     # Trading Modes
     trading_env: str = "demo"

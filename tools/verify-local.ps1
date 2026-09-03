@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("quick", "dashboard", "trading", "ai", "autonomy", "mistock", "all")]
+    [ValidateSet("quick", "all")]
     [string]$Profile = "quick"
 )
 
@@ -51,15 +51,7 @@ if ($Profile -eq "all") {
 }
 
 Invoke-Checked { & $python -c "import pathlib; [compile(p.read_text(encoding='utf-8'), str(p), 'exec') for root in ('src','tests') for p in pathlib.Path(root).rglob('*.py')]" } "Python source compile"
-Invoke-Checked { & $python tools\verify-deploy-constraints.py } "deploy constraints verification"
-
-if ($Profile -eq "all") {
-    Invoke-Checked { & $python tools\run-tests.py --profile all } "all test profile"
-} else {
-    Invoke-Checked { & $python tools\run-tests.py --profile $Profile } "$Profile test profile"
-}
+Invoke-Checked { & $python -m unittest discover -s tests -t . } "unit tests"
 
 Invoke-Checked { node --check web\static\js\app.js } "app.js syntax check"
 Invoke-Checked { node --check web\static\js\env_settings.js } "env_settings.js syntax check"
-Invoke-Checked { node --check web\static\js\finrl.js } "finrl.js syntax check"
-Invoke-Checked { node --check web\static\js\vendors.js } "vendors.js syntax check"

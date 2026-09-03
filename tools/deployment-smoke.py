@@ -39,7 +39,7 @@ def verify(base_url: str, timeout: float) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base-url", default="http://127.0.0.1:8001")
+    parser.add_argument("--base-url", default="http://127.0.0.1:8011")
     parser.add_argument("--attempts", type=int, default=12)
     parser.add_argument("--interval", type=float, default=2.0)
     parser.add_argument("--timeout", type=float, default=4.0)

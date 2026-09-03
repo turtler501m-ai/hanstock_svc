@@ -80,9 +80,6 @@ def _current_env_field_value(key: str, raw_values: dict[str, str]) -> str:
         "AI_CANDIDATE_LIMIT": getattr(trader.config, "ai_candidate_limit", 5),
         "OPENAI_API_KEY": getattr(trader.config, "openai_api_key", ""),
         "SLACK_WEBHOOK_URL": getattr(trader.config, "slack_webhook_url", ""),
-        "TELEGRAM_API_ID": getattr(trader.config, "telegram_api_id", "") or "",
-        "TELEGRAM_API_HASH": getattr(trader.config, "telegram_api_hash", "") or "",
-        "TELEGRAM_TARGET_CHANNELS": getattr(trader.config, "telegram_target_channels", "") or "",
     }
     value = runtime_values.get(key, "")
     return "" if value is None else str(value)

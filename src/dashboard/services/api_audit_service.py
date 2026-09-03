@@ -62,8 +62,6 @@ _FEATURE_NAMES = {
     "get_scheduler_status": "자동매매 일정상태 조회",
     "get_trade_sync_status": "거래 동기화상태 조회",
     "get_local_trade_cleanup_candidates": "로컬 거래 정리대상 조회",
-    "mistock_balance": "미스톡 계좌 잔고 조회",
-    "mistock_performance": "미스톡 투자성과 조회",
 }
 _FEATURE_WORDS = {
     "get": "조회",
@@ -95,7 +93,6 @@ _FEATURE_WORDS = {
     "scheduler": "자동매매 일정",
     "settings": "설정",
     "system": "시스템",
-    "mistock": "미스톡",
 }
 
 

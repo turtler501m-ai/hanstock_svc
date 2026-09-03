@@ -161,10 +161,7 @@ BALANCE_CACHE = trader.RUNTIME_DIR / "balance_snapshot.json"
 CANDIDATE_CACHE = trader.RUNTIME_DIR / "candidate_snapshot.json"
 AUTO_APPROVAL_STATE = trader.RUNTIME_DIR / "auto_approval.json"
 DEFAULT_AUTO_APPROVAL_STATE = AUTO_APPROVAL_STATE
-AUTO_APPROVAL_EXCLUDED_SOURCES = {
-    "narrative_momentum",
-    "strategy_lookup_manual",
-}
+AUTO_APPROVAL_EXCLUDED_SOURCES = {"strategy_lookup_manual"}
 ENV_PATH = BASE_DIR / ".env"
 CANDIDATE_CACHE_TTL_SECONDS = int(os.environ.get("CANDIDATE_CACHE_TTL_SECONDS", "180"))
 BALANCE_CACHE_TTL_SECONDS = int(os.environ.get("BALANCE_CACHE_TTL_SECONDS", "30"))
@@ -253,9 +250,8 @@ async def _disable_dashboard_cache(request, call_next):
     response = await call_next(request)
     path = request.url.path
     if (
-        path in {"/", "/mistock", "/static/js/app.js", "/static/js/mistock_app.js"}
+        path in {"/", "/static/js/app.js"}
         or path.startswith("/api/performance")
-        or path.startswith("/api/mistock/")
     ):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"

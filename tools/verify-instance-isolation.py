@@ -1,4 +1,4 @@
-"""Fail deployment when Kiwoom databases escape or overlap the repository."""
+"""Fail deployment when the Hanstock database escapes the service root."""
 from __future__ import annotations
 
 import argparse
@@ -10,12 +10,7 @@ from dotenv import dotenv_values
 def verify(root: Path) -> dict[str, Path]:
     root = root.resolve()
     values = dotenv_values(root / ".env")
-    configured = {
-        "TRADE_DB_PATH": values.get("TRADE_DB_PATH") or ".runtime/trades.sqlite",
-        "MISTOCK_TRADE_DB_PATH": (
-            values.get("MISTOCK_TRADE_DB_PATH") or ".runtime/mistock/trades.sqlite"
-        ),
-    }
+    configured = {"TRADE_DB_PATH": values.get("TRADE_DB_PATH") or ".runtime/trades.sqlite"}
     resolved: dict[str, Path] = {}
     for key, raw_path in configured.items():
         path = Path(str(raw_path))
@@ -25,8 +20,6 @@ def verify(root: Path) -> dict[str, Path]:
         except ValueError as exc:
             raise ValueError(f"{key} must stay inside {root}: {path}") from exc
         resolved[key] = path
-    if len(set(resolved.values())) != len(resolved):
-        raise ValueError("domestic and US trading databases must use different paths")
     return resolved
 
 

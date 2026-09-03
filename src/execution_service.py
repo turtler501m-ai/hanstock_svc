@@ -38,7 +38,7 @@ def resolve_execution_decision(
         return ExecutionDecision("reject", "online access is blocked")
 
     import os
-    if os.environ.get("HANSTOCK_SCHEDULE_FORCE") == "1" or os.environ.get("MISTOCK_SCHEDULE_FORCE") == "1":
+    if os.environ.get("HANSTOCK_SCHEDULE_FORCE") == "1":
         return ExecutionDecision("execute", "execution allowed by forced testing bypass")
 
     if context.analysis_only:

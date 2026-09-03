@@ -3994,7 +3994,7 @@ async function renderAiAllocation() {
 
 function isHoldingSellPayload(payload) {
     return payload.action === 'sell'
-        && (payload.source === 'dashboard_holding_sell' || payload.source === 'mistock_holding_sell');
+        && payload.source === 'dashboard_holding_sell';
 }
 
 function showOrdersTab() {
@@ -6985,7 +6985,7 @@ async function renderSchedulerStrategyChecklist(schedules = []) {
     // not the independently editable AI-strategy catalog. Narrative momentum
     // owns a dedicated schedule tab and is therefore omitted here.
     const strategies = schedules
-        .filter((row) => row.strategy_id && String(row.strategy_id) !== 'narrative_momentum_strategy')
+        .filter((row) => row.strategy_id)
         .map((row) => ({
             id: String(row.strategy_id),
             name: row.display_name || row.strategy_name || String(row.strategy_id),

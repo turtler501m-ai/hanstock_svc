@@ -172,7 +172,7 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
         )[1].split("function getScheduledStrategyIds", 1)[0]
         self.assertNotIn("fetchJson('/api/ai-strategies')", scheduler_renderer)
         self.assertIn("row.strategy_id", scheduler_renderer)
-        self.assertIn("narrative_momentum_strategy", scheduler_renderer)
+        self.assertNotIn("narrative_momentum_strategy", scheduler_renderer)
         self.assertIn("strategy.lastErrors", scheduler_renderer)
         self.assertIn("최근 실패", scheduler_renderer)
 

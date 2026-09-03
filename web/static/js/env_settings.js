@@ -43,7 +43,6 @@ const NUMBER_UNIT_BY_KEY = {
     AI_MIN_MODEL_CONFIDENCE: '비율',
     AI_CANDIDATE_LIMIT: '개',
     OPENAI_TIMEOUT_SECONDS: '초',
-    USDKRW_FALLBACK_RATE: 'KRW/USD',
 };
 
 function isNumericField(field) {
@@ -67,17 +66,6 @@ function formatNumericText(value) {
 }
 
 function unitForField(field) {
-    if (field.key === 'MISTOCK_TOTAL_CAPITAL') {
-        const currency = String(currentEnvFieldMap.MISTOCK_CURRENCY?.value || 'USD').toUpperCase();
-        return currency || 'USD';
-    }
-    if (field.key === 'MISTOCK_CURRENCY') {
-        return 'USD/KRW';
-    }
-    if (field.key.startsWith('MISTOCK_')) {
-        const stripped = field.key.replace(/^MISTOCK_/, '');
-        return NUMBER_UNIT_BY_KEY[stripped] || '';
-    }
     return NUMBER_UNIT_BY_KEY[field.key] || '';
 }
 
@@ -208,20 +196,6 @@ const CATEGORIES = [
         ]
     },
     {
-        title: "🇺🇸 미국주식 자동매매 설정 (미스톡)",
-        short: "미국주식 (미스톡)",
-        keys: [
-            "MISTOCK_TRADING_ENV",
-            "MISTOCK_DRY_RUN",
-            "MISTOCK_ENABLE_LIVE_TRADING",
-            "MISTOCK_REQUIRE_APPROVAL",
-            "MISTOCK_TOTAL_CAPITAL",
-            "MISTOCK_MARKET",
-            "MISTOCK_TRADE_DB_PATH",
-            "MISTOCK_UNIVERSE"
-        ]
-    },
-    {
         title: "🤖 AI 모델 및 OpenAI 연동",
         short: "AI & OpenAI",
         keys: [
@@ -237,24 +211,10 @@ const CATEGORIES = [
         ]
     },
     {
-        title: "📢 알림 및 수집기 설정 (Slack / Telegram)",
-        short: "알림 & 수집기",
+        title: "📢 Slack 알림 설정",
+        short: "알림",
         keys: [
-            "SLACK_WEBHOOK_URL",
-            "MISTOCK_SLACK_WEBHOOK_URL",
-            "TELEGRAM_API_ID",
-            "TELEGRAM_API_HASH",
-            "TELEGRAM_SESSION_NAME",
-            "TELEGRAM_TARGET_CHANNELS"
-        ]
-    },
-    {
-        title: "💵 환율 및 통화 설정 (Exchange Rate)",
-        short: "환율 & 통화",
-        keys: [
-            "MISTOCK_CURRENCY",
-            "USDKRW_FALLBACK_RATE",
-            "MISTOCK_EXCHANGE_MAP"
+            "SLACK_WEBHOOK_URL"
         ]
     }
 ];
