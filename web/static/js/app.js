@@ -381,7 +381,7 @@ const setElementText = (id, value) => {
     return element;
 };
 
-async function fetchJson(url, timeoutMs = 60000) {
+async function legacyFetchJson(url, timeoutMs = 60000) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -410,7 +410,7 @@ async function fetchJson(url, timeoutMs = 60000) {
     }
 }
 
-async function postJson(url, payload = {}) {
+async function legacyPostJson(url, payload = {}) {
     const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -423,7 +423,7 @@ async function postJson(url, payload = {}) {
     return data;
 }
 
-async function deleteJson(url) {
+async function legacyDeleteJson(url) {
     const response = await fetch(url, {
         method: 'DELETE'
     });
@@ -433,6 +433,12 @@ async function deleteJson(url) {
     }
     return data;
 }
+
+// HTTP calls are owned by dashboard-api.js. Keep legacy implementations above
+// temporarily so older cached pages can still be diagnosed during rollout.
+const fetchJson = window.HanstockDashboardApi?.fetchJson || legacyFetchJson;
+const postJson = window.HanstockDashboardApi?.postJson || legacyPostJson;
+const deleteJson = window.HanstockDashboardApi?.deleteJson || legacyDeleteJson;
 
 function pill(value, kind = 'hold') {
     return `<span class="pill pill-${kind}">${escapeHtml(value)}</span>`;
