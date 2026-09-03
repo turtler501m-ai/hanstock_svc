@@ -139,3 +139,48 @@ def account_trades(trades: list[dict], *, show_dry_run: bool) -> list[dict]:
             trade = {**trade, "qty": filled_qty, "price": filled_price or fallback_price}
         account_rows.append(trade)
     return account_rows
+
+
+def strategy_validation(strategy_stats: dict[str, dict], strategy_label) -> list[dict]:
+    """Build deterministic validation summaries from realized-PnL samples."""
+    result = []
+    for strategy_id, stats in strategy_stats.items():
+        pnls = list(stats.pop("_pnls", []))
+        closed_count = len(pnls)
+        wins = [value for value in pnls if value > 0]
+        losses = [value for value in pnls if value < 0]
+        gross_profit = sum(wins)
+        gross_loss = abs(sum(losses))
+        win_rate = (len(wins) / closed_count * 100) if closed_count else None
+        profit_factor = (gross_profit / gross_loss) if gross_loss else (None if not gross_profit else gross_profit)
+        expectancy = (sum(pnls) / closed_count) if closed_count else None
+        equity = 0
+        peak = 0
+        max_drawdown = 0
+        for pnl in pnls:
+            equity += pnl
+            peak = max(peak, equity)
+            max_drawdown = max(max_drawdown, peak - equity)
+        if closed_count < 5:
+            status, reason = "insufficient", "\uccb4\uacb0 \ud45c\ubcf8 5\uac74 \ubbf8\ub9cc"
+        elif sum(pnls) > 0 and (win_rate or 0) >= 50 and (profit_factor or 0) >= 1.2:
+            status, reason = "effective", "\ub204\uc801\uc218\uc775 \uc591\uc218\u00b7\uc2b9\ub960 50% \uc774\uc0c1\u00b7\uc218\uc775\ube44 1.2 \uc774\uc0c1"
+        elif sum(pnls) <= 0 or (profit_factor is not None and profit_factor < 1):
+            status, reason = "review", "\ub204\uc801\uc218\uc775 \uc74c\uc218 \ub610\ub294 \uc218\uc775\ube44 \uae30\uc900 \ubbf8\ub2ec"
+        else:
+            status, reason = "monitor", "\ucd94\uac00 \ud45c\ubcf8\uacfc \uc548\uc815\uc131 \ud655\uc778 \ud544\uc694"
+        result.append({
+            **stats,
+            "strategy_id": strategy_id,
+            "strategy_name": strategy_label(strategy_id),
+            "closed_count": closed_count,
+            "win_count": len(wins),
+            "loss_count": len(losses),
+            "win_rate": round(win_rate, 2) if win_rate is not None else None,
+            "profit_factor": round(profit_factor, 2) if profit_factor is not None else None,
+            "expectancy": round(expectancy, 0) if expectancy is not None else None,
+            "max_drawdown": round(max_drawdown, 0),
+            "validation_status": status,
+            "validation_reason": reason,
+        })
+    return sorted(result, key=lambda item: (-item["realized_pnl"], item["strategy_name"]))

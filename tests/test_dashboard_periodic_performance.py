@@ -25,6 +25,7 @@ from src.dashboard.services.performance_metrics import (
     trade_is_sync_adjustment,
     trade_is_dry_run,
     trade_is_ok,
+    strategy_validation,
 )
 
 
@@ -38,6 +39,12 @@ class DashboardPeriodicPerformanceTests(unittest.TestCase):
         self.assertEqual(rows[0]["qty"], 2)
         self.assertEqual(rows[0]["price"], 105)
         self.assertEqual(len(rows), 1)
+
+    def test_strategy_validation_service_builds_status_and_drawdown(self):
+        result = strategy_validation({"demo": {"realized_pnl": 1000, "_pnls": [300, 250, 200, 150, 100]}}, lambda value: value.upper())
+        self.assertEqual(result[0]["strategy_name"], "DEMO")
+        self.assertEqual(result[0]["validation_status"], "effective")
+        self.assertEqual(result[0]["max_drawdown"], 0)
 
     def test_trade_quality_helpers_are_safe_for_malformed_values(self):
         self.assertTrue(trade_is_ok({"ok": "1"}))

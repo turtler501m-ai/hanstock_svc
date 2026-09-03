@@ -1953,7 +1953,7 @@ def _strategy_label(strategy_id: str) -> str:
     return defaults.get(strategy_id, strategy_id)
 
 
-def _strategy_validation(strategy_stats: dict[str, dict]) -> list[dict]:
+def _strategy_validation_legacy(strategy_stats: dict[str, dict]) -> list[dict]:
     result = []
     for strategy_id, stats in strategy_stats.items():
         pnls = list(stats.pop("_pnls", []))
@@ -1997,6 +1997,12 @@ def _strategy_validation(strategy_stats: dict[str, dict]) -> list[dict]:
             "validation_reason": reason,
         })
     return sorted(result, key=lambda item: (-item["realized_pnl"], item["strategy_name"]))
+
+
+def _strategy_validation(strategy_stats: dict[str, dict]) -> list[dict]:
+    from src.dashboard.services.performance_metrics import strategy_validation
+
+    return strategy_validation(strategy_stats, _strategy_label)
 
 
 _INDEX_ROWS_CACHE: tuple[float, dict[str, list[dict]]] = (0.0, {})
