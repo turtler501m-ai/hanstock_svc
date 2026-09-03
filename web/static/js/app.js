@@ -4893,7 +4893,8 @@ async function renderTrades() {
     }
 }
 
-async function renderTradeCleanup() {
+/* Legacy trade cleanup renderer retained below only as migration reference.
+async function renderTradeCleanupLegacy() {
     const tbody = document.querySelector('#table-trade-cleanup tbody');
     if (!tbody) return;
     try {
@@ -4954,8 +4955,31 @@ async function renderTradeCleanup() {
         tbody.innerHTML = `<tr><td colspan="7">${escapeHtml(error.message || '불일치 거래 조회 실패')}</td></tr>`;
     }
 }
+*/
 
-/* Legacy periodic performance renderer retained below only as migration reference.
+async function renderTradeCleanup() {
+    return window.HanstockDashboardTradeCleanupScreen.render({
+        fetchJson,
+        deleteJson,
+        escapeHtml,
+        orderStatusLabel,
+        reload: renderTradeCleanup,
+        labels: {
+            empty: '\uc815\ub9ac \ub300\uc0c1 \ub85c\uceec \uBD88\uc77c\uce58 \uac70\ub798\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.',
+            buy: '\ub9e4\uc218',
+            sell: '\ub9e4\ub3c4',
+            lowRisk: '\ub0ae\uc74c',
+            highRisk: '\ub192\uc74c',
+            risk: '\uc815\ub9ac \uc704\ud5d8\ub3c4:',
+            delete: '\ub85c\uceec \uc0ad\uc81c',
+            confirm: '\uc774 \ubd88\uc77c\uce58 \uae30\ub85d\uc744 \ub85c\uceec DB\uc5d0\uc11c\ub9cc \uc0ad\uc81c\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c? \uc99d\uad8c \uc8fc\ubb38\uacfc \uccb4\uacb0 \ub0b4\uc5ed\uc740 \uc0ad\uc81c\ub418\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.',
+            deleteFailed: '\ub85c\uceec \uac70\ub798 \uc0ad\uc81c \uc2e4\ud328',
+            loadFailed: '\ubd88\uc77c\uce58 \uac70\ub798 \uc870\ud68c \uc2e4\ud328',
+        },
+    });
+}
+
+/* Legacy periodic performance renderer retained below as migration reference.
 async function renderPeriodicPerformanceLegacy() {
     try {
         const periodicData = await fetchJson(performancePath('/api/performance/periodic'), 30000);
