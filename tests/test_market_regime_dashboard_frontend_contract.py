@@ -418,7 +418,7 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn("HanstockDashboardSchedulerCollapse.toggle", APP_JS)
 
     def test_scheduler_rows_isolated_from_app(self):
-        module_tag = '<script src="/static/js/dashboard-scheduler-rows.js?v=1"></script>'
+        module_tag = '<script src="/static/js/dashboard-scheduler-rows.js?v=2"></script>'
         app_tag = '<script src="/static/js/app.js?v=72"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerRows", SCHEDULER_ROWS_JS)

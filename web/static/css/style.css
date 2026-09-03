@@ -5448,6 +5448,13 @@ th,
         padding-left: clamp(1.5rem, 2.5vw, 3rem);
     }
 
+    body.namuh-dashboard .app-header {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+    }
+
     body.namuh-dashboard .dashboard-tabs {
         position: static !important;
         width: 100% !important;
