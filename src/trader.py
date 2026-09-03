@@ -879,7 +879,38 @@ def build_runtime_plan(
                 )
             candidates = scan_result.get("candidates", [])
 
-        orders = build_orders(candidates, api.get_quote, len(held_symbols), buying_cash)
+        # NHPLUG's mock environment does not expose currentPrice (IGW40023),
+        # while the scan already has a public-market price for each candidate.
+        # Keep order submission on NHPLUG, but use that scan price only to build
+        # a demo plan when the broker quote endpoint is unavailable.
+        candidate_prices = {
+            str(candidate.get("ticker") or ""): float(
+                candidate.get("current_price") or candidate.get("price") or 0
+            )
+            for candidate in candidates
+        }
+
+        def quote_for_order(symbol: str) -> dict:
+            try:
+                quote = api.get_quote(symbol)
+                if isinstance(quote, dict) and float(quote.get("current") or 0) > 0:
+                    return quote
+            except Exception as exc:
+                fallback_price = candidate_prices.get(str(symbol), 0.0)
+                if runtime.flags.trading_env == "demo" and fallback_price > 0:
+                    logger.warning(
+                        "NHPLUG quote unavailable for {}; using scan price for demo planning: {}",
+                        symbol,
+                        exc,
+                    )
+                    return {"current": fallback_price, "ask1": fallback_price, "bid1": fallback_price}
+                raise
+            fallback_price = candidate_prices.get(str(symbol), 0.0)
+            if runtime.flags.trading_env == "demo" and fallback_price > 0:
+                return {"current": fallback_price, "ask1": fallback_price, "bid1": fallback_price}
+            raise RuntimeError(f"No usable quote returned for {symbol}")
+
+        orders = build_orders(candidates, quote_for_order, len(held_symbols), buying_cash)
         order_by_ticker = {o["ticker"]: o for o in orders}
 
         for candidate in candidates:
