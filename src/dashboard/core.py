@@ -1,6 +1,5 @@
 import json
 import hashlib
-import concurrent.futures
 import os
 import re
 import sqlite3
@@ -68,6 +67,11 @@ from src.dashboard.services.balance_service import (  # noqa: E402
     summary_item,
     to_float,
     to_int,
+)
+from src.dashboard.services.account_service import (  # noqa: E402
+    get_balance_data as _service_get_balance_data,
+    persist_account_equity as _service_persist_account_equity,
+    run_with_timeout as _service_run_with_timeout,
 )
 from src.dashboard.services.auth_service import (  # noqa: E402
     dashboard_auth_config as _dashboard_auth_config,
@@ -614,12 +618,7 @@ def _mark_balance_cache_fresh(balance_data: dict) -> dict:
 
 
 def _run_with_timeout(func, timeout_seconds: float):
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(func)
-    try:
-        return future.result(timeout=timeout_seconds)
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
+    return _service_run_with_timeout(func, timeout_seconds)
 
 
 def _get_balance_data(api: DomesticStockBroker, allow_cache: bool = True) -> dict:
@@ -629,74 +628,28 @@ def _get_balance_data(api: DomesticStockBroker, allow_cache: bool = True) -> dic
             return override(api, allow_cache=allow_cache)
         except TypeError:
             return override(api)
-    cached = _load_balance_cache() if allow_cache else None
-    if allow_cache:
-        if cached is not None:
-            age = _balance_cache_age_seconds(cached)
-            if age is not None and age < BALANCE_CACHE_TTL_SECONDS:
-                return _mark_balance_cache_fresh(cached)
+    def persist_equity(balance_data, parsed_balance):
+        from src.db.performance_repository import record_account_equity_snapshot
 
-    with _balance_fetch_lock:
-        if allow_cache:
-            cached = _load_balance_cache()
-            if cached is not None:
-                age = _balance_cache_age_seconds(cached)
-                if age is not None and age < BALANCE_CACHE_TTL_SECONDS:
-                    return _mark_balance_cache_fresh(cached)
-        try:
-            balance_data = _run_with_timeout(api.get_balance, BALANCE_FETCH_TIMEOUT_SECONDS)
-        except concurrent.futures.TimeoutError:
-            if cached is not None:
-                return cached
-            raise RuntimeError("Kiwoom balance API timed out")
-        except KiwoomApiError:
-            if allow_cache:
-                cached = _load_balance_cache()
-                if cached is not None:
-                    return cached
-            raise
-        except DashboardOperationError:
-            if allow_cache:
-                cached = _load_balance_cache()
-                if cached is not None:
-                    return cached
-            raise
-        except Exception:
-            if allow_cache:
-                cached = _load_balance_cache()
-                if cached is not None:
-                    return cached
-            raise
-        try:
-            parsed_balance = _parse_balance(balance_data)
-        except DashboardOperationError:
-            if allow_cache:
-                cached = _load_balance_cache()
-                if cached is not None:
-                    return cached
-            raise
-        except Exception:
-            if allow_cache:
-                cached = _load_balance_cache()
-                if cached is not None:
-                    return cached
-            raise
-        try:
-            from src.db.performance_repository import record_account_equity_snapshot
-            summary_hash = hashlib.sha256(
-                json.dumps(balance_data.get("output2") or {}, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
-            ).hexdigest()
-            record_account_equity_snapshot(
-                total_equity=float(parsed_balance.get("total_eval") or 0),
-                cash=float(parsed_balance.get("cash") or 0),
-                stock_value=float(parsed_balance.get("stock_eval") or 0),
-                source="kiwoom_balance",
-                raw_summary_hash=summary_hash,
-            )
-        except (sqlite3.Error, OSError, ValueError, TypeError) as exc:
-            logger.warning(f"Failed to persist account equity snapshot: {exc}")
-        _save_balance_cache(balance_data)
-        return balance_data
+        _service_persist_account_equity(
+            balance_data, parsed_balance, record_account_equity_snapshot
+        )
+
+    return _service_get_balance_data(
+        api,
+        allow_cache=allow_cache,
+        balance_cache_ttl_seconds=BALANCE_CACHE_TTL_SECONDS,
+        fetch_timeout_seconds=BALANCE_FETCH_TIMEOUT_SECONDS,
+        cache_lock=_balance_fetch_lock,
+        load_cache=_load_balance_cache,
+        cache_age=_balance_cache_age_seconds,
+        mark_cache_fresh=_mark_balance_cache_fresh,
+        parse_balance=_parse_balance,
+        save_cache=_save_balance_cache,
+        run_timeout=_run_with_timeout,
+        persist_equity=persist_equity,
+        recoverable_errors=DashboardOperationError,
+    )
 
 
 def _candidate_cache_service_call(name: str, *args, **kwargs):

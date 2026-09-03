@@ -245,19 +245,21 @@ powershell -ExecutionPolicy Bypass -File tools\check-encoding.ps1
 
 | 파일 | 라인 수 | 판단 |
 |---|---:|---|
-| `web/static/js/app.js` | 7,219 | 화면 기능별 JS 모듈 분리 우선 |
+| `web/static/js/app.js` | 7,239 | 화면 기능별 JS 모듈 분리 우선 |
 | `web/static/css/style.css` | 4,096 | 공통/주문/성과/반응형 CSS 분리 가능 |
 | `web/templates/index.html` | 3,235 | 탭·컴포넌트 템플릿 분리 검토 |
-| `src/dashboard/core.py` | 2,948 | 캐시·계좌·후보·성과·스케줄 조정 책임이 집중됨 |
-| `src/dashboard/routes/stock_order.py` | 2,573 | 주문·승인·동기화·거래이력 라우트가 집중됨 |
+| `src/dashboard/core.py` | 2,853 | 캐시·계좌·후보·성과·스케줄 조정 책임이 집중됨 |
+| `src/dashboard/routes/stock_order.py` | 2,483 | 주문·승인·동기화·거래이력 라우트가 집중됨 |
 | `src/strategy/seven_split.py` | 1,760 | 스캔·신호·주문·포트폴리오 계산 분리 가능 |
-| `src/trader.py` | 1,277 | 실행 진입점과 계획 계산을 분리할 수 있음 |
+| `src/trader.py` | 1,244 | 실행 진입점과 계획 계산을 분리할 수 있음 |
 
 ### 이미 적용된 분리
 
 대시보드 라우트는 `stock_analysis`, `stock_performance`, `stock_plan`, `stock_order`로 이미 분리되어 있다. DB도 AI scan/execution/risk, strategy, scheduler, trade, performance repository로 나뉜다. 자율전략은 `strategy/autonomy` 아래에 lifecycle, risk, order state, recovery, protection 경계를 갖는다.
 
-최근에는 `src/dashboard/services/cache_policy.py`를 추가해 캐시 timestamp·freshness 계산을 `dashboard/core.py`에서 분리했다. 또한 `src/dashboard/services/order_reconciliation.py`를 추가해 전략별 보유수량 집계와 브로커 잔고 조정 배분 계산을 `stock_order.py`에서 분리했다. `src/dashboard/services/performance_metrics.py`에는 기간 버킷과 시장지표 정규화·일/월 컨텍스트 계산을 이동했다. 기존 `core`·`stock_order`의 호환 함수는 유지하여 테스트와 외부 호출 계약을 보호한다.
+최근에는 `src/dashboard/services/cache_policy.py`를 추가해 캐시 timestamp·freshness 계산을 `dashboard/core.py`에서 분리했다. 또한 `src/dashboard/services/order_reconciliation.py`를 추가해 전략별 보유수량 집계와 브로커 잔고 조정 배분 계산을 `stock_order.py`에서 분리했다. `src/dashboard/services/performance_metrics.py`에는 기간 버킷과 시장지표 정규화·일/월 컨텍스트 계산을 이동했다. `src/dashboard/services/account_service.py`에는 계좌 잔고 조회의 캐시·타임아웃·stale fallback·자산 스냅샷 기록을 이동했다. 기존 `core`·`stock_order`의 호환 함수는 유지하여 테스트와 외부 호출 계약을 보호한다.
+
+`src/strategy/momentum_metrics.py`에는 seven-split의 순수 기간수익률·상대 모멘텀·변동성 계산을 이동했고, `web/static/js/dashboard-api.js`, `dashboard-formatters.js`, `dashboard-ui.js`에는 대시보드 공통 HTTP·표현·DOM 헬퍼를 분리했다. 기존 `app.js`는 현재 fallback 구현과 alias를 유지하여 페이지 로딩 순서 변경에도 호환된다.
 
 ### 남은 구조적 문제
 
@@ -271,9 +273,11 @@ powershell -ExecutionPolicy Bypass -File tools\check-encoding.ps1
 
 ```text
 cache policy (완료)
-  → dashboard account/cache facade
+  → dashboard common API / formatters / UI (완료)
+  → dashboard account/cache facade (완료)
   → stock_order approval / order-sync / trade-history
   → dashboard performance calculations
+  → seven_split momentum metrics (완료)
   → seven_split scan / signal / order planning
   → trader runtime orchestration
   → app.js feature modules
