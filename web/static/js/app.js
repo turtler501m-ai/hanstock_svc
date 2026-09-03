@@ -631,7 +631,7 @@ function renderPerformanceDetailPanel(item) {
     }, item);
 }
 
-function buildScanErrorModalMarkup(errorMsg) {
+function buildScanErrorModalMarkupLegacy(errorMsg) {
     return `
         <div class="ai-modal-section">
             <h3>오류 내용</h3>
@@ -649,7 +649,7 @@ function buildScanErrorModalMarkup(errorMsg) {
     `;
 }
 
-function buildNoCandidatesModalMarkup(data) {
+function buildNoCandidatesModalMarkupLegacy(data) {
     const summary = data.scan_summary || [];
     const minScore = data.min_score || 2;
     const scanned = data.scanned || summary.length;
@@ -744,6 +744,19 @@ function buildNoCandidatesModalMarkup(data) {
             </ul>
         </div>
     `;
+}
+
+function buildScanErrorModalMarkup(errorMsg) {
+    return window.HanstockDashboardCandidateMessages.scanError({ escapeHtml }, errorMsg);
+}
+
+function buildNoCandidatesModalMarkup(data) {
+    return window.HanstockDashboardCandidateMessages.noCandidates({
+        escapeHtml,
+        strategyReasonLabel,
+        formatNumber,
+        pill,
+    }, data);
 }
 
 let portfolioChartInstance = null;
