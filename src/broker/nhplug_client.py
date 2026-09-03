@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
+import json
 import os
+from pathlib import Path
 import threading
 import time
 from typing import Any, Mapping
@@ -54,6 +56,9 @@ class NHPlugRestClient:
             else os.environ.get("NHPLUG_MIN_INTERVAL_SECONDS", "1.0")
         )
         self.min_interval = max(0.0, float(configured_interval))
+        self._token_cache_path = Path(
+            os.environ.get("NHPLUG_TOKEN_CACHE_FILE", ".runtime/nhplug-token-cache.json")
+        )
         self._token = ""
         self._expires_at: datetime | None = None
 
@@ -61,9 +66,59 @@ class NHPlugRestClient:
     def clear_token_cache(cls) -> None:
         with cls._lock:
             cls._tokens.clear()
+        # This method is used by tests and operational recovery. Remove the
+        # restart-persistent cache as well so an explicitly cleared token
+        # cannot be restored by the next client instance.
+        cache_path = Path(os.environ.get("NHPLUG_TOKEN_CACHE_FILE", ".runtime/nhplug-token-cache.json"))
+        try:
+            cache_path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     def _cache_key(self) -> tuple[str, str, str]:
         return self.environment, self.app_key, hashlib.sha256(self._app_secret.encode()).hexdigest()
+
+    def _persistent_cache_key(self) -> str:
+        return hashlib.sha256(repr(self._cache_key()).encode()).hexdigest()
+
+    def _load_persistent_token(self) -> tuple[str, datetime] | None:
+        try:
+            payload = json.loads(self._token_cache_path.read_text(encoding="utf-8"))
+            item = payload.get(self._persistent_cache_key())
+            if not isinstance(item, Mapping):
+                return None
+            token = str(item.get("token") or "")
+            expires_at = datetime.fromisoformat(str(item.get("expires_at") or ""))
+            if token and expires_at.tzinfo is not None:
+                return token, expires_at
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return None
+        return None
+
+    def _save_persistent_token(self, token: str, expires_at: datetime) -> None:
+        path = self._token_cache_path
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                payload = {}
+            if not isinstance(payload, dict):
+                payload = {}
+            payload[self._persistent_cache_key()] = {
+                "token": token,
+                "expires_at": expires_at.isoformat(),
+            }
+            temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+            temporary.write_text(json.dumps(payload, ensure_ascii=True), encoding="utf-8")
+            os.replace(temporary, path)
+            try:
+                os.chmod(path, 0o600)
+            except OSError:
+                pass
+        except OSError:
+            # A read-only runtime directory must not prevent API operation.
+            pass
 
     def access_token(self) -> str:
         now = datetime.now(timezone.utc)
@@ -85,6 +140,12 @@ class NHPlugRestClient:
             if cached and now < cached[1] - timedelta(seconds=60):
                 self._token, self._expires_at = cached
                 return self._token
+            cached = self._load_persistent_token()
+            if cached and now < cached[1] - timedelta(seconds=60):
+                self._token, self._expires_at = cached
+                with self._lock:
+                    self._tokens[self._cache_key()] = cached
+                return self._token
 
             response = self._session.post(
                 f"{AUTH_BASE_URL}/oauth2/token",
@@ -98,9 +159,11 @@ class NHPlugRestClient:
             if not token:
                 raise NHPlugApiError("NHPLUG token response did not contain access_token")
             expires = float(payload.get("expires_in") or 86400)
-            self._token, self._expires_at = token, now + timedelta(seconds=expires)
+            self._expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires)
+            self._token = token
             with self._lock:
                 self._tokens[self._cache_key()] = (self._token, self._expires_at)
+            self._save_persistent_token(self._token, self._expires_at)
             return token
 
     def post(self, path: str, body: Mapping[str, Any] | None = None,
@@ -131,6 +194,13 @@ class NHPlugRestClient:
                 self._token = ""; self._expires_at = None
                 with self._lock:
                     self._tokens.pop(self._cache_key(), None)
+                try:
+                    payload = json.loads(self._token_cache_path.read_text(encoding="utf-8"))
+                    if isinstance(payload, dict):
+                        payload.pop(self._persistent_cache_key(), None)
+                        self._token_cache_path.write_text(json.dumps(payload, ensure_ascii=True), encoding="utf-8")
+                except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                    pass
                 headers["Authorization"] = f"Bearer {self.access_token()}"
                 response = self._session.post(f"{self.base_url}/{path.lstrip('/')}",
                                               json=payload, headers=headers, timeout=self.timeout)

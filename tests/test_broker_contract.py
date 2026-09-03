@@ -1,4 +1,5 @@
 import os
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
@@ -6,6 +7,7 @@ from src.broker.base import DomesticStockBroker
 from src.broker.factory import create_domestic_stock_broker, selected_domestic_stock_broker
 from src.broker.nhplug_adapter import NHPlugBrokerAdapter
 from src.broker.models import OrderRequest, OrderSide, OrderStatus
+from src.broker.nhplug_client import NHPlugRestClient
 
 
 class BrokerContractTests(unittest.TestCase):
@@ -135,6 +137,23 @@ class BrokerContractTests(unittest.TestCase):
         result = NHPlugBrokerAdapter(client).get_balance()
 
         self.assertEqual(result["_broker_response"], raw)
+
+    def test_nhplug_token_cache_survives_new_client_instance(self):
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {"access_token": "persisted-token", "expires_in": 86400}
+        session = Mock()
+        session.post.return_value = response
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            os.environ, {"NHPLUG_TOKEN_CACHE_FILE": os.path.join(directory, "token.json")}
+        ):
+            NHPlugRestClient.clear_token_cache()
+            first = NHPlugRestClient("app", "secret", session=session)
+            self.assertEqual(first.access_token(), "persisted-token")
+            NHPlugRestClient._tokens.clear()
+            second = NHPlugRestClient("app", "secret", session=session)
+            self.assertEqual(second.access_token(), "persisted-token")
+            session.post.assert_called_once()
 
 
 if __name__ == "__main__":
