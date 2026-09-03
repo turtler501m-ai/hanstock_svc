@@ -28,7 +28,7 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
 
     def test_isolated_strategy_buttons_are_not_disabled_by_common_scheduler(self):
         start = APP_JS.index("function disableTriggerButtons(disabled)")
-        end = APP_JS.index("function toKorDecision", start)
+        end = APP_JS.index("function copySchedulerLog", start)
         body = APP_JS[start:end]
         self.assertNotIn("btn-pb-run", body)
         self.assertNotIn("btn-ha-run", body)
