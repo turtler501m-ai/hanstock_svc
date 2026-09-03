@@ -5709,3 +5709,53 @@ th,
         left: auto;
     }
 }
+
+/* AI strategy workspace: keep the control header and data table aligned with the new card system. */
+.panel-ai-strategies-list > .panel-header {
+    align-items: flex-start;
+}
+
+.ai-strategy-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.strategy-category-selector {
+    margin-top: 1rem;
+}
+
+.strategy-category-selector > .panel-header {
+    margin-bottom: 0.75rem;
+}
+
+.ai-strategy-table,
+.strategy-events-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ai-strategy-table th,
+.strategy-events-table th {
+    white-space: nowrap;
+}
+
+.strategy-audit-panel {
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 760px) {
+    .panel-ai-strategies-list > .panel-header,
+    .ai-strategy-header-actions {
+        width: 100%;
+    }
+
+    .ai-strategy-header-actions {
+        justify-content: stretch;
+    }
+
+    .ai-strategy-header-actions > button {
+        flex: 1 1 12rem;
+    }
+}

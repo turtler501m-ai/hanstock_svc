@@ -16,7 +16,13 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("margin-left: 0 !important", STYLE)
         self.assertIn("left: auto", STYLE)
         self.assertNotIn("body.namuh-dashboard main {\n        margin-left: 190px;", STYLE)
-        self.assertIn('href="/static/css/style.css?v=48"', TEMPLATE)
+        self.assertIn('href="/static/css/style.css?v=49"', TEMPLATE)
+
+    def test_ai_strategy_workspace_uses_shared_layout_classes(self):
+        self.assertIn('class="ai-strategy-header-actions"', TEMPLATE)
+        self.assertIn('class="ai-strategy-table"', TEMPLATE)
+        self.assertIn('class="strategy-events-table"', TEMPLATE)
+        self.assertNotIn('id="btn-refresh-ai-strategies" style=', TEMPLATE)
 
     def test_mobile_navigation_remains_bottom_navigation(self):
         self.assertIn("@media (max-width: 768px)", STYLE)
