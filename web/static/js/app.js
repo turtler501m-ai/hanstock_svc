@@ -2760,7 +2760,7 @@ async function renderWatchlist() {
     }
 }
 
-async function renderSignals() {
+async function renderSignalsLegacy() {
     const request = captureStrategyRequest();
     setButtonBusy('btn-signals', true);
     setTableMessage('#table-signals tbody', 7, '보유 종목을 진단하고 있습니다...');
@@ -2837,6 +2837,25 @@ async function renderSignals() {
     } finally {
         setButtonBusy('btn-signals', false);
     }
+}
+
+async function renderSignals() {
+    return window.HanstockDashboardSignalsScreen.render({
+        captureStrategyRequest,
+        setButtonBusy,
+        setTableMessage,
+        fetchJson,
+        getActiveStrategyId,
+        commonAnalysisPath,
+        isCurrentStrategyRequest,
+        captureAnalysisCycle,
+        escapeHtml,
+        pill,
+        formatNumber,
+        toKorAction,
+        translateReason,
+        bindQueueButtons,
+    });
 }
 
 function strategyAnalysisChecks(row) {
