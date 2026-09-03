@@ -14,6 +14,10 @@ def _num(value: Any) -> float:
 
 def _int(value: Any) -> int: return int(_num(value))
 
+def _whole(value: Any) -> str:
+    """Serialize broker numeric values without a trailing ``.0``."""
+    return str(int(round(_num(value))))
+
 def _rows(payload: Mapping[str, Any], key: str) -> list[Mapping[str, Any]]:
     value = payload.get(key) or []
     return [x for x in value if isinstance(x, Mapping)] if isinstance(value, list) else []
@@ -183,16 +187,16 @@ class NHPlugBrokerAdapter:
             "rsp_cd": "00000",
             "rsp_msg": "완료",
             "output1": [{
-                "pdno": h.symbol, "prdt_name": h.name, "hldg_qty": str(h.quantity),
-                "ord_psbl_qty": str(h.sellable_quantity), "pchs_avg_pric": str(h.average_price),
-                "prpr": str(h.current_price), "evlu_amt": str(h.market_value),
-                "evlu_pfls_amt": str(h.profit_loss), "evlu_pfls_rt": str(h.profit_loss_rate),
+                "pdno": h.symbol, "prdt_name": h.name, "hldg_qty": _whole(h.quantity),
+                "ord_psbl_qty": _whole(h.sellable_quantity), "pchs_avg_pric": _whole(h.average_price),
+                "prpr": _whole(h.current_price), "evlu_amt": _whole(h.market_value),
+                "evlu_pfls_amt": _whole(h.profit_loss), "evlu_pfls_rt": str(h.profit_loss_rate),
                 "fltt_rt": str(h.daily_change_rate),
             } for h in value.holdings],
             "output2": [{
-                "dnca_tot_amt": str(value.cash), "ord_psbl_cash": str(value.orderable_cash),
-                "tot_evlu_amt": str(value.total_equity), "scts_evlu_amt": str(value.stock_value),
-                "evlu_pfls_smtl_amt": str(value.profit_loss),
+                "dnca_tot_amt": _whole(value.cash), "ord_psbl_cash": _whole(value.orderable_cash),
+                "tot_evlu_amt": _whole(value.total_equity), "scts_evlu_amt": _whole(value.stock_value),
+                "evlu_pfls_smtl_amt": _whole(value.profit_loss),
             }],
             "_broker": "namuh",
             # Preserve the complete broker payload for operator diagnostics.

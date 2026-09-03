@@ -108,6 +108,17 @@ class BrokerContractTests(unittest.TestCase):
         self.assertEqual(balance.holdings[0].quantity, 10)
         self.assertEqual(balance.orderable_cash, 453384370)
 
+    def test_namuh_legacy_balance_serializes_whole_numeric_strings(self):
+        client = Mock()
+        client.account = "demo"
+        client.post.return_value = type("Page", (), {"data": {
+            "Output_0": {"dca": 100.0, "tot_aet_amt": 100.0, "orr_pbl_amt1": 100.0},
+            "Output_1": [],
+        }})()
+        value = NHPlugBrokerAdapter(client, account="demo").get_balance()
+        self.assertEqual(value["output2"][0]["dnca_tot_amt"], "100")
+        self.assertEqual(value["output2"][0]["tot_evlu_amt"], "100")
+
     def test_namuh_balance_facade_retains_complete_broker_response(self):
         client = Mock()
         client.account = "demo"
