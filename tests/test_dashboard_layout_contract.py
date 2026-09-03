@@ -14,7 +14,7 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("flex-direction: row !important", STYLE)
         self.assertIn("position: static !important", STYLE)
         self.assertIn("margin-left: 0 !important", STYLE)
-        self.assertIn('href="/static/css/style.css?v=47"', TEMPLATE)
+        self.assertIn('href="/static/css/style.css?v=48"', TEMPLATE)
 
     def test_mobile_navigation_remains_bottom_navigation(self):
         self.assertIn("@media (max-width: 768px)", STYLE)

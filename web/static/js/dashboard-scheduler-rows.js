@@ -2,16 +2,13 @@
     'use strict';
 
     function cell(value, align) {
-        const style = align === 'right'
-            ? 'padding: 0.6rem 0.75rem; font-size: 0.85rem; text-align: right;'
-            : 'padding: 0.6rem 0.75rem; font-size: 0.85rem;';
-        return `<td style="${style}">${value}</td>`;
+        return `<td class="scheduler-cell${align === 'right' ? ' is-right' : ''}">${value}</td>`;
     }
 
     function appendPlanRows(tbody, rows, deps) {
         if (!tbody) return;
         if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">생성된 매매 계획이 없습니다.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center scheduler-empty-message">생성된 매매 계획이 없습니다.</td></tr>';
             return;
         }
         rows.forEach((row) => {
@@ -19,16 +16,16 @@
             const kind = decision === 'execute' || decision === 'approved' ? 'buy' : (decision === 'skip' ? 'hold' : 'warn');
             const reason = deps.schedulerReasonText(row);
             const tr = document.createElement('tr');
-            tr.style.borderBottom = '1px solid var(--border)';
+            tr.className = 'scheduler-data-row';
             tr.innerHTML = [
                 cell(deps.escapeHtml(row.symbol || '-')),
-                cell(`<div class="symbol-name" style="font-weight: 500;">${deps.escapeHtml(row.name || '-')}</div>`),
+                cell(`<div class="symbol-name scheduler-symbol-name">${deps.escapeHtml(row.name || '-')}</div>`),
                 cell(deps.pill(row.strategy_name || row.strategy_id || '기본 분할매매', 'hold')),
                 cell(deps.pill(deps.toKorPlanCategory(row.category), 'hold')),
                 cell(deps.pill(deps.schedulerDecisionLabel(decision, row), kind)),
                 cell(deps.escapeHtml(deps.schedulerPlanQuantityText(row)), 'right'),
                 cell(deps.escapeHtml(deps.schedulerPlanPriceText(row)), 'right'),
-                cell(`<div class="reason-cell" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${deps.escapeHtml(reason)}">${deps.escapeHtml(reason)}</div>`),
+                cell(`<div class="reason-cell scheduler-reason-cell is-single-line" title="${deps.escapeHtml(reason)}">${deps.escapeHtml(reason)}</div>`),
             ].join('');
             tbody.appendChild(tr);
         });
@@ -37,7 +34,7 @@
     function appendOrderRows(tbody, approved, approvalErrors, results, deps) {
         if (!tbody) return;
         if (!approved.length && !approvalErrors.length) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">승인 대기 주문이 없거나 자동 승인이 취소되었습니다.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center scheduler-empty-message">승인 대기 주문이 없거나 자동 승인이 취소되었습니다.</td></tr>';
             return;
         }
         const append = (row, isError) => {
@@ -55,17 +52,17 @@
                 return deps.pill(value.label, value.kind);
             })();
             const tr = document.createElement('tr');
-            tr.style.borderBottom = '1px solid var(--border)';
+            tr.className = 'scheduler-data-row';
             tr.innerHTML = [
                 cell(deps.escapeHtml(orderId || '-')),
                 cell(deps.escapeHtml(symbol)),
-                cell(`<div class="symbol-name" style="font-weight: 500;">${deps.escapeHtml(name)}</div>`),
+                cell(`<div class="symbol-name scheduler-symbol-name">${deps.escapeHtml(name)}</div>`),
                 cell(deps.pill(strategy, 'hold')),
                 cell(action !== '-' ? deps.pill(deps.toKorAction(action), action === 'sell' ? 'sell' : 'buy') : '-'),
                 cell(quantity !== '-' ? deps.formatNumber(quantity) : '-', 'right'),
                 cell(price !== '-' ? `${deps.formatNumber(price)} 원` : '-', 'right'),
                 cell(status),
-                cell(`<div class="reason-cell${isError ? ' text-danger' : ''}" style="max-width: 420px; white-space: pre-wrap; overflow-wrap: anywhere;" title="${deps.escapeHtml(message)}">${deps.escapeHtml(message)}</div>`),
+                cell(`<div class="reason-cell scheduler-reason-cell is-multiline${isError ? ' text-danger' : ''}" title="${deps.escapeHtml(message)}">${deps.escapeHtml(message)}</div>`),
             ].join('');
             tbody.appendChild(tr);
         };
