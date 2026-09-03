@@ -13,6 +13,28 @@ router = _CompatRouter(
     namespace=globals(), dependencies=(_stock,), tags=["stock", "stock-analysis"]
 )
 
+
+@router.get("/api/strategy/{strategy_id}/schedule")
+def get_strategy_schedule(strategy_id: str):
+    from src.db.repository import load_strategy_schedule
+
+    return {"schedule": load_strategy_schedule(str(strategy_id).strip())}
+
+
+@router.post("/api/strategy/{strategy_id}/schedule")
+def update_strategy_schedule(strategy_id: str, payload: dict = Body(default_factory=dict)):
+    from src.db.repository import save_strategy_schedule
+
+    schedule_id = str(strategy_id).strip()
+    if not schedule_id:
+        raise HTTPException(status_code=400, detail="strategy_id is required")
+    allowed = {
+        "enabled", "interval_minutes", "start_hm", "end_hm",
+        "weekdays", "mode", "auto_approve",
+    }
+    fields = {key: value for key, value in payload.items() if key in allowed}
+    return {"schedule": save_strategy_schedule(schedule_id, **fields)}
+
 @router.get("/api/ai-strategies")
 def get_ai_strategies():
     from src.db.repository import load_ai_strategies
