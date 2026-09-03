@@ -6986,6 +6986,8 @@ async function renderScheduleInfo() {
                         }
                         const analysisSummary = card.querySelector('.scheduler-analysis-summary');
                         const analysisDetails = card.querySelector('.scheduler-analysis-details');
+                        HanstockDashboardSchedulerAnalysis.render(roundData, analysisSummary, analysisDetails, { escapeHtml, formatNumber, pill });
+                        if (false) {
                         if (analysisSummary && roundData.scannedCount > 0) {
                             const isAlphaHa = roundData.strategyId === 'heikin_ashi_scalping_strategy';
                             const labels = isAlphaHa ? [
@@ -7021,6 +7023,7 @@ async function renderScheduleInfo() {
                                 </tbody></table></div></details>`;
                         }
                         
+                        }
                         // Populate Plans table inside this round body
                         const plansTbody = card.querySelector('.table-plans tbody');
                         if (plansTbody) {
