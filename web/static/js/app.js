@@ -7120,7 +7120,7 @@ function toKorPlanCategory(category) {
     return labels[category] || category || 'AI 리밸런싱';
 }
 
-function schedulerApprovalStatus(status) {
+function schedulerApprovalStatusLegacy(status) {
     const normalized = String(status || '').toLowerCase();
     const labels = {
         executed: { label: '주문접수', kind: 'buy' },
@@ -7133,7 +7133,7 @@ function schedulerApprovalStatus(status) {
     return labels[normalized] || { label: status || '상태 미확인', kind: 'hold' };
 }
 
-function schedulerPlanQuantityText(row) {
+function schedulerPlanQuantityTextLegacy(row) {
     const quantity = Number(row.qty ?? row.signal_qty ?? 0);
     if (quantity > 0) return formatNumber(quantity);
     const holdingQuantity = Number(row.holding_qty ?? 0);
@@ -7142,7 +7142,7 @@ function schedulerPlanQuantityText(row) {
     return '수량 미산정';
 }
 
-function schedulerPlanPriceText(row) {
+function schedulerPlanPriceTextLegacy(row) {
     const price = Number(row.price ?? row.signal_price ?? 0);
     if (price > 0) return `${formatNumber(price)} 원`;
     if (row.action === 'sell' && Number(row.qty ?? row.signal_qty ?? 0) > 0) return '시장가';
@@ -7150,6 +7150,18 @@ function schedulerPlanPriceText(row) {
     if (row.action === 'hold' && currentPrice > 0) return `현재가 ${formatNumber(currentPrice)} 원`;
     if (row.action === 'hold') return '현재가 확인 불가';
     return '가격 미산정';
+}
+
+function schedulerApprovalStatus(status) {
+    return window.HanstockDashboardSchedulerFormatters.approvalStatus(status);
+}
+
+function schedulerPlanQuantityText(row) {
+    return window.HanstockDashboardSchedulerFormatters.planQuantity({ formatNumber }, row);
+}
+
+function schedulerPlanPriceText(row) {
+    return window.HanstockDashboardSchedulerFormatters.planPrice({ formatNumber }, row);
 }
 
 function formatKstTime(isoStr) {
