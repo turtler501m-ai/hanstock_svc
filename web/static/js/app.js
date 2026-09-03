@@ -1915,7 +1915,8 @@ async function renderStrategyAudit(strategyId) {
     });
 }
 
-async function renderAiStrategies() {
+/* Legacy AI strategy table renderer retained below only as migration reference.
+async function renderAiStrategiesLegacy() {
     const tbody = document.querySelector('#table-ai-strategies tbody');
     if (!tbody) return;
     try {
@@ -2058,6 +2059,8 @@ async function renderAiStrategies() {
         setTableMessage('#table-ai-strategies tbody', 6, err.message);
     }
 }
+
+*/
 
 async function patchStrategyJson(id, payload) {
     const response = await fetch(`/api/ai-strategies/${encodeURIComponent(id)}`, {
