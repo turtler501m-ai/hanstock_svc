@@ -974,7 +974,7 @@ function renderAiStrategySummary(config) {
     }, config);
 }
 
-async function saveStrategySettings(event) {
+async function saveStrategySettingsLegacy(event) {
     event.preventDefault();
     const form = event.currentTarget;
     setButtonBusy('btn-strategy-save', true);
@@ -1011,6 +1011,16 @@ async function saveStrategySettings(event) {
     } finally {
         setButtonBusy('btn-strategy-save', false);
     }
+}
+
+async function saveStrategySettings(event) {
+    return window.HanstockDashboardStrategySettingsSave.handle({
+        setButtonBusy,
+        postJson,
+        setStatus,
+        renderConfig,
+        renderBalance,
+    }, event);
 }
 
 function renderPortfolioChartLegacy(labels, data, colors) {

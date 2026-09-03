@@ -92,6 +92,9 @@ AI_STRATEGY_SUMMARY_JS = (
 AI_DETAIL_MODAL_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-ai-detail-modal.js"
 ).read_text(encoding="utf-8")
+STRATEGY_SETTINGS_SAVE_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-strategy-settings-save.js"
+).read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 
 
@@ -300,6 +303,13 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardAiDetailModal", AI_DETAIL_MODAL_JS)
         self.assertIn("HanstockDashboardAiDetailModal.render", APP_JS)
+
+    def test_strategy_settings_save_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-strategy-settings-save.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardStrategySettingsSave", STRATEGY_SETTINGS_SAVE_JS)
+        self.assertIn("HanstockDashboardStrategySettingsSave.handle", APP_JS)
 
     def test_dashboard_exposes_daily_market_regime_panel(self):
         required_markup = (
