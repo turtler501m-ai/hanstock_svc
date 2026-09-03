@@ -498,7 +498,7 @@ def _sync_order_status_from_history(
             order_status = "partial"
         else:
             order_status = "filled"
-        response_msg = f"Kiwoom order history sync: {order_status}"
+        response_msg = f"Namuh order history sync: {order_status}"
         snapshot = {
             **trade,
             "ts": _history_timestamp(row),
@@ -564,7 +564,7 @@ def _sync_order_status_from_history(
     balance_sync = _sync_order_status_from_balance(
         api,
         unmatched,
-        reason="order absent from Kiwoom history",
+        reason="order absent from Namuh history",
         close_unreserved_sells=True,
     ) if unmatched else {"ok": True, "checked_count": 0, "updated_count": 0, "orders": []}
     updated_count += int(balance_sync.get("updated_count", 0) or 0)

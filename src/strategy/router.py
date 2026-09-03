@@ -12,9 +12,9 @@ from src.execution_service import ExecutionContext, resolve_execution_decision
 from src.repositories import ApprovalRepository
 from src.utils.logger import logger
 
-_RATE_LIMIT_BACKOFF_SECONDS = float(os.environ.get("KIWOOM_ORDER_RATE_LIMIT_BACKOFF_SECONDS", "10.0"))
-_RATE_LIMIT_MAX_RETRIES = int(os.environ.get("KIWOOM_ORDER_RATE_LIMIT_RETRIES", "2"))
-_ORDER_MIN_INTERVAL_SECONDS = float(os.environ.get("KIWOOM_ORDER_MIN_INTERVAL_SECONDS", "0.0"))
+_RATE_LIMIT_BACKOFF_SECONDS = float(os.environ.get("NAMUH_ORDER_RATE_LIMIT_BACKOFF_SECONDS", "10.0"))
+_RATE_LIMIT_MAX_RETRIES = int(os.environ.get("NAMUH_ORDER_RATE_LIMIT_RETRIES", "2"))
+_ORDER_MIN_INTERVAL_SECONDS = float(os.environ.get("NAMUH_ORDER_MIN_INTERVAL_SECONDS", "0.0"))
 
 
 def _is_broker_rate_limit_message(message: str) -> bool:

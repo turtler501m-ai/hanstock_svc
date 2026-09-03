@@ -52,7 +52,7 @@ def get_balance_data(
         except concurrent.futures.TimeoutError:
             if cached is not None:
                 return cached
-            raise RuntimeError("Kiwoom balance API timed out")
+            raise RuntimeError("Namuh balance API timed out")
         except recoverable_errors:
             if allow_cache:
                 cached = load_cache()
@@ -90,7 +90,7 @@ def persist_account_equity(balance_data: dict, parsed_balance: dict, recorder: C
             total_equity=float(parsed_balance.get("total_eval") or 0),
             cash=float(parsed_balance.get("cash") or 0),
             stock_value=float(parsed_balance.get("stock_eval") or 0),
-            source="kiwoom_balance",
+            source="namuh_balance",
             raw_summary_hash=summary_hash,
         )
     except (sqlite3.Error, OSError, ValueError, TypeError):

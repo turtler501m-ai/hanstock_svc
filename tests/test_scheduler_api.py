@@ -136,7 +136,7 @@ class SchedulerApiTests(unittest.TestCase):
                     "strategy_id": "heikin_ashi_scalping_strategy",
                     "recorded_at": "2026-08-28T09:30:00+09:00",
                     "status": "failed",
-                    "message": "키움 주문 실패: 주문가능금액을 확인하세요.",
+                    "message": "나무 주문 실패: 주문가능금액을 확인하세요.",
                 }],
                 "errors": [],
             },
@@ -147,7 +147,7 @@ class SchedulerApiTests(unittest.TestCase):
         self.assertEqual(schedule["last_status"], "failed")
         self.assertFalse(schedule["last_ok"])
         self.assertEqual(schedule["last_result_at"], "2026-08-28T09:30:00+09:00")
-        self.assertEqual(schedule["last_errors"][0]["message"], "키움 주문 실패: 주문가능금액을 확인하세요.")
+        self.assertEqual(schedule["last_errors"][0]["message"], "나무 주문 실패: 주문가능금액을 확인하세요.")
 
     @patch("src.db.repository.load_strategy_universe", return_value=[])
     @patch(

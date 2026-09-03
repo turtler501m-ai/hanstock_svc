@@ -65,7 +65,7 @@ class TestHybridScanner(unittest.TestCase):
         # 005930이 정상적으로 1종목 scanned 완료되었는지 검증
         self.assertEqual(res["scanned"], 1)
 
-    def test_kiwoom_scan_source_skips_yfinance_and_uses_api(self):
+    def test_namuh_scan_source_skips_yfinance_and_uses_api(self):
         from src.broker.models import DailyBar
         mock_data = []
         start_date = datetime(2026, 1, 1)
@@ -78,7 +78,7 @@ class TestHybridScanner(unittest.TestCase):
 
         api = Mock()
         api.fetch_daily_bars.return_value = mock_data
-        with patch.object(config, "candidate_scan_source", "kiwoom"), patch(
+        with patch.object(config, "candidate_scan_source", "namuh"), patch(
             "src.strategy.seven_split.yf.download"
         ) as yfinance_download:
             res = find_candidates(

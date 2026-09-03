@@ -52,7 +52,7 @@ def _is_ambiguous_submission_exception(exc: Exception) -> bool:
 
 
 def _run_submitted_order_sync() -> None:
-    """Reconcile newly submitted orders after Kiwoom has had time to settle."""
+    """Reconcile newly submitted orders after Namuh has had time to settle."""
     initial_delay = max(0.0, float(os.environ.get("HANSTOCK_POST_ORDER_SYNC_DELAY_SECONDS", "3")))
     retry_delay = max(0.0, float(os.environ.get("HANSTOCK_POST_ORDER_SYNC_RETRY_SECONDS", "5")))
     attempts = max(1, int(os.environ.get("HANSTOCK_POST_ORDER_SYNC_ATTEMPTS", "3")))
@@ -147,7 +147,7 @@ def _claim_pending_approval(approval_id: int) -> dict:
 def _approval_response_msg(result: dict, *, ok: bool) -> str:
     response_msg = str(result.get("msg1", ""))
     if ok and not trader.runtime_flags().dry_run and trader.runtime_flags().trading_env == "demo":
-        response_msg = f"{response_msg} (키움 모의투자 주문 접수 완료, 체결 여부는 주문내역 동기화 후 확인)"
+        response_msg = f"{response_msg} (나무 모의투자 주문 접수 완료, 체결 여부는 주문내역 동기화 후 확인)"
     return response_msg
 
 
@@ -562,7 +562,7 @@ def _approve_pending_approval_serialized(
         ambiguous = submission_started and _is_ambiguous_submission_exception(e)
         status = "broker_unknown" if ambiguous else "failed"
         response_msg = (
-            f"Broker response was not received; verify Kiwoom order history before any retry. ({e})"
+            f"Broker response was not received; verify Namuh order history before any retry. ({e})"
             if ambiguous
             else str(e)
         )

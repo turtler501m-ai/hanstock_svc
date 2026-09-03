@@ -79,7 +79,7 @@ def _history_original_order_id(row: dict) -> str:
 
 
 def _normalize_history_cancellations(history: list[dict]) -> list[dict]:
-    """Fold Kiwoom's separate cancellation rows into their original orders."""
+    """Fold Namuh's separate cancellation rows into their original orders."""
     canceled_original_ids = {
         _history_original_order_id(row)
         for row in history
@@ -241,6 +241,6 @@ def _history_row_to_trade(row: dict) -> dict:
         "order_status": order_status,
         "filled_qty": filled_qty,
         "filled_price": price,
-        "response_msg": "Kiwoom trade history import",
+        "response_msg": "Namuh trade history import",
         "broker_result": json.dumps(row, ensure_ascii=False),
     }

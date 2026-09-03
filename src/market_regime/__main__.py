@@ -10,7 +10,7 @@ from .service import MarketRegimeService
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Collect and inspect the Kiwoom KR market regime")
+    parser = argparse.ArgumentParser(description="Collect and inspect the Namuh KR market regime")
     parser.add_argument("command", choices=("refresh", "preflight", "current", "history", "diagnostics"), nargs="?", default="refresh")
     parser.add_argument("--market", default="KR")
     parser.add_argument("--days", type=int, default=30)

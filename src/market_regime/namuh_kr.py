@@ -18,7 +18,7 @@ KR_REGIME_BREADTH_UNIVERSE = (
 )
 
 
-class KiwoomMarketBroker(Protocol):
+class NamuhMarketBroker(Protocol):
     def get_index_daily(self, index_code: str, n: int = 90) -> list[dict[str, Any]]: ...
     def fetch_daily_bars(self, symbol: str, count: int = 60) -> list[Any]: ...
 
@@ -58,8 +58,8 @@ def build_index_features(code: str, rows: list[Any]) -> IndexFeatures:
     )
 
 
-class KiwoomKrCollector:
-    def __init__(self, broker: KiwoomMarketBroker, universe: tuple[str, ...] = KR_REGIME_BREADTH_UNIVERSE):
+class NamuhKrCollector:
+    def __init__(self, broker: NamuhMarketBroker, universe: tuple[str, ...] = KR_REGIME_BREADTH_UNIVERSE):
         self.broker, self.universe = broker, universe
         self.index_failures: dict[str, str] = {}
 

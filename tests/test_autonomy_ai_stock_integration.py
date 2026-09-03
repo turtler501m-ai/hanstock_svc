@@ -199,7 +199,7 @@ class AIStockAutonomyIntegrationTests(unittest.TestCase):
         },
     )
     @patch("src.strategy.autonomy.ai_stock_integration.ApprovalService")
-    def test_demo_approval_submits_canonical_order_to_kiwoom_demo(
+    def test_demo_approval_submits_canonical_order_to_namuh_demo(
         self,
         approval_service,
         get_order,

@@ -12,7 +12,7 @@
             : (enabled ? 'OPENAI_API_KEY 없음: Seven Split 규칙 점수로 분석' : 'Seven Split 규칙 점수만 사용');
         const ruleWeight = Number(ai.rule_weight ?? 1) * 100;
         const scoreWeight = Number(ai.score_weight ?? 0) * 100;
-        const accountText = ai.account || config.kiwoom_account || '-';
+        const accountText = ai.account || config.namuh_account || '-';
         const flow = ai.auto_approve ? 'AI 제안 후 자동승인 설정 켜짐' : 'AI 제안 후 승인 대기';
         setText('ai-summary-model', `${modelStatus} · ${ai.model_name || '-'}`);
         setText('ai-summary-model-detail', modelDetail);

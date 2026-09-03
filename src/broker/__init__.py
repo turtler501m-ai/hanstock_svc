@@ -1,4 +1,4 @@
-"""Broker-neutral contracts for domestic-stock integrations."""
+"""Broker-neutral contracts for the Namuh domestic-stock integration."""
 
 from src.broker.base import DomesticStockBroker
 from src.broker.factory import create_domestic_stock_broker

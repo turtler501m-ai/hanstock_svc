@@ -403,7 +403,7 @@ def apply_broker_balance_reconciliation(payload: dict = Body(...)):
         parsed = _parse_balance(_get_balance_data(_get_api(), allow_cache=False))
     except Exception as exc:
         raise HTTPException(
-            status_code=502, detail=f"Kiwoom live balance validation failed: {exc}"
+            status_code=502, detail=f"Namuh live balance validation failed: {exc}"
         ) from exc
     live_quantities = {
         str(item.get("symbol") or "").strip(): _to_int(item.get("qty"))
@@ -773,7 +773,7 @@ def _current_sellable_qty(symbol: str) -> int:
     try:
         parsed = _parse_balance(_get_balance_data(_get_api(), allow_cache=False))
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Kiwoom balance API request failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"Namuh balance API request failed: {exc}") from exc
     for holding in parsed.get("holdings", []):
         if str(holding.get("symbol") or "").strip() == str(symbol).strip():
 
@@ -788,7 +788,7 @@ def _open_sell_order_from_history(api, symbol: str) -> dict | None:
     try:
         history = api.get_trade_history(start_date, end_date)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Kiwoom order history request failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"Namuh order history request failed: {exc}") from exc
     candidates = []
     for row in history:
         if _history_symbol(row) != str(symbol).strip():
@@ -1035,11 +1035,11 @@ def cancel_blocking_sell_and_retry_approval(approval_id: int):
             cancel_all=True,
         )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Kiwoom order cancellation failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"Namuh order cancellation failed: {exc}") from exc
     if str(cancel_result.get("rt_cd") or "") != "0":
         raise HTTPException(
             status_code=409,
-            detail=f"Kiwoom order cancellation rejected: {cancel_result.get('msg1') or cancel_result}",
+            detail=f"Namuh order cancellation rejected: {cancel_result.get('msg1') or cancel_result}",
         )
 
     trader.update_trade_order_status(
@@ -1047,7 +1047,7 @@ def cancel_blocking_sell_and_retry_approval(approval_id: int):
         order_status="canceled",
         filled_qty=_history_fill_qty(blocking_order),
         filled_price=_history_fill_price(blocking_order),
-        response_msg="Kiwoom blocking sell order canceled before retry",
+        response_msg="Namuh blocking sell order canceled before retry",
         broker_result=cancel_result,
     )
     _clear_balance_cache()
@@ -1322,7 +1322,7 @@ def _cancel_open_buy_orders_before_liquidation(api) -> list[dict]:
             )
         except Exception as exc:
             message = str(exc)
-            # Kiwoom demo can return RC4032 when a locally-open order already
+            # Namuh demo can return RC4032 when a locally-open order already
             # became terminal at the broker.  That stale local state must not
             # prevent emergency liquidation of the current holdings.
             if "RC4032" in message or "원주문번호가 존재하지 않습니다" in message:
@@ -1392,12 +1392,12 @@ def sell_all_holdings(payload: dict | None = Body(default=None)):
         )
         parsed = _parse_balance(_get_balance_data(api, allow_cache=False))
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Kiwoom balance API request failed: {e}") from e
+        raise HTTPException(status_code=502, detail=f"Namuh balance API request failed: {e}") from e
 
     orders = []
     skipped = []
     with _holding_sell_request_lock:
-        # Submitted broker orders already reserve their quantity at Kiwoom and
+        # Submitted broker orders already reserve their quantity at Namuh and
         # therefore reduce sellable_qty. Only approvals not yet submitted need
         # a symbol-level duplicate guard here; otherwise newly filled buys could
 
@@ -1470,7 +1470,7 @@ def sell_all_holdings(payload: dict | None = Body(default=None)):
         "auto_approval_queued": auto_approval_queued,
         "new_buys_halted": halt_new_buys,
         "canceled_buy_orders": canceled_buy_orders,
-        "fill_status_note": "키움 주문 접수 결과입니다. 실제 체결 여부는 주문내역 동기화 후 확정됩니다.",
+        "fill_status_note": "나무 주문 접수 결과입니다. 실제 체결 여부는 주문내역 동기화 후 확정됩니다.",
         "skipped_count": len(skipped),
         "skipped": skipped,
         "orders": created,
@@ -1499,7 +1499,7 @@ def _strategy_attribution_sell_orders(
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Kiwoom balance API request failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"Namuh balance API request failed: {exc}") from exc
 
     target_symbol = str(symbol or "").strip()
     orders = []
@@ -1644,7 +1644,7 @@ def _queue_strategy_attribution_sells(
         "post_fill_verification_required": bool(approval_ids),
         "orders": [{"id": approval_id, "status": "pending"} for approval_id in approval_ids],
         "auto_approval_queued": auto_approval_queued,
-        "fill_status_note": "키움 주문 접수 후 실제 체결 여부는 주문내역 동기화에서 확정됩니다.",
+        "fill_status_note": "나무 주문 접수 후 실제 체결 여부는 주문내역 동기화에서 확정됩니다.",
     }
 
 

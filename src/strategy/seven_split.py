@@ -443,8 +443,8 @@ def build_scan_universe(api, held_symbols: set[str]) -> list[str]:
     """매수 후보 스캔 대상 종목 코드 목록을 구성한다.
 
     1순위: 조건 모니터 결과
-    2순위: 키움 거래량 상위 config.scan_universe_size종목
-    3순위: KOSPI_UNIVERSE 정적 풀 (키움 API 실패 시 폴백)
+    2순위: 나무 거래량 상위 config.scan_universe_size종목
+    3순위: KOSPI_UNIVERSE 정적 풀 (나무 API 실패 시 폴백)
     WATCHLIST는 항상 포함되며, 보유 중인 종목은 제외된다.
     """
     from src.strategy.condition_monitor import get_fresh_condition_symbols
@@ -551,7 +551,7 @@ def find_candidates(
     batch = None
     scan_error: str | None = None
     scan_source = str(getattr(config, "candidate_scan_source", "yfinance") or "yfinance").strip().lower()
-    broker_first_sources = {"broker", "kiwoom", "real"}
+    broker_first_sources = {"broker", "namuh", "real"}
     if scan_source in broker_first_sources:
         scan_error = f"candidate scan source is {scan_source}; using configured broker API/cache"
         logger.info(f"[SCAN] Broker API/cache scan selected: {len(scan_list)} symbols (source={scan_source})")
@@ -591,7 +591,7 @@ def find_candidates(
                 from src.broker.factory import create_domestic_stock_broker
                 api = create_domestic_stock_broker()
             except Exception as api_err:
-                logger.warning(f"[SCAN] 키움 API 객체 생성 실패: {api_err}")
+                logger.warning(f"[SCAN] 나무 API 객체 생성 실패: {api_err}")
         
         for code in scan_list:
             try:
@@ -609,7 +609,7 @@ def find_candidates(
                 today_str = datetime.now(KST).strftime("%Y-%m-%d")
                 has_today = any(c.get("date") == today_str for c in db_charts)
                 
-                # 데이터가 아예 없거나 최근 데이터가 없고 키움 API가 사용 가능할 때 동기화 진행
+                # 데이터가 아예 없거나 최근 데이터가 없고 나무 API가 사용 가능할 때 동기화 진행
                 # 대형 스캔에서는 충분한 캐시가 있으면 추가 API 호출을 생략해 타임아웃을 방지합니다.
                 is_large_scan = len(scan_list) > 50
                 needs_sync = False
@@ -619,7 +619,7 @@ def find_candidates(
                     needs_sync = True
 
                 if needs_sync and api is not None:
-                    logger.debug(f"[SCAN] {code}의 캐시 데이터가 부족하여 키움 API에서 시세를 가져옵니다.")
+                    logger.debug(f"[SCAN] {code}의 캐시 데이터가 부족하여 나무 API에서 시세를 가져옵니다.")
                     try:
                         broker_data = [{
                             "stck_bsop_date": row.date,
@@ -633,7 +633,7 @@ def find_candidates(
                             save_daily_charts(code, broker_data)
                             db_charts = load_daily_charts(code, limit=strategy_history_limit)
                     except Exception as broker_err:
-                        logger.warning(f"[SCAN] {code} 키움 API 조회 실패: {broker_err}")
+                        logger.warning(f"[SCAN] {code} 나무 API 조회 실패: {broker_err}")
                 
                 if len(db_charts) < minimum_history:
                     logger.warning(f"[SCAN] {code} 시세 데이터 부족으로 분석 생략 (보유 개수: {len(db_charts)}개)")
@@ -771,7 +771,7 @@ def find_candidates(
             "scanned": len(scan_summary),
             "min_score": min_score,
             "scan_summary": scan_summary,
-            "scan_error": None if scan_summary else "No charts cached or fetched successfully via Kiwoom"
+            "scan_error": None if scan_summary else "No charts cached or fetched successfully via Namuh"
         }
 
     for code in scan_list:

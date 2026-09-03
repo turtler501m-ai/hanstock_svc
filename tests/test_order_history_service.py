@@ -9,7 +9,7 @@ from src.dashboard.services.order_history_service import (
 
 
 class OrderHistoryServiceTests(unittest.TestCase):
-    def test_parses_kiwoom_execution_price_and_remaining_quantity(self):
+    def test_parses_namuh_execution_price_and_remaining_quantity(self):
         row = {
             "cntr_uv": "0000026900",
             "ord_remnq": "0000000056",
@@ -18,7 +18,7 @@ class OrderHistoryServiceTests(unittest.TestCase):
         self.assertEqual(_history_fill_price(row), 26900)
         self.assertEqual(_history_remaining_qty(row), 56)
 
-    def test_folds_separate_kiwoom_cancellation_into_original_order(self):
+    def test_folds_separate_namuh_cancellation_into_original_order(self):
         original = {"ord_no": "0035136", "ord_qty": "5", "cncl_yn": "N"}
         cancellation = {
             "ord_no": "0065539", "ori_ord": "0035136", "mdfy_cncl": "취소",

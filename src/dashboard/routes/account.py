@@ -294,9 +294,9 @@ def _hide_active_sell_approval_holdings(parsed: dict) -> dict:
 @router.get("/api/health")
 def health():
     missing = _required_env_missing()
-    environment = str(getattr(trader.config, "kiwoom_trading_env", "demo") or "demo")
-    account = getattr(trader.config, f"kiwoom_domestic_{environment}_account", "")
-    account_warning = "" if str(account).strip() else f"KIWOOM_DOMESTIC_{environment.upper()}_ACCOUNT is required"
+    environment = str(getattr(trader.config, "nhplug_environment", "mock") or "mock")
+    account = getattr(trader.config, "nhplug_account", "")
+    account_warning = "" if str(account).strip() else "NHPLUG_ACCOUNT is required"
     demo_readiness = _demo_trading_readiness()
     from src.db.repository import _load_token_usage
     return {
@@ -469,13 +469,13 @@ def get_balance():
             parsed["_cache"] = balance_data["_cache"]
         return parsed
     except SystemExit as e:
-        raise HTTPException(status_code=502, detail=f"Kiwoom API initialization failed: {e}") from e
+        raise HTTPException(status_code=502, detail=f"Namuh API initialization failed: {e}") from e
     except RuntimeError as e:
         if "timed out" in str(e):
-            raise HTTPException(status_code=504, detail=f"Kiwoom balance API timed out after {BALANCE_FETCH_TIMEOUT_SECONDS:g}s") from e
-        raise HTTPException(status_code=502, detail=f"Kiwoom API request failed: {e}") from e
+            raise HTTPException(status_code=504, detail=f"Namuh balance API timed out after {BALANCE_FETCH_TIMEOUT_SECONDS:g}s") from e
+        raise HTTPException(status_code=502, detail=f"Namuh API request failed: {e}") from e
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Kiwoom API request failed: {e}") from e
+        raise HTTPException(status_code=502, detail=f"Namuh API request failed: {e}") from e
 
 
 

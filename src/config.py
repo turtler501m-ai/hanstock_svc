@@ -13,14 +13,11 @@ if not _TESTING:
     load_dotenv(override=True)
 
 class Settings(BaseSettings):
-    domestic_stock_broker: str = "kiwoom"
-    kiwoom_trading_env: str = "demo"
-    kiwoom_domestic_demo_account: str = ""
-    kiwoom_domestic_demo_app_key: str = ""
-    kiwoom_domestic_demo_app_secret: str = ""
-    kiwoom_domestic_real_account: str = ""
-    kiwoom_domestic_real_app_key: str = ""
-    kiwoom_domestic_real_app_secret: str = ""
+    domestic_stock_broker: str = "namuh"
+    nhplug_environment: str = "mock"
+    nhplug_account: str = ""
+    nhplug_app_key: str = ""
+    nhplug_app_secret: str = ""
 
     # Notifications
     slack_webhook_url: Optional[str] = ""

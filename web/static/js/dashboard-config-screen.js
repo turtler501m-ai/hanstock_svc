@@ -3,7 +3,7 @@
     async function renderConfig(deps) {
         const config = await deps.fetchJson('/api/config');
         deps.setLatestConfig(config);
-        deps.setText('val-account', config.kiwoom_account || '-');
+        deps.setText('val-account', config.namuh_account || '-');
         deps.renderSummary(config);
         const settings = document.getElementById('settings-grid');
         if (!settings) return;

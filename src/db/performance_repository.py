@@ -15,7 +15,7 @@ REVIEW_DECISIONS = {"monitor", "pause", "reduce", "increase", "retire"}
 
 
 def account_scope_key() -> str:
-    raw = f"kiwoom:{config.trading_env}"
+    raw = f"namuh:{config.trading_env}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
 
 

@@ -9,7 +9,7 @@
 
 Hanstock은 국내 주식 자동매매를 위한 독립 Python/FastAPI 서비스다. 주요 기능은 다음과 같다.
 
-- Kiwoom REST API를 통한 국내 주식 계좌·시세·주문 연동
+- Namuh REST API를 통한 국내 주식 계좌·시세·주문 연동
 - FastAPI 기반 웹 대시보드와 JSON API
 - 전통 전략, 사용자 정의 전략, AI 주식 전략의 스캔·검증·백테스트·페이퍼 트레이딩
 - 스케줄러와 VM cron을 이용한 주기적 분석·주문 실행
@@ -32,7 +32,7 @@ src/
 ├─ ai_stock/              AI 후보 발굴·점수화·포트폴리오·자동화
 ├─ market_regime/         시장 국면 수집·분류·정책
 ├─ application/orders/    통합 주문 원장·복구·조정·상태 모델
-├─ broker/                브로커 계약과 Kiwoom 구현
+├─ broker/                브로커 계약과 Namuh 구현
 ├─ db/                    bounded repository, migration, schema
 ├─ notifier/              Slack 알림
 └─ utils/                 로거, 락, 캘린더, 온라인 접근 차단
@@ -90,7 +90,7 @@ scripts\local\server.cmd restart
   → 시장국면 크기 조정·RiskEngine
   → 실행계획/승인 큐 기록
   → 승인 조건 확인
-  → Kiwoom 주문 제출 또는 dry-run 기록
+  → Namuh 주문 제출 또는 dry-run 기록
   → 거래/주문 상태 저장
   → 브로커 이력과 reconciliation
   → 대시보드·Slack에 결과 표시
@@ -121,7 +121,7 @@ MarketContext + PortfolioContext
 
 ### 브로커 계층
 
-`DomesticStockBroker` Protocol이 잔고, quote, 일봉, 신규·정정·취소 주문, 거래 이력, 주문 스냅샷 계약을 정의한다. `KiwoomBrokerAdapter`는 Kiwoom 응답의 필드명·부호·종목코드(`A005930` 등)를 내부 모델로 정규화한다. `factory.py`가 설정에 따라 브로커를 생성하므로 전략은 Kiwoom 응답 형식에 직접 의존하지 않는다.
+`DomesticStockBroker` Protocol이 잔고, quote, 일봉, 신규·정정·취소 주문, 거래 이력, 주문 스냅샷 계약을 정의한다. `NHPlugBrokerAdapter`는 Namuh 응답의 필드명·부호·종목코드(`A005930` 등)를 내부 모델로 정규화한다. `factory.py`가 설정에 따라 브로커를 생성하므로 전략은 Namuh 응답 형식에 직접 의존하지 않는다.
 
 ### 전략 계층
 
@@ -185,7 +185,7 @@ Windows 개발 환경은 `tools/server.ps1`이 서버 시작·중지·상태·�
 
 ## 8. 테스트와 검증
 
-테스트는 `unittest`로 작성되어 있으며 네트워크 guard가 외부 호출을 차단하고 Kiwoom·Slack·AI 호출을 주입/모킹하는 구조다. 특히 다음 계약이 강하게 보호된다.
+테스트는 `unittest`로 작성되어 있으며 네트워크 guard가 외부 호출을 차단하고 Namuh·Slack·AI 호출을 주입/모킹하는 구조다. 특히 다음 계약이 강하게 보호된다.
 
 - trader/risk/order router 및 주문 상태
 - 승인 분류·중복·재시도·취소
@@ -217,7 +217,7 @@ powershell -ExecutionPolicy Bypass -File tools\check-encoding.ps1
 |---|---|
 | 설정·주문 가능 여부 | `src/config.py`, `src/trader.py` |
 | FastAPI 앱 구성 | `src/dashboard/core.py`, `src/dashboard/__init__.py` |
-| 계좌·주문 브로커 계약 | `src/broker/base.py`, `src/broker/kiwoom_adapter.py`, `src/broker/factory.py` |
+| 계좌·주문 브로커 계약 | `src/broker/base.py`, `src/broker/nhplug_adapter.py`, `src/broker/factory.py` |
 | 일반 스케줄 실행 | `src/scheduler.py`, `src/strategy_scheduler.py` |
 | 자율전략 실행 | `src/strategy/autonomy/orchestrator.py`, `src/autonomy_service.py` |
 | 주문 원장·복구 | `src/application/orders/`, `src/strategy/autonomy/order_state.py` |

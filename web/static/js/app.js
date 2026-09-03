@@ -786,7 +786,7 @@ async function renderBalance() {
         renderRisk(balance);
         document.getElementById('last-updated').textContent = `마지막 갱신 ${new Date().toLocaleTimeString('ko-KR')}`;
         if (balance._cache?.stale) {
-            setStatus(`키움 계좌 API가 일시 실패해 최근 정상 데이터(${balance._cache.cached_at || '저장됨'})를 표시합니다.`);
+            setStatus(`나무 계좌 API가 일시 실패해 최근 정상 데이터(${balance._cache.cached_at || '저장됨'})를 표시합니다.`);
         } else {
             setStatus('대시보드 연결 완료. 계좌 정보를 불러왔습니다.', true);
         }
@@ -817,7 +817,7 @@ function renderTotalPnlBreakdown({ principal, displayTotal, accountPnl, realized
     const otherChange = accountPnl - realizedPnl - evalPnl;
     const rows = [
         ['계좌 전체', '초기자산 대비 총손익', accountPnl, `${formatCurrency(principal)} → ${formatCurrency(displayTotal)}`],
-        ['확정 손익', '기록 이후 실현손익', realizedPnl, `${recordStartedAt ? recordStartedAt.slice(0, 10) + '부터 ' : ''}키움 체결기록으로 계산`],
+        ['확정 손익', '기록 이후 실현손익', realizedPnl, `${recordStartedAt ? recordStartedAt.slice(0, 10) + '부터 ' : ''}나무 체결기록으로 계산`],
         ['보유 손익', '현재 평가손익', evalPnl, '현재 보유 종목의 증권사 평가손익 합계'],
         ['기준 조정', '기록 시작 이전·미집계 누적손익', otherChange, '과거 매입원가 누락분과 수수료·세금·입출금 포함 가능'],
     ];
@@ -2521,7 +2521,7 @@ async function renderReconciliationIssues() {
 async function applyBrokerBalanceReconciliation(options = {}) {
     if (!reconciliationIssueCount) return;
     const skipConfirm = options.skipConfirm === true;
-    const warning = `${reconciliationIssueCount}건의 내부 수량을 현재 키움 실제 잔고에 맞춥니다.\n변경 내용은 감사 원장에 기록되며 현금·손익 기록은 임의로 변경하지 않습니다.\n\n계속할까요?`;
+    const warning = `${reconciliationIssueCount}건의 내부 수량을 현재 나무 실제 잔고에 맞춥니다.\n변경 내용은 감사 원장에 기록되며 현금·손익 기록은 임의로 변경하지 않습니다.\n\n계속할까요?`;
     if (!skipConfirm && !window.confirm(warning)) return;
     const button = document.getElementById(options.buttonId || 'btn-apply-broker-balance');
     setButtonBusy(button, true);
@@ -2549,7 +2549,7 @@ let bulkReconciliationRunId = null;
 
 async function resolveAllReconciliationIssues() {
     if (!reconciliationIssueCount) return;
-    const warning = `주문 상태와 키움 보유잔고를 먼저 현행화한 뒤 ${reconciliationIssueCount}건의 잔고 불일치를 최신 증권사 수량으로 일괄 해결합니다.\n\n계속할까요?`;
+    const warning = `주문 상태와 나무 보유잔고를 먼저 현행화한 뒤 ${reconciliationIssueCount}건의 잔고 불일치를 최신 증권사 수량으로 일괄 해결합니다.\n\n계속할까요?`;
     if (!window.confirm(warning)) return;
     const button = document.getElementById('btn-resolve-all-reconciliation');
     setButtonBusy(button, true);

@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/market-regime", tags=["market-regime"])
 
 
 def _service(*, refresh: bool = False) -> MarketRegimeService:
-    # Stored dashboard reads must not initialize credentials or contact Kiwoom.
+    # Stored dashboard reads must not initialize credentials or contact Namuh.
     broker = (
         create_domestic_stock_broker(order_submission_enabled=False)
         if refresh else None

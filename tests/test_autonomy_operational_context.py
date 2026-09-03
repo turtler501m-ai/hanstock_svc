@@ -276,7 +276,7 @@ class MarketRegimeClassificationTests(unittest.TestCase):
                 "snapshot_id": 91, "session_date": "20260723",
                 "evaluated_at": now.isoformat(), "regime": "bear_rally",
                 "quality": "good", "confidence": 0.81,
-                "risk_multiplier": 0.5, "source": "kiwoom",
+                "risk_multiplier": 0.5, "source": "namuh",
                 "new_risk_allowed": True,
             },
         )

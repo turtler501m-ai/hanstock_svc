@@ -20,7 +20,7 @@ if os.environ.get("HANSTOCK_TESTING") != "1":
 from src import trader  # noqa: E402
 from src.config import apply_env_updates  # noqa: E402
 from src.broker import DomesticStockBroker, create_domestic_stock_broker  # noqa: E402
-from src.broker.kiwoom_client import KiwoomApiError  # noqa: E402
+from src.broker.nhplug_client import NHPlugApiError  # noqa: E402
 from src.notifier.slack import slack_order as _slack_order, slack_error as _slack_error  # noqa: E402
 from src.online_access import OnlineAccessBlockedError  # noqa: E402
 from src.runtime_state import PersistentRuntimeState  # noqa: E402
@@ -115,7 +115,7 @@ DashboardOperationError = (
     ImportError,
     sqlite3.Error,
     subprocess.SubprocessError,
-    KiwoomApiError,
+    NHPlugApiError,
     OnlineAccessBlockedError,
 )
 
@@ -194,7 +194,7 @@ VENDOR_PROJECTS = {
         "package": "finrl",
         "dashboard": "/finrl",
         "license_hint": "MIT",
-        "adapter": "Weight-centric allocation for current Kiwoom holdings",
+        "adapter": "Weight-centric allocation for current Namuh holdings",
         "entrypoints": [
             "finrl/train.py",
             "finrl/test.py",
@@ -292,9 +292,7 @@ def _required_env_missing() -> list[str]:
     override = _public_override("_required_env_missing", _required_env_missing)
     if override is not None:
         return override()
-    environment = str(getattr(trader.config, "kiwoom_trading_env", "demo") or "demo").lower()
-    prefix = "KIWOOM_DOMESTIC_REAL" if environment == "real" else "KIWOOM_DOMESTIC_DEMO"
-    required = [f"{prefix}_APP_KEY", f"{prefix}_APP_SECRET", f"{prefix}_ACCOUNT"]
+    required = ["NHPLUG_APP_KEY", "NHPLUG_APP_SECRET", "NHPLUG_ACCOUNT"]
     missing = [name for name in required if not os.environ.get(name)]
     return missing
 
@@ -347,9 +345,9 @@ def _get_api() -> DomesticStockBroker:
 
 
 def _account_cache_key() -> str:
-    environment = str(getattr(trader.config, "kiwoom_trading_env", "demo") or "demo").lower()
-    account = getattr(trader.config, f"kiwoom_domestic_{environment}_account", "")
-    source = f"kiwoom:{environment}:{account}"
+    environment = str(getattr(trader.config, "nhplug_environment", "mock") or "mock").lower()
+    account = getattr(trader.config, "nhplug_account", "")
+    source = f"namuh:{environment}:{account}"
     return hashlib.sha256(source.encode("utf-8")).hexdigest()
 
 
@@ -549,7 +547,7 @@ def _reclaim_stale_executing_approvals(max_age_seconds: int | None = None) -> in
                 """
                 UPDATE approvals
                 SET status = 'broker_unknown',
-                    response_msg = 'Order submission was interrupted or the broker did not respond before timeout. Check Kiwoom order history before retrying.',
+                    response_msg = 'Order submission was interrupted or the broker did not respond before timeout. Check Namuh order history before retrying.',
                     updated_at = ?
                 WHERE status = 'executing' AND updated_at < ?
                 """,
@@ -864,8 +862,8 @@ def _expand_virtual_env_updates(updates: dict[str, str]) -> dict[str, str]:
 
 
 def _apply_runtime_env_updates(updates: dict[str, str]) -> None:
-    environment = str(getattr(trader.config, "kiwoom_trading_env", "demo") or "demo").lower()
-    account_attr = f"kiwoom_domestic_{environment}_account"
+    environment = str(getattr(trader.config, "nhplug_environment", "mock") or "mock").lower()
+    account_attr = "nhplug_account"
     previous_account = getattr(trader.config, account_attr, "")
     apply_env_updates(updates)
     trader.sync_legacy_config_aliases()
@@ -904,10 +902,10 @@ def _ai_analysis_config() -> dict:
     ai_enabled = bool(getattr(trader.config, "ai_strategy_enabled", False))
     score_weight = max(0.0, min(1.0, float(getattr(trader.config, "ai_score_weight", 0.0) or 0.0)))
     candidate_limit = int(getattr(trader.config, "ai_candidate_limit", 5) or 5)
-    kiwoom_environment = str(getattr(trader.config, "kiwoom_trading_env", "demo") or "demo").lower()
-    kiwoom_account = str(getattr(
+    namuh_environment = str(getattr(trader.config, "nhplug_environment", "mock") or "mock").lower()
+    namuh_account = str(getattr(
         trader.config,
-        f"kiwoom_domestic_{kiwoom_environment}_account",
+        "nhplug_account",
         "",
     ) or "")
     return {
@@ -917,9 +915,9 @@ def _ai_analysis_config() -> dict:
         "model_name": model_name,
         "model_type": "OpenAI text model",
         "model_available": bool(api_key),
-        "account_priority": "current_kiwoom_account",
-        "account": kiwoom_account,
-        "account_label": "현재 키움 계좌 1순위",
+        "account_priority": "current_namuh_account",
+        "account": namuh_account,
+        "account_label": "현재 나무 계좌 1순위",
         "openai_account_priority": "openai_api_first",
         "openai_api_configured": bool(api_key),
         "score_weight": score_weight if ai_enabled else 0.0,
@@ -930,7 +928,7 @@ def _ai_analysis_config() -> dict:
         "require_backtest_pass": bool(getattr(trader.config, "ai_require_backtest_pass", True)),
         "fallback_mode": "rule_based" if (not ai_enabled or not api_key) else "",
         "flow": [
-            "현재 키움 계좌의 보유/현금/리스크 상태를 1순위 기준으로 읽습니다.",
+            "현재 나무 계좌의 보유/현금/리스크 상태를 1순위 기준으로 읽습니다.",
             "관심종목과 거래량 상위 종목의 RSI, MACD, Bollinger, 추세, 거래량 피처를 계산합니다.",
             f"AI가 켜져 있고 OPENAI_API_KEY가 있으면 OpenAI Responses API로 상위 {candidate_limit}개 후보만 우선 평가합니다.",
             "최종 점수는 룰 점수와 AI 점수를 AI_SCORE_WEIGHT 비율로 결합합니다.",
@@ -1002,20 +1000,20 @@ def _vendor_status(slug: str, meta: dict) -> dict:
 
 def _demo_trading_readiness() -> dict:
     missing = _required_env_missing()
-    environment = str(getattr(trader.config, "kiwoom_trading_env", "demo") or "demo").lower()
-    account = str(getattr(trader.config, f"kiwoom_domestic_{environment}_account", "") or "")
+    environment = str(getattr(trader.config, "nhplug_environment", "mock") or "mock").lower()
+    account = str(getattr(trader.config, "nhplug_account", "") or "")
     account_warning = _account_format_warning(account)
     checks = [
         {
             "key": "required_env",
             "ok": not missing,
-            "message": "Required Kiwoom environment values are configured" if not missing else f"Missing: {', '.join(missing)}",
+            "message": "Required Namuh environment values are configured" if not missing else f"Missing: {', '.join(missing)}",
             "critical": True,
         },
         {
             "key": "account_format",
             "ok": not account_warning,
-            "message": "Kiwoom account format is valid" if not account_warning else account_warning,
+            "message": "Namuh account format is valid" if not account_warning else account_warning,
             "critical": True,
         },
         {
@@ -1058,7 +1056,7 @@ def _demo_trading_readiness() -> dict:
     critical_ready = all(item["ok"] for item in checks if item["critical"])
     return {
         "ready": critical_ready,
-        "mode": "kiwoom_demo_auto",
+        "mode": "namuh_demo_auto",
         "trading_env": trader.runtime_flags().trading_env,
         "dry_run": trader.runtime_flags().dry_run,
         "enable_live_trading": trader.runtime_flags().enable_live_trading,
@@ -1288,7 +1286,7 @@ def _cycle_balance_data(api, cycle: dict | None) -> dict:
 def get_signals(strategy_id: str | None = None, cycle_id: str | None = None):
     """Build broker-backed signals in FastAPI's worker pool.
 
-    This handler performs synchronous Kiwoom and chart-cache I/O.  Declaring it
+    This handler performs synchronous Namuh and chart-cache I/O.  Declaring it
     async runs that blocking work on the event loop and can freeze every
     dashboard endpoint until a slow broker request finishes.
     """
@@ -1777,7 +1775,7 @@ def _load_merged_trades() -> list[dict]:
         broker_order_id = str(t.get("broker_order_id") or "").strip()
         source_approval_id = str(t.get("source_approval_id") or "").strip()
         strategy_id = _resolved_trade_strategy_id(t)
-        trade_env = str(t.get("env") or "demo")
+        trade_env = str(t.get("env") or "mock")
         if broker_order_id:
             key = f"broker:{trade_env}:{ts_norm[:10]}:{broker_order_id}:{t.get('action')}"
         elif source_approval_id:
@@ -2014,7 +2012,7 @@ _INDEX_DB_SYMBOL_ALIASES = {
     "KOSPI": ("0001", "^KS11", "KOSPI"),
     "KOSDAQ": ("1001", "^KQ11", "KOSDAQ"),
 }
-_KIWOOM_INDEX_CODES = {"KOSPI": "0001", "KOSDAQ": "1001"}
+_NAMUH_INDEX_CODES = {"KOSPI": "0001", "KOSDAQ": "1001"}
 
 
 def _safe_index_rows(rows: list[dict]) -> list[dict]:
@@ -2024,7 +2022,7 @@ def _safe_index_rows(rows: list[dict]) -> list[dict]:
 
 
 def _load_index_rows() -> dict[str, list[dict]]:
-    """Refresh benchmark closes from Kiwoom, then use local DB and guarded Yahoo fallback."""
+    """Refresh benchmark closes from Namuh, then use local DB and guarded Yahoo fallback."""
     global _INDEX_ROWS_CACHE
     cached_at, cached_rows = _INDEX_ROWS_CACHE
     if time.monotonic() - cached_at < 300:
@@ -2033,7 +2031,7 @@ def _load_index_rows() -> dict[str, list[dict]]:
     from src.db.repository import save_daily_charts
 
     api = _get_api()
-    for name, code in _KIWOOM_INDEX_CODES.items():
+    for name, code in _NAMUH_INDEX_CODES.items():
         rows = []
         for attempt in range(2):
             try:
@@ -2043,7 +2041,7 @@ def _load_index_rows() -> dict[str, list[dict]]:
                 if attempt == 0:
                     time.sleep(0.5)
                     continue
-                logger.info(f"Kiwoom {name} performance benchmark refresh unavailable: {exc}")
+                logger.info(f"Namuh {name} performance benchmark refresh unavailable: {exc}")
         if rows:
             save_daily_charts(code, rows)
             normalized = _safe_index_rows(rows)

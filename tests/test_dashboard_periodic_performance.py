@@ -111,7 +111,7 @@ class DashboardPeriodicPerformanceTests(unittest.TestCase):
         self.assertNotIn("229200", _INDEX_SYMBOL_ALIASES["KOSDAQ"])
         self.assertEqual(_INDEX_SYMBOL_ALIASES["KOSPI"][0], "^KS11")
 
-    def test_local_index_fallback_prefers_fresh_kiwoom_series(self):
+    def test_local_index_fallback_prefers_fresh_namuh_series(self):
         from src.dashboard.core import _INDEX_DB_SYMBOL_ALIASES
 
         self.assertEqual(_INDEX_DB_SYMBOL_ALIASES["KOSPI"][0], "0001")
@@ -134,7 +134,7 @@ class DashboardPeriodicPerformanceTests(unittest.TestCase):
 
         self.assertEqual(len(rows), 2)
 
-    def test_index_rows_normalize_compact_kiwoom_date(self):
+    def test_index_rows_normalize_compact_namuh_date(self):
         rows = _safe_index_rows([
             {"date": "20260827", "close": 6868.86},
         ])

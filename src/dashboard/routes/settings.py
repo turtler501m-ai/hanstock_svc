@@ -32,14 +32,11 @@ def _current_env_field_value(key: str, raw_values: dict[str, str]) -> str:
     if key in raw_values:
         return raw_values.get(key, "")
     runtime_values = {
-        "DOMESTIC_STOCK_BROKER": getattr(trader.config, "domestic_stock_broker", "kiwoom"),
-        "KIWOOM_TRADING_ENV": getattr(trader.config, "kiwoom_trading_env", "demo"),
-        "KIWOOM_DOMESTIC_DEMO_ACCOUNT": getattr(trader.config, "kiwoom_domestic_demo_account", ""),
-        "KIWOOM_DOMESTIC_DEMO_APP_KEY": getattr(trader.config, "kiwoom_domestic_demo_app_key", ""),
-        "KIWOOM_DOMESTIC_DEMO_APP_SECRET": getattr(trader.config, "kiwoom_domestic_demo_app_secret", ""),
-        "KIWOOM_DOMESTIC_REAL_ACCOUNT": getattr(trader.config, "kiwoom_domestic_real_account", ""),
-        "KIWOOM_DOMESTIC_REAL_APP_KEY": getattr(trader.config, "kiwoom_domestic_real_app_key", ""),
-        "KIWOOM_DOMESTIC_REAL_APP_SECRET": getattr(trader.config, "kiwoom_domestic_real_app_secret", ""),
+        "DOMESTIC_STOCK_BROKER": getattr(trader.config, "domestic_stock_broker", "namuh"),
+        "NHPLUG_ENVIRONMENT": getattr(trader.config, "nhplug_environment", "mock"),
+        "NHPLUG_ACCOUNT": getattr(trader.config, "nhplug_account", ""),
+        "NHPLUG_APP_KEY": getattr(trader.config, "nhplug_app_key", ""),
+        "NHPLUG_APP_SECRET": getattr(trader.config, "nhplug_app_secret", ""),
         "TRADING_ENV": getattr(trader.config, "trading_env", trader.runtime_flags().trading_env),
         "DRY_RUN": str(bool(getattr(trader.config, "dry_run", trader.runtime_flags().dry_run))).lower(),
         "ENABLE_LIVE_TRADING": str(bool(getattr(trader.config, "enable_live_trading", trader.runtime_flags().enable_live_trading))).lower(),
@@ -97,9 +94,9 @@ def get_config():
         "online_access_blocked": bool(getattr(trader.config, "online_access_blocked", False)),
         "order_submission_enabled": trader.runtime_flags().order_submission_enabled,
         "real_orders_enabled": trader.runtime_flags().real_orders_enabled,
-        "kiwoom_account": getattr(
+        "namuh_account": getattr(
             trader.config,
-            f"kiwoom_domestic_{trader.config.kiwoom_trading_env}_account",
+            "nhplug_account",
             "",
         ),
         "split_n": trader.SPLIT_N,
@@ -269,7 +266,7 @@ def set_runtime_order_mode(payload: dict = Body(...)):
 def cancel_domestic_stock_order(payload: dict = Body(...)):
     from src.online_access import require_online_access
 
-    require_online_access("Kiwoom order cancellation")
+    require_online_access("Namuh order cancellation")
     order_no = str(payload.get("order_no") or payload.get("original_order_no") or "").strip()
     if not order_no:
         raise HTTPException(status_code=400, detail="order_no is required")
@@ -290,7 +287,7 @@ def cancel_domestic_stock_order(payload: dict = Body(...)):
 def revise_domestic_stock_order(payload: dict = Body(...)):
     from src.online_access import require_online_access
 
-    require_online_access("Kiwoom order revision")
+    require_online_access("Namuh order revision")
     order_no = str(payload.get("order_no") or payload.get("original_order_no") or "").strip()
     qty = _to_int(payload.get("qty"))
     price = _to_int(payload.get("price"))

@@ -62,7 +62,7 @@ class OperationalSnapshotProvider:
         self.account_id = str(
             account_id
             if account_id is not None
-            else f"kiwoom:{getattr(config, 'kiwoom_trading_env', 'demo')}"
+            else f"namuh:{getattr(config, 'nhplug_environment', 'mock')}"
         ).strip()
         self.kill_switch_reader = kill_switch_reader or _default_kill_switch_reader
         self.market_regime_reader = market_regime_reader or _default_market_regime_reader
@@ -293,7 +293,7 @@ class OperationalSnapshotProvider:
             "regime_quality": quality,
             "regime_confidence": float(persisted.get("confidence") or 0.0),
             "risk_multiplier": float(persisted.get("risk_multiplier") or 0.0),
-            "regime_source": str(persisted.get("source") or "kiwoom"),
+            "regime_source": str(persisted.get("source") or "namuh"),
             "candidates": tuple(dict(row) for row in candidates),
             "instruments": instruments,
         }
@@ -328,7 +328,7 @@ class OperationalSnapshotProvider:
             raise RuntimeConfigurationError("trusted US account query failed")
         # A normalized reader is intentional: production default rejects all
         # demo/config fallback sources exposed by mistock.trader.get_balance().
-        if raw.get("balance_source") not in {"kiwoom", "kiwoom_config_capped"}:
+        if raw.get("balance_source") not in {"namuh", "namuh_config_capped"}:
             raise RuntimeConfigurationError("synthetic or capped US balance rejected")
         total = _positive(raw.get("total_eval"), "US total_equity")
         cash = _nonnegative(raw.get("cash"), "US available_cash")

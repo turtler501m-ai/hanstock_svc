@@ -62,8 +62,8 @@ body {
     user-select: none;
 }
 
-/* Kiwoom deployment identity. */
-body.kiwoom-dashboard {
+/* Namuh deployment identity. */
+body.namuh-dashboard {
     --electric-blue: #f97316;
     --electric-cyan: #f59e0b;
     --primary: #f97316;
@@ -75,36 +75,36 @@ body.kiwoom-dashboard {
         #120606;
 }
 
-body.kiwoom-dashboard .app-header {
+body.namuh-dashboard .app-header {
     background: linear-gradient(180deg, rgba(69, 10, 10, 0.98), rgba(35, 8, 8, 0.94));
     border-bottom-color: rgba(251, 146, 60, 0.48);
     box-shadow: 0 16px 34px rgba(127, 29, 29, 0.26);
 }
 
-body.kiwoom-dashboard .app-header .eyebrow {
+body.namuh-dashboard .app-header .eyebrow {
     color: #fdba74;
 }
 
-body.kiwoom-dashboard .app-header h1 .highlight,
-body.kiwoom-dashboard .app-header .highlight {
+body.namuh-dashboard .app-header h1 .highlight,
+body.namuh-dashboard .app-header .highlight {
     background: linear-gradient(135deg, #fb923c, #facc15);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
-body.kiwoom-dashboard .app-header .nav-button,
-body.kiwoom-dashboard .app-header button.nav-button {
+body.namuh-dashboard .app-header .nav-button,
+body.namuh-dashboard .app-header button.nav-button {
     border-color: rgba(249, 115, 22, 0.50);
     background: rgba(194, 65, 12, 0.22);
 }
 
-body.kiwoom-dashboard .app-header .nav-button:hover,
-body.kiwoom-dashboard .app-header button.nav-button:hover {
+body.namuh-dashboard .app-header .nav-button:hover,
+body.namuh-dashboard .app-header button.nav-button:hover {
     border-color: rgba(253, 186, 116, 0.78);
     background: rgba(234, 88, 12, 0.34);
 }
 
-.kiwoom-service-badge {
+.namuh-service-badge {
     display: inline-flex;
     margin-top: 0.38rem;
     padding: 0.2rem 0.55rem;
@@ -542,6 +542,284 @@ h1 .highlight {
     .market-regime-decision { grid-template-columns: auto 1fr; align-items: start; }
     .market-regime-action-box { grid-column: 1 / -1; }
     .market-regime-simple-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* 2026 dashboard refresh: calm terminal hierarchy and responsive density. */
+:root {
+    --surface-0: #080d16;
+    --surface-1: #0e1624;
+    --surface-2: #131e2e;
+    --line-subtle: rgba(148, 163, 184, 0.16);
+    --line-strong: rgba(148, 163, 184, 0.28);
+    --ink-primary: #f4f7fb;
+    --ink-secondary: #aab8ca;
+    --accent-soft: rgba(96, 165, 250, 0.14);
+    --radius-panel: 14px;
+    --radius-control: 9px;
+}
+
+body {
+    padding: 1rem clamp(0.75rem, 2vw, 2rem);
+    background: radial-gradient(circle at 50% -12%, rgba(59, 130, 246, 0.16), transparent 38rem), var(--surface-0);
+    color: var(--ink-primary);
+    line-height: 1.5;
+}
+
+.dashboard-container {
+    max-width: 1480px;
+}
+
+.app-header {
+    min-height: 68px;
+    margin: -1rem calc(-1 * clamp(0.75rem, 2vw, 2rem)) 1.25rem;
+    padding: 0.8rem clamp(0.75rem, 2vw, 2rem);
+    background: rgba(8, 13, 22, 0.88);
+    border-bottom: 1px solid var(--line-subtle);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+}
+
+.app-header h1 {
+    font-size: clamp(1.25rem, 2.2vw, 1.7rem);
+    letter-spacing: -0.035em;
+}
+
+.app-header .eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    opacity: 0.78;
+}
+
+.namuh-service-badge {
+    font-size: 0.6rem;
+    letter-spacing: 0.06em;
+}
+
+.header-actions {
+    gap: 0.45rem;
+}
+
+.header-actions .nav-button,
+.header-actions .status-indicator {
+    min-height: 34px;
+    font-size: 0.78rem;
+}
+
+.dashboard-tabs {
+    position: sticky;
+    top: 68px;
+    z-index: 30;
+    display: flex;
+    gap: 0.25rem;
+    margin: 0 0 1.25rem;
+    padding: 0.3rem;
+    overflow-x: auto;
+    border: 1px solid var(--line-subtle);
+    border-radius: 12px;
+    background: rgba(14, 22, 36, 0.92);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    scrollbar-width: thin;
+}
+
+.dashboard-tab {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--ink-secondary);
+    background: transparent;
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.dashboard-tab:hover {
+    color: var(--ink-primary);
+    background: rgba(148, 163, 184, 0.08);
+}
+
+.dashboard-tab.active {
+    color: #dbeafe;
+    border-color: rgba(96, 165, 250, 0.34);
+    background: var(--accent-soft);
+    box-shadow: inset 0 -2px 0 var(--primary);
+}
+
+.card.glass,
+.card,
+.panel,
+.dashboard-section > section {
+    border: 1px solid var(--line-subtle);
+    border-radius: var(--radius-panel);
+    background: linear-gradient(145deg, rgba(19, 30, 46, 0.94), rgba(10, 17, 29, 0.94));
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+.summary-grid {
+    gap: 0.7rem;
+}
+
+.summary-grid .card {
+    min-height: 112px;
+    padding: 1rem 1.05rem;
+    border-radius: 12px;
+}
+
+.summary-grid .card h3,
+.risk-card .label,
+.runtime-grid .label {
+    color: var(--ink-secondary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.summary-grid .value {
+    margin-top: 0.45rem;
+    color: var(--ink-primary);
+    font-family: var(--font-mono);
+    font-size: clamp(1.15rem, 2vw, 1.55rem);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+}
+
+.risk-grid,
+.runtime-grid {
+    gap: 0.65rem;
+}
+
+.risk-card,
+.runtime-grid > div {
+    border: 1px solid var(--line-subtle);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.risk-card {
+    padding: 0.85rem 0.95rem;
+}
+
+.risk-card strong,
+.runtime-grid strong {
+    font-family: var(--font-mono);
+    letter-spacing: -0.03em;
+}
+
+.panel-header {
+    gap: 0.8rem;
+}
+
+.panel-header h2,
+.card h2 {
+    font-size: 1.05rem;
+    letter-spacing: -0.025em;
+}
+
+.section-help,
+.time-muted {
+    color: var(--ink-secondary);
+    font-size: 0.76rem;
+}
+
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.78rem;
+}
+
+th {
+    color: #c8d4e4;
+    background: rgba(30, 41, 59, 0.92);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
+
+th,
+td {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    padding: 0.7rem 0.75rem;
+}
+
+tbody tr {
+    transition: background 140ms ease;
+}
+
+tbody tr:hover {
+    background: rgba(96, 165, 250, 0.07);
+}
+
+button,
+select,
+input,
+textarea {
+    border-radius: var(--radius-control);
+}
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+.button-ghost,
+button:not(.dashboard-tab) {
+    transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+button:not(:disabled):active {
+    transform: translateY(1px);
+}
+
+@media (max-width: 760px) {
+    body {
+        padding-bottom: calc(1rem + var(--app-safe-bottom));
+    }
+
+    .app-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .dashboard-tabs {
+        top: 0.5rem;
+        margin-bottom: 0.9rem;
+    }
+
+    .dashboard-tab {
+        min-height: 34px;
+        padding-inline: 0.7rem;
+        font-size: 0.74rem;
+    }
+
+    .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .summary-grid .card {
+        min-height: 94px;
+        padding: 0.8rem;
+    }
+
+    .summary-grid .value {
+        font-size: 1.05rem;
+    }
+
+    .table-responsive {
+        margin-inline: -0.25rem;
+        padding-inline: 0.25rem;
+    }
 }
 
 .dashboard-two-column {

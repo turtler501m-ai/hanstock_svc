@@ -32,26 +32,23 @@ class DashboardSettingsSchemaTests(unittest.TestCase):
                 with self.subTest(key=field["key"]):
                     self.assertTrue(field["options"])
 
-    def test_kiwoom_domestic_fields_are_editable_and_credentials_are_secret(self):
+    def test_namuh_domestic_fields_are_editable_and_credentials_are_secret(self):
         expected = {
             "DOMESTIC_STOCK_BROKER",
-            "KIWOOM_TRADING_ENV",
-            "KIWOOM_DOMESTIC_DEMO_ACCOUNT",
-            "KIWOOM_DOMESTIC_DEMO_APP_KEY",
-            "KIWOOM_DOMESTIC_DEMO_APP_SECRET",
-            "KIWOOM_DOMESTIC_REAL_ACCOUNT",
-            "KIWOOM_DOMESTIC_REAL_APP_KEY",
-            "KIWOOM_DOMESTIC_REAL_APP_SECRET",
+            "NHPLUG_ENVIRONMENT",
+            "NHPLUG_ACCOUNT",
+            "NHPLUG_APP_KEY",
+            "NHPLUG_APP_SECRET",
         }
         self.assertTrue(expected <= set(ENV_FIELD_MAP))
-        self.assertEqual(ENV_FIELD_MAP["DOMESTIC_STOCK_BROKER"]["options"], ["kiwoom"])
-        self.assertEqual(ENV_FIELD_MAP["KIWOOM_TRADING_ENV"]["options"], ["demo", "real"])
+        self.assertEqual(ENV_FIELD_MAP["DOMESTIC_STOCK_BROKER"]["options"], ["namuh"])
+        self.assertEqual(ENV_FIELD_MAP["NHPLUG_ENVIRONMENT"]["options"], ["mock", "live"])
         for key in expected:
             if key.endswith(("APP_KEY", "APP_SECRET")):
                 self.assertTrue(ENV_FIELD_MAP[key]["secret"])
 
     def test_non_domestic_broker_fields_are_not_editable(self):
-        forbidden_prefixes = ("MISTOCK_", "KIWOOM_US_", "BYBIT_", "LS_")
+        forbidden_prefixes = ("MISTOCK_", "NAMUH_US_", "BYBIT_", "LS_")
         self.assertFalse(any(key.startswith(forbidden_prefixes) for key in ENV_FIELD_MAP))
 
 

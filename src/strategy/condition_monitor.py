@@ -101,7 +101,7 @@ def run_condition_monitor_cycle(markets: set[str] | None = None) -> dict:
 
             api = create_domestic_stock_broker()
             symbols = api.fetch_volume_rank(top_n=50)
-            source = "kiwoom_volume_rank"
+            source = "namuh_volume_rank"
             result["KR"] = save_condition_symbols("KR", symbols, source=source)
         except Exception as exc:
             result["errors"].append(f"KR:{type(exc).__name__}:{exc}")

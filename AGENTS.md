@@ -2,10 +2,10 @@
 
 ## Project Structure & Module Organization
 
-Hanstock is a Python trading platform with FastAPI dashboards and Kiwoom REST brokerage integration.
+Hanstock is a Python trading platform with FastAPI dashboards and Namuh REST brokerage integration.
 
 - `src/`: application code and the trading entry point (`trader.py`)
-- `src/broker/`: broker-neutral contracts and Kiwoom domestic adapter
+- `src/broker/`: broker-neutral contracts and Namuh domestic adapter
 - `src/dashboard/`: dashboard routes, services, and presenters
 - `src/db/`: bounded persistence repositories and migrations
 - `src/strategy/`, `src/ai_stock/`: domestic trading and analysis domains
@@ -47,7 +47,7 @@ Follow `.editorconfig`: UTF-8, LF endings, final newline, and no trailing whites
 
 ## Testing Guidelines
 
-Use deterministic `unittest` tests named `test_*.py`. Mock Kiwoom, Slack, OpenAI, and other network calls. Add regression coverage for trading logic, routes, persistence, configuration, and deployment behavior. There is no fixed coverage threshold; changed behavior must be exercised.
+Use deterministic `unittest` tests named `test_*.py`. Mock Namuh, Slack, OpenAI, and other network calls. Add regression coverage for trading logic, routes, persistence, configuration, and deployment behavior. There is no fixed coverage threshold; changed behavior must be exercised.
 
 ## Commit & Pull Request Guidelines
 

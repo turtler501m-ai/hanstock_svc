@@ -4,11 +4,11 @@ import os
 from typing import Any
 
 from src.broker.base import DomesticStockBroker
-SUPPORTED_DOMESTIC_STOCK_BROKERS = frozenset({"kiwoom"})
+SUPPORTED_DOMESTIC_STOCK_BROKERS = frozenset({"namuh"})
 
 
 def selected_domestic_stock_broker(value: str | None = None) -> str:
-    selected = (value or os.environ.get("DOMESTIC_STOCK_BROKER", "kiwoom")).strip().lower()
+    selected = (value or os.environ.get("DOMESTIC_STOCK_BROKER", "namuh")).strip().lower()
     if selected not in SUPPORTED_DOMESTIC_STOCK_BROKERS:
         allowed = ", ".join(sorted(SUPPORTED_DOMESTIC_STOCK_BROKERS))
         raise ValueError(f"Unsupported domestic stock broker: {selected!r}. Expected one of: {allowed}")
@@ -24,21 +24,22 @@ def create_domestic_stock_broker(
     order_submission_enabled: bool = False,
 ) -> DomesticStockBroker:
     selected = selected_domestic_stock_broker(broker)
-    from src.broker.kiwoom_adapter import KiwoomBrokerAdapter
-    from src.broker.kiwoom_client import KiwoomRestClient
+    from src.broker.nhplug_adapter import NHPlugBrokerAdapter
+    from src.broker.nhplug_client import NHPlugRestClient
 
     if client is None:
         if settings is None:
             from src.config import config
             settings = config
-        trading_env = str(getattr(settings, "kiwoom_trading_env", "demo") or "demo").lower()
-        application_env = str(getattr(settings, "trading_env", trading_env) or trading_env).lower()
-        if application_env != trading_env:
-            raise ValueError("KIWOOM_TRADING_ENV must match TRADING_ENV before broker activation")
-        prefix = "kiwoom_domestic_real" if trading_env == "real" else "kiwoom_domestic_demo"
-        app_key = str(getattr(settings, f"{prefix}_app_key", "") or "").strip()
-        app_secret = str(getattr(settings, f"{prefix}_app_secret", "") or "").strip()
-        if not app_key or not app_secret:
-            raise ValueError(f"Kiwoom {trading_env} App Key and App Secret are required")
-        client = KiwoomRestClient(app_key, app_secret, environment="live" if trading_env == "real" else "mock")
-    return KiwoomBrokerAdapter(client, order_submission_enabled=order_submission_enabled)
+        trading_env = str(getattr(settings, "trading_env", "demo") or "demo").lower()
+        nh_env = str(getattr(settings, "nhplug_environment", "mock") or "mock").lower()
+        expected = "live" if trading_env == "real" else "mock"
+        if nh_env != expected:
+            raise ValueError("NHPLUG_ENVIRONMENT must match TRADING_ENV before broker activation")
+        app_key = str(getattr(settings, "nhplug_app_key", "") or "").strip()
+        app_secret = str(getattr(settings, "nhplug_app_secret", "") or "").strip()
+        account = str(getattr(settings, "nhplug_account", "") or "").strip()
+        if not app_key or not app_secret or not account:
+            raise ValueError("NHPLUG app key, app secret, and account are required")
+        client = NHPlugRestClient(app_key, app_secret, environment=nh_env, account=account)
+    return NHPlugBrokerAdapter(client, account=getattr(client, "account", ""), order_submission_enabled=order_submission_enabled)

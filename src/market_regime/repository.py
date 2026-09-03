@@ -4,7 +4,7 @@ from typing import Any
 
 from src.db import ai_snapshot_repository
 
-SOURCE = "kiwoom_kr_market_regime"
+SOURCE = "namuh_kr_market_regime"
 
 
 class MarketRegimeRepository:

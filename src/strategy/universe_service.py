@@ -22,11 +22,11 @@ def build_scan_universe(
     else:
         volume_rank = api.fetch_volume_rank(top_n=scan_size)
         if volume_rank:
-            logger.info(f"[SCAN] 키움 거래량 상위 {len(volume_rank)}종목 수집 완료")
+            logger.info(f"[SCAN] 나무 거래량 상위 {len(volume_rank)}종목 수집 완료")
             base = volume_rank
         else:
             static = list(static_universe)
-            logger.info(f"[SCAN] 키움 거래량 API 실패 → KOSPI_UNIVERSE {len(static)}종목으로 폴백")
+            logger.info(f"[SCAN] 나무 거래량 API 실패 → KOSPI_UNIVERSE {len(static)}종목으로 폴백")
             base = static
 
     watch = list(watchlist)

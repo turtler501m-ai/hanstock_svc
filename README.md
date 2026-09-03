@@ -1,6 +1,6 @@
 # Hanstock
 
-키움 REST API 기반 국내주식 자동매매와 AI 전략 운영 대시보드를 제공하는
+나무 REST API 기반 국내주식 자동매매와 AI 전략 운영 대시보드를 제공하는
 독립 Python/FastAPI 서비스입니다. 기존 Hanstock/Mistock의 DB, 스케줄, 환경설정과
 운영 디렉터리를 공유하지 않습니다.
 

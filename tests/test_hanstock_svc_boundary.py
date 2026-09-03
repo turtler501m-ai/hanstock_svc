@@ -26,7 +26,7 @@ class HanstockServiceBoundaryTests(unittest.TestCase):
         self.assertNotIn('href="/narrative-momentum"', html)
 
     def test_settings_are_domestic_only(self):
-        forbidden_prefixes = ("MISTOCK_", "KIWOOM_US_", "BYBIT_", "LS_")
+        forbidden_prefixes = ("MISTOCK_", "NAMUH_US_", "BYBIT_", "LS_")
         self.assertFalse(any(key.startswith(forbidden_prefixes) for key in ENV_FIELD_MAP))
 
     def test_vm_service_uses_isolated_home(self):

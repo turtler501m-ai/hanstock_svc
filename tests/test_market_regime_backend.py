@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 from zoneinfo import ZoneInfo
 
 from src.market_regime.classifier import classify_index
-from src.market_regime.kiwoom_kr import KiwoomKrCollector, build_index_features
+from src.market_regime.namuh_kr import NamuhKrCollector, build_index_features
 from src.market_regime.models import BreadthFeatures, DataQuality, IndexFeatures, MarketRegime
 from src.market_regime.quality import assess_quality
 from src.market_regime.service import MarketRegimeService
@@ -77,9 +77,9 @@ class MarketRegimeBackendTests(unittest.TestCase):
         self.assertIs(assess_quality(indices, degraded).quality, DataQuality.DEGRADED)
         self.assertIs(assess_quality(indices, insufficient).quality, DataQuality.INSUFFICIENT)
 
-    def test_collector_uses_required_kiwoom_contracts(self):
+    def test_collector_uses_required_namuh_contracts(self):
         broker = FakeBroker()
-        collector = KiwoomKrCollector(broker, universe=("005930", "000660"))
+        collector = NamuhKrCollector(broker, universe=("005930", "000660"))
         indices, breadth = collector.collect()
         self.assertEqual(broker.index_calls, [("0001", 260), ("1001", 260)])
         self.assertEqual(broker.daily_calls, [("005930", 80), ("000660", 80)])
@@ -88,7 +88,7 @@ class MarketRegimeBackendTests(unittest.TestCase):
 
     def test_service_refresh_current_history_and_diagnostics(self):
         broker, repo = FakeBroker(), MemoryRepository()
-        collector = KiwoomKrCollector(broker, universe=tuple(f"{i:06d}" for i in range(60)))
+        collector = NamuhKrCollector(broker, universe=tuple(f"{i:06d}" for i in range(60)))
         service = MarketRegimeService(
             broker, collector=collector, repository=repo,
             clock=lambda: datetime(2026, 8, 26, 8, 50, tzinfo=ZoneInfo("Asia/Seoul")),
@@ -105,7 +105,7 @@ class MarketRegimeBackendTests(unittest.TestCase):
         original = broker.get_index_daily
         broker.get_index_daily = lambda code, n=90: (_ for _ in ()).throw(RuntimeError("down")) if code == "1001" else original(code, n)
         repo = MemoryRepository()
-        collector = KiwoomKrCollector(broker, universe=tuple(f"{i:06d}" for i in range(60)))
+        collector = NamuhKrCollector(broker, universe=tuple(f"{i:06d}" for i in range(60)))
         result = MarketRegimeService(broker, collector=collector, repository=repo).refresh()
         self.assertEqual(result["quality"], "insufficient")
         self.assertEqual(result["regime"], "insufficient_data")

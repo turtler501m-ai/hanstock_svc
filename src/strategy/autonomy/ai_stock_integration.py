@@ -269,7 +269,7 @@ def approve_managed_ai_stock_order(approval_id: int) -> dict[str, Any]:
                 "order_status": str(submitted["status"]),
                 "broker_order_id": submitted.get("broker_order_id"),
                 "response_msg": (
-                    "managed AI-stock order submitted to Kiwoom "
+                    "managed AI-stock order submitted to Namuh "
                     f"{getattr(config, 'trading_env', 'demo')}"
                 ),
             }
@@ -385,7 +385,7 @@ def run_ai_stock_autonomy_cycle(
         raise RuntimeConfigurationError(
             "approval-free autonomy requires an enabled KR autonomy environment"
         )
-    reconciliation = reconcile_kiwoom_managed_orders(market=market)
+    reconciliation = reconcile_namuh_managed_orders(market=market)
     policy = ai_stock_repository.get_policy(strategy_id, market)
     if not policy or not int(policy.get("enabled", 0)):
         raise RuntimeConfigurationError("enabled automation policy is required")
@@ -488,8 +488,8 @@ def run_ai_stock_autonomy_cycle(
     }
 
 
-def reconcile_kiwoom_managed_orders(*, market: str = "KR") -> list[dict[str, Any]]:
-    """Reconcile durable KR orders against the configured Kiwoom environment."""
+def reconcile_namuh_managed_orders(*, market: str = "KR") -> list[dict[str, Any]]:
+    """Reconcile durable KR orders against the configured Namuh environment."""
     market = str(market).upper()
     if market != "KR" or not _autonomy_execution_enabled():
         return []
@@ -538,7 +538,7 @@ def reconcile_kiwoom_managed_orders(*, market: str = "KR") -> list[dict[str, Any
     ).recover_unsettled()
     if any(item.status in {"error", "inconsistent"} for item in results):
         raise RuntimeConfigurationError(
-            "Kiwoom managed-order reconciliation is incomplete"
+            "Namuh managed-order reconciliation is incomplete"
         )
     return [
         {

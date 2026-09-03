@@ -1284,7 +1284,7 @@ def get_finrl_pipeline():
         "pipeline": [
             {
                 "stage": "Data",
-                "source": "Kiwoom balance + Kiwoom daily chart",
+                "source": "Namuh balance + Namuh daily chart",
                 "finrl_reference": "meta/data_processor.py",
                 "status": "adapted",
             },
@@ -1309,7 +1309,7 @@ def get_finrl_pipeline():
             },
             {
                 "stage": "Execution",
-                "source": "approval queue + Kiwoom order API",
+                "source": "approval queue + Namuh order API",
                 "finrl_reference": "trade.py",
                 "status": "protected by DRY_RUN and approval",
             },

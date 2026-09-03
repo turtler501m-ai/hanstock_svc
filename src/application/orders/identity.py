@@ -12,8 +12,8 @@ def broker_account_scope_key(market: str) -> str:
     if market != "KR":
         raise ValueError("hanstock_svc supports domestic KR accounts only")
     account = (
-        config.kiwoom_domestic_real_account if env == "real"
-        else config.kiwoom_domestic_demo_account
+        config.nhplug_account if env == "real"
+        else config.nhplug_account
     )
-    raw = f"kiwoom:{env}:{market}:{str(account or '').strip()}"
+    raw = f"namuh:{env}:{market}:{str(account or '').strip()}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]

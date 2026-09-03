@@ -5,7 +5,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from .classifier import classify_kr
-from .kiwoom_kr import KiwoomKrCollector
+from .namuh_kr import NamuhKrCollector
 from .models import DataQuality, MarketRegime, RegimeSnapshot
 from .quality import assess_quality
 from .repository import MarketRegimeRepository
@@ -15,14 +15,14 @@ KST = ZoneInfo("Asia/Seoul")
 
 class MarketRegimeService:
     def __init__(self, broker: Any, *, repository: MarketRegimeRepository | None = None,
-                 collector: KiwoomKrCollector | None = None, clock: Callable[[], datetime] | None = None):
-        self.collector = collector or KiwoomKrCollector(broker)
+                 collector: NamuhKrCollector | None = None, clock: Callable[[], datetime] | None = None):
+        self.collector = collector or NamuhKrCollector(broker)
         self.repository = repository or MarketRegimeRepository()
         self.clock = clock or (lambda: datetime.now(KST))
 
     def refresh(self, market: str = "KR") -> dict[str, Any]:
         if str(market).upper() != "KR":
-            raise ValueError("Kiwoom market regime currently supports KR only")
+            raise ValueError("Namuh market regime currently supports KR only")
         indices, breadth = self.collector.collect()
         quality = assess_quality(indices, breadth)
         warnings = list(quality.reasons if quality.quality is not DataQuality.GOOD else ())
@@ -40,7 +40,7 @@ class MarketRegimeService:
         snapshot = RegimeSnapshot(
             market="KR", session_date=max((item.session_date for item in indices.values()), default=now.date().isoformat()), evaluated_at=now.isoformat(),
             regime=regime, quality=quality.quality, confidence=confidence, risk_multiplier=risk,
-            source="kiwoom", indices=indices, breadth=breadth, reasons=tuple(reasons), warnings=tuple(warnings),
+            source="namuh", indices=indices, breadth=breadth, reasons=tuple(reasons), warnings=tuple(warnings),
         ).to_dict()
         snapshot["snapshot_id"] = self.repository.save(snapshot)
         return snapshot

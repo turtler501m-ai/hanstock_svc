@@ -86,7 +86,7 @@ def _account_snapshot(market: str) -> dict[str, Any]:
                 order_submission_enabled=trading_flags(config).order_submission_enabled,
             ).get_balance()
             data = parse_balance(raw)
-            return _normalize_account(data, source="kiwoom")
+            return _normalize_account(data, source="namuh")
     except Exception as exc:
         return {
             "available": False,
