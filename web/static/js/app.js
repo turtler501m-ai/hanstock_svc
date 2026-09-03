@@ -4530,7 +4530,8 @@ async function startBrokerHoldingsSync() {
     }
 }
 
-function renderTradeSyncResult(result) {
+/* Legacy trade synchronization renderer retained below only as migration reference.
+function renderTradeSyncResultLegacy(result) {
     const container = document.getElementById('trade-sync-last-result');
     if (!container || !result || result.available === false) return;
 
@@ -4664,6 +4665,21 @@ function renderTradeSyncResult(result) {
     }
 
     renderSyncItems(runs[0] || result);
+}
+*/
+
+function renderTradeSyncResult(result) {
+    return window.HanstockDashboardTradeSyncScreen.render(result, {
+        updateButton: updateTradeSyncButton,
+        fetchJson,
+        setStatus,
+        escapeHtml,
+        formatCurrency,
+        orderStatusLabel,
+        typeLabels: { history: '\uccb4\uacb0 \ub0b4\uc5ed', order_status: '\uc8fc\ubb38 \uc0c1\ud0dc', balance: '\ubcf4\ud5d8 \uc870\uc815', cleanup: '\ubd88\uc77c\uce58 \uc815\ub9ac' },
+        resultLabels: { imported: '\uc2e0\uaddc \ucd94\uac00', updated: '\uc0c1\ud0dc \uac31\uc2e0', skipped: '\uae30\uc874 \ud56d\ubaa9', reconciled: '\ubcf4\ud5d8 \uc870\uc815', removed: '\uc0ad\uc81c', checked: '\ud655\uc778' },
+        labels: { added: '\ucd94\uac00', removed: '\ubd88\uc77c\uce58 \uc815\ub9ac', imported: '\uccb4\uacb0 \ucd94\uac00', updated: '\uc0c1\ud0dc \uac31\uc2e0', completed: '\uc644\ub8cc \uc2dc\uac04', error: '\uc624\ub958', selected: '\uc120\ud0dd\ub41c \ub3d9\uae30\ud654', items: '\uac74', noItems: '\uc2e4\ud589\ub41c \uc0c1\uc138 \ub3d9\uae30\ud654 \ud56d\ubaa9\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.', running: '\uc9c4\ud589 \uc911', failed: '\uc2e4\ud328', done: '\uc644\ub8cc', buy: '\ub9e4\uc218', sell: '\ub9e4\ub3c4', detailFailed: '\ub3d9\uae30\ud654 \uc0c1\uc138 \uc870\ud68c \uc2e4\ud328' },
+    });
 }
 
 async function loadTradeSyncResult() {
