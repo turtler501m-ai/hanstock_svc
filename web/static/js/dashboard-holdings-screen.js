@@ -32,5 +32,47 @@
         tbody.querySelectorAll('.strategy-attribution-sell').forEach((button) => button.addEventListener('click', () => deps.sellAttribution(button), { once: true }));
         deps.updateHeaders();
     }
-    global.HanstockDashboardHoldingsScreen = Object.freeze({ render: renderHoldings });
+
+    function flattenBrokerResponse(value, path, rows) {
+        if (Array.isArray(value)) {
+            if (!value.length) rows.push({ path, value: '[]' });
+            value.forEach((item, index) => flattenBrokerResponse(item, `${path}[${index}]`, rows));
+            return rows;
+        }
+        if (value && typeof value === 'object') {
+            const entries = Object.entries(value);
+            if (!entries.length) rows.push({ path, value: '{}' });
+            entries.forEach(([key, item]) => flattenBrokerResponse(item, path ? `${path}.${key}` : key, rows));
+            return rows;
+        }
+        rows.push({ path: path || '(root)', value });
+        return rows;
+    }
+
+    function renderBrokerResponse(response, deps) {
+        const tbody = document.querySelector('#table-holding-broker-response tbody');
+        const count = document.getElementById('holding-broker-response-count');
+        if (!tbody) return;
+        const rows = flattenBrokerResponse(response || {}, '', []);
+        tbody.innerHTML = '';
+        if (!rows.length) {
+            deps.setTableMessage('#table-holding-broker-response tbody', 2, deps.labels.noRaw);
+            if (count) count.textContent = '0개 필드';
+            return;
+        }
+        rows.forEach((item) => {
+            const row = document.createElement('tr');
+            const displayValue = item.value === null
+                ? 'null'
+                : (typeof item.value === 'string' ? item.value : JSON.stringify(item.value));
+            row.innerHTML = `<td><code>${deps.escapeHtml(item.path)}</code></td><td class="broker-response-value">${deps.escapeHtml(displayValue)}</td>`;
+            tbody.appendChild(row);
+        });
+        if (count) count.textContent = `${rows.length.toLocaleString()}개 필드`;
+    }
+
+    global.HanstockDashboardHoldingsScreen = Object.freeze({
+        render: renderHoldings,
+        renderBrokerResponse,
+    });
 }(window));

@@ -195,6 +195,11 @@ class NHPlugBrokerAdapter:
                 "evlu_pfls_smtl_amt": str(value.profit_loss),
             }],
             "_broker": "namuh",
+            # Preserve the complete broker payload for operator diagnostics.
+            # Domain code continues to consume the normalized output1/output2
+            # fields above; the dashboard may render this read-only copy
+            # without having to know NHPlug's evolving response schema.
+            "_broker_response": dict(value.raw),
         }
 
     def get_quote(self, symbol: str) -> dict[str, float]:

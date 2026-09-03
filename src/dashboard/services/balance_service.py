@@ -123,4 +123,5 @@ def parse_balance(balance_data: dict) -> dict:
             daily_change_amount / previous_stock_eval * 100, 2
         ) if previous_stock_eval > 0 else None,
         "holdings": holdings,
+        "broker_response": balance_data.get("_broker_response", {}),
     }

@@ -781,6 +781,11 @@ async function renderBalance() {
         renderHoldingStrategySummary(balance);
         bindHoldingSortHeaders();
         renderHoldingRows();
+        window.HanstockDashboardHoldingsScreen.renderBrokerResponse(balance.broker_response, {
+            setTableMessage,
+            escapeHtml,
+            labels: { noRaw: '나무 잔고조회 원본 응답이 없습니다.' },
+        });
 
         renderPortfolioChart(chartLabels, chartData, chartColors);
         renderRisk(balance);
@@ -802,6 +807,7 @@ async function renderBalance() {
         setStatus(`계좌 API 오류: ${err.message}`);
         setTableMessage('#table-holdings tbody', 10, err.message);
         setTableMessage('#table-holding-strategies tbody', 7, err.message);
+        setTableMessage('#table-holding-broker-response tbody', 2, err.message);
     }
 }
 

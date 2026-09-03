@@ -108,6 +108,23 @@ class BrokerContractTests(unittest.TestCase):
         self.assertEqual(balance.holdings[0].quantity, 10)
         self.assertEqual(balance.orderable_cash, 453384370)
 
+    def test_namuh_balance_facade_retains_complete_broker_response(self):
+        client = Mock()
+        client.account = "demo"
+        raw = {
+            "Output_0": {"tot_aet_amt": 1000, "future_summary_field": "kept"},
+            "Output_1": [{
+                "iem_cd": "005930", "iem_nm": "삼성전자", "itg_bnc_qty": 1,
+                "now_pr": 70000, "future_holding_field": "also-kept",
+            }],
+            "rsp_cd": "00000",
+        }
+        client.post.return_value = type("Page", (), {"data": raw})()
+
+        result = NHPlugBrokerAdapter(client).get_balance()
+
+        self.assertEqual(result["_broker_response"], raw)
+
 
 if __name__ == "__main__":
     unittest.main()

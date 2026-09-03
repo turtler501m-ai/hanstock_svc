@@ -112,6 +112,11 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
             INDEX_HTML,
         )
         self.assertIn('id="btn-refresh-holdings"', INDEX_HTML)
+
+    def test_holdings_tab_displays_complete_namuh_balance_response(self):
+        self.assertIn('id="table-holding-broker-response"', INDEX_HTML)
+        self.assertIn('id="holding-broker-response-count"', INDEX_HTML)
+        self.assertIn("renderBrokerResponse(balance.broker_response", FRONTEND_JS)
         self.assertIn("await renderBalance()", APP_JS)
 
     def test_holdings_tab_exposes_broker_authoritative_sync(self):

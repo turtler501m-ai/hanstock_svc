@@ -963,6 +963,32 @@ button:not(:disabled):active {
     grid-row: 1 / 2;
 }
 
+.holding-broker-response-panel {
+    margin-top: 1rem;
+}
+
+.holding-broker-response-panel summary {
+    cursor: pointer;
+    list-style-position: inside;
+}
+
+.holding-broker-response-panel summary > span:first-child {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+#table-holding-broker-response code {
+    color: var(--accent, #60a5fa);
+    white-space: nowrap;
+}
+
+#table-holding-broker-response .broker-response-value {
+    max-width: 48rem;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
 .panel-chart {
     grid-column: 2 / 3;
     grid-row: 1 / 2;

@@ -8,6 +8,21 @@ from src.dashboard.services.cache_policy import cache_age_seconds, mark_cache_fr
 
 
 class DashboardHelperTests(unittest.TestCase):
+    def test_parse_balance_exposes_complete_broker_response(self):
+        raw = {
+            "Output_0": {"tot_aet_amt": 1000, "new_summary_field": "visible"},
+            "Output_1": [{"iem_cd": "005930", "new_holding_field": 42}],
+            "rsp_cd": "00000",
+        }
+
+        parsed = dashboard._parse_balance({
+            "output1": [],
+            "output2": [{"tot_evlu_amt": "1000"}],
+            "_broker_response": raw,
+        })
+
+        self.assertEqual(parsed["broker_response"], raw)
+
     def test_cache_policy_is_independent_from_dashboard_core(self):
         captured_at = (datetime.now(dashboard.trader.KST) - timedelta(seconds=12)).isoformat()
 
