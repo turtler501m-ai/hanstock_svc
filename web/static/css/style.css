@@ -5869,6 +5869,38 @@ body.namuh-dashboard tbody tr:hover {
     table-layout: fixed;
 }
 
+.watchlist-data-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+}
+
+.watchlist-table-header {
+    margin-bottom: 0.5rem;
+}
+
+.watchlist-table-scroll {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+#table-watchlist .sort-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+#table-watchlist .sort-header.is-number {
+    text-align: right;
+}
+
+#table-watchlist .sort-icon {
+    display: inline-block;
+    min-width: 0.7rem;
+    margin-left: 0.15rem;
+    font-size: 0.72rem;
+}
+
 #table-watchlist tbody tr {
     border-bottom: 1px solid rgba(148, 163, 184, 0.1);
     transition: background 0.15s ease;
