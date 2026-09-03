@@ -202,6 +202,7 @@ class NHPlugBrokerAdapter:
 
     @staticmethod
     def _legacy_result(value: OrderResult) -> dict[str, Any]:
-        return {"rsp_cd": "00000" if value.success else "10000", "rsp_msg": value.message,
+        return {"rt_cd": "0" if value.success else "1",
+                "rsp_cd": "00000" if value.success else "10000", "rsp_msg": value.message,
                 "msg1": value.message, "output": {"ODNO": value.broker_order_id},
                 "_broker": "namuh", "_dry_run": value.dry_run, "raw": dict(value.raw)}

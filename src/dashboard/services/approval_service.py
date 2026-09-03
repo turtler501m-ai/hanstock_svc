@@ -504,7 +504,7 @@ def _approve_pending_approval_serialized(
                 result = api.place_order(
                     item["symbol"], item["action"], adjusted_price, item["qty"]
                 )
-        ok = result.get("rt_cd") == "0"
+        ok = str(result.get("rt_cd") or "") == "0" or str(result.get("rsp_cd") or "") in {"0", "00000"}
         status = "executed" if ok else "failed"
         response_msg = _dependency(
             "_approval_response_msg", _approval_response_msg

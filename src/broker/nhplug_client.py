@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
+import os
 import threading
 import time
 from typing import Any, Mapping
@@ -36,7 +37,7 @@ class NHPlugRestClient:
 
     def __init__(self, app_key: str, app_secret: str, *, environment: str = "mock",
                  account: str = "", session: requests.Session | None = None,
-                 timeout: float = 15.0, min_interval: float = 0.25) -> None:
+                 timeout: float = 15.0, min_interval: float | None = None) -> None:
         if environment not in {"mock", "live"}:
             raise ValueError("environment must be 'mock' or 'live'")
         self.app_key = app_key.strip()
@@ -46,7 +47,12 @@ class NHPlugRestClient:
         self.base_url = MOCK_BASE_URL if environment == "mock" else LIVE_BASE_URL
         self._session = session or requests.Session()
         self.timeout = timeout
-        self.min_interval = max(0.0, float(min_interval))
+        configured_interval = (
+            min_interval
+            if min_interval is not None
+            else os.environ.get("NHPLUG_MIN_INTERVAL_SECONDS", "1.0")
+        )
+        self.min_interval = max(0.0, float(configured_interval))
         self._token = ""
         self._expires_at: datetime | None = None
 
