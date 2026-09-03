@@ -62,6 +62,9 @@ SIGNALS_SCREEN_JS = (
 WATCHLIST_SUMMARY_SCREEN_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-watchlist-summary-screen.js"
 ).read_text(encoding="utf-8")
+OPTIMIZER_SCREEN_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-optimizer-screen.js"
+).read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 
 
@@ -200,6 +203,13 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardWatchlistSummaryScreen", WATCHLIST_SUMMARY_SCREEN_JS)
         self.assertIn("HanstockDashboardWatchlistSummaryScreen.render", APP_JS)
+
+    def test_optimizer_screen_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-optimizer-screen.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardOptimizerScreen", OPTIMIZER_SCREEN_JS)
+        self.assertIn("HanstockDashboardOptimizerScreen.render", APP_JS)
 
     def test_dashboard_exposes_daily_market_regime_panel(self):
         required_markup = (

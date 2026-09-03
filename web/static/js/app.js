@@ -1718,7 +1718,7 @@ function renderTotalPnlBreakdown({ principal, displayTotal, accountPnl, realized
     }
 }
 
-async function renderOptimizer() {
+async function renderOptimizerLegacy() {
     setButtonBusy('btn-optimizer', true);
     setTableMessage('#table-optimizer tbody', 7, '포트폴리오 최적 비중을 계산하고 있습니다...');
     try {
@@ -1775,6 +1775,19 @@ async function renderOptimizer() {
     } finally {
         setButtonBusy('btn-optimizer', false);
     }
+}
+
+async function renderOptimizer() {
+    return window.HanstockDashboardOptimizerScreen.render({
+        setButtonBusy,
+        setTableMessage,
+        fetchJson,
+        escapeHtml,
+        formatNumber,
+        pill,
+        toKorAction,
+        bindQueueButtons,
+    });
 }
 
 async function syncStrategiesToDropdown() {
