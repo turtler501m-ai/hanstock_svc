@@ -5706,10 +5706,6 @@ th,
     }
 
     body.namuh-dashboard .dashboard-tabs {
-        left: 1.25rem;
-    }
-
-    body.namuh-dashboard main {
-        margin-left: 190px;
+        left: auto;
     }
 }

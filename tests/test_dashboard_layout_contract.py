@@ -14,6 +14,8 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("flex-direction: row !important", STYLE)
         self.assertIn("position: static !important", STYLE)
         self.assertIn("margin-left: 0 !important", STYLE)
+        self.assertIn("left: auto", STYLE)
+        self.assertNotIn("body.namuh-dashboard main {\n        margin-left: 190px;", STYLE)
         self.assertIn('href="/static/css/style.css?v=48"', TEMPLATE)
 
     def test_mobile_navigation_remains_bottom_navigation(self):
@@ -34,7 +36,7 @@ class DashboardLayoutContractTests(unittest.TestCase):
     def test_scheduler_rows_have_readable_fallback_text(self):
         for text in ("생성된 매매 계획이 없습니다.", "승인 대기 주문이 없거나 자동 승인이 취소되었습니다.", "오류 발생"):
             self.assertIn(text, SCHEDULER_ROWS)
-        for mojibake in ("湲곕낯", "泥섎━", "?앹꽦"):
+        for mojibake in ("?앹꽦", "?뱀씤", "?ㅻ쪟"):
             self.assertNotIn(mojibake, SCHEDULER_ROWS)
 
 
