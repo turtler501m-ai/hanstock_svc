@@ -259,7 +259,7 @@ powershell -ExecutionPolicy Bypass -File tools\check-encoding.ps1
 
 최근에는 `src/dashboard/services/cache_policy.py`를 추가해 캐시 timestamp·freshness 계산을 `dashboard/core.py`에서 분리했다. 또한 `src/dashboard/services/order_reconciliation.py`를 추가해 전략별 보유수량 집계와 브로커 잔고 조정 배분 계산을 `stock_order.py`에서 분리했다. `src/dashboard/services/performance_metrics.py`에는 기간 버킷과 시장지표 정규화·일/월 컨텍스트 계산을 이동했다. `src/dashboard/services/account_service.py`에는 계좌 잔고 조회의 캐시·타임아웃·stale fallback·자산 스냅샷 기록을 이동했다. 기존 `core`·`stock_order`의 호환 함수는 유지하여 테스트와 외부 호출 계약을 보호한다.
 
-`src/strategy/momentum_metrics.py`에는 seven-split의 순수 기간수익률·상대 모멘텀·변동성 계산을 이동했고, `web/static/js/dashboard-api.js`, `dashboard-formatters.js`, `dashboard-ui.js`에는 대시보드 공통 HTTP·표현·DOM 헬퍼를 분리했다. 기존 `app.js`는 현재 fallback 구현과 alias를 유지하여 페이지 로딩 순서 변경에도 호환된다.
+`src/strategy/momentum_metrics.py`에는 seven-split의 순수 기간수익률·상대 모멘텀·변동성 계산을 이동했고, `web/static/js/dashboard-api.js`, `dashboard-formatters.js`, `dashboard-ui.js`에는 대시보드 공통 HTTP·표현·DOM 헬퍼를 분리했다. 또한 `dashboard-market-regime.js`에는 시장국면 라벨·가이드·순수 포맷 함수를 이동했다. 기존 `app.js`는 현재 fallback 구현과 alias를 유지하여 페이지 로딩 순서 변경에도 호환된다.
 
 ### 남은 구조적 문제
 
@@ -273,7 +273,7 @@ powershell -ExecutionPolicy Bypass -File tools\check-encoding.ps1
 
 ```text
 cache policy (완료)
-  → dashboard common API / formatters / UI (완료)
+  → dashboard common API / formatters / UI / market regime (진행 중)
   → dashboard account/cache facade (완료)
   → stock_order approval / order-sync / trade-history
   → dashboard performance calculations
