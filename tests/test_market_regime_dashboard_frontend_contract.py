@@ -122,6 +122,9 @@ SCHEDULER_COLLAPSE_JS = (
 SCHEDULER_ROWS_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-scheduler-rows.js"
 ).read_text(encoding="utf-8")
+AI_STRATEGY_TABLE_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-ai-strategy-table.js"
+).read_text(encoding="utf-8")
 STRATEGY_ANALYSIS_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-strategy-analysis.js"
 ).read_text(encoding="utf-8")
@@ -411,6 +414,13 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn("appendOrderRows", SCHEDULER_ROWS_JS)
         self.assertIn("HanstockDashboardSchedulerRows.appendPlanRows", APP_JS)
         self.assertIn("HanstockDashboardSchedulerRows.appendOrderRows", APP_JS)
+
+    def test_ai_strategy_table_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-ai-strategy-table.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardAiStrategyTable", AI_STRATEGY_TABLE_JS)
+        self.assertIn("HanstockDashboardAiStrategyTable.render", APP_JS)
 
     def test_strategy_analysis_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-strategy-analysis.js?v=1"></script>'

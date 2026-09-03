@@ -2425,6 +2425,42 @@ async function renderAiStrategies() {
             updateAiStrategySelectionUi();
             return;
         }
+        HanstockDashboardAiStrategyTable.render(tbody, strategies, selectedId, aiStrategyDraftSelection, {
+            escapeHtml, pill, formatNumber, strategyDisplayName, strategyStatusLabel,
+            strategyScheduleCategory, strategyScheduleCategoryLabel, isSharedScheduleSelectable,
+            select: (strategy, tr) => {
+                window.aiStrategyEditorSelectedId = strategy.id;
+                tbody.querySelectorAll('tr').forEach((row) => row.classList.toggle('is-selected', row === tr));
+                fillStrategyDetail(strategy);
+            },
+            changeSelection: (input) => {
+                if (input.checked) aiStrategyDraftSelection.add(input.dataset.id);
+                else aiStrategyDraftSelection.delete(input.dataset.id);
+                aiStrategySelectionDirty = true;
+                aiStrategyCategoryFilter = '';
+                renderAiStrategies();
+            },
+            openDetail: (strategy) => {
+                window.aiStrategyEditorSelectedId = strategy.id;
+                tbody.querySelectorAll('tr').forEach((row) => row.classList.toggle('is-selected', row.dataset.id === strategy.id));
+                fillStrategyDetail(strategy);
+            },
+            deleteStrategy: async (strategy, button) => {
+                if (!window.confirm(`Delete strategy '${strategyDisplayName(strategy)}'?`)) return;
+                setButtonBusy(button, true);
+                try {
+                    await deleteJson(`/api/ai-strategies/${encodeURIComponent(strategy.id)}`);
+                    aiStrategyDraftSelection.delete(strategy.id);
+                    if (window.aiStrategyEditorSelectedId === strategy.id) window.aiStrategyEditorSelectedId = '';
+                    await Promise.all([renderAiStrategies(), syncStrategiesToDropdown(), renderStrategyContext(), renderScheduleInfo()]);
+                    setStatus('Strategy deleted.', true);
+                } catch (error) {
+                    setStatus(`Strategy delete failed: ${error.message}`);
+                    setButtonBusy(button, false);
+                }
+            },
+        });
+        if (false) {
         strategies.forEach((strategy) => {
             const profile = strategy.profile || {};
             const risk = profile.risk || {};
@@ -2536,6 +2572,7 @@ async function renderAiStrategies() {
             });
         });
 
+        }
         const active = strategies.filter((strategy) => strategy.selected && isSharedScheduleSelectable(strategy));
         const usable = strategies.filter(isSharedScheduleSelectable);
         const contextLabels = document.querySelectorAll('#strategy-context-summary > div > span');
