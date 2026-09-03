@@ -5441,6 +5441,45 @@ th,
     color: #fdba74 !important;
 }
 
+/* Desktop navigation follows the content flow: horizontal tabs below the context strip. */
+@media (min-width: 769px) {
+    body.namuh-dashboard .dashboard-tabs {
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 48px;
+        margin: 0 0 1rem !important;
+        padding: 0.35rem !important;
+        flex-direction: row !important;
+        align-items: stretch !important;
+        gap: 0.25rem !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        border: 1px solid rgba(148, 163, 184, 0.16) !important;
+        border-radius: 12px !important;
+        background: #0b1626 !important;
+        box-shadow: none !important;
+    }
+
+    body.namuh-dashboard .dashboard-tab {
+        flex: 1 1 0 !important;
+        min-width: 6.5rem;
+        min-height: 40px;
+        justify-content: center !important;
+        padding: 0.55rem 0.7rem !important;
+        text-align: center !important;
+        white-space: nowrap;
+    }
+
+    body.namuh-dashboard .dashboard-tab.active::before {
+        display: none !important;
+    }
+
+    body.namuh-dashboard main {
+        margin-left: 0 !important;
+    }
+}
+
 /* Desktop dashboard uses the available viewport instead of a centered 1540px island. */
 @media (min-width: 981px) {
     body.namuh-dashboard .dashboard-container {
