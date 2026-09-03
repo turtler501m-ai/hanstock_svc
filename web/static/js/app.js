@@ -263,7 +263,7 @@ function strategyOperationLabel(operation) {
     return '승인/검증 필요';
 }
 
-function buildCandidateStrategyMarkup(row) {
+function buildCandidateStrategyMarkupLegacy(row) {
     const ruleScore = Number(row.rule_score ?? row.score ?? 0);
     const finalScore = Number(row.final_score ?? row.score ?? ruleScore);
     const mlScore = row.ml_score == null ? null : Number(row.ml_score);
@@ -313,6 +313,16 @@ function buildCandidateStrategyMarkup(row) {
             ${fallback}
         </div>
     `;
+}
+
+function buildCandidateStrategyMarkup(row) {
+    return window.HanstockDashboardCandidateStrategy.render({
+        escapeHtml,
+        formatNumber,
+        pill,
+        aiModelStatusLabel,
+        aiModelStatusKind,
+    }, row);
 }
 
 function buildAiModalMarkup(payload) {
