@@ -5346,6 +5346,65 @@ th,
     display: none !important;
 }
 
+.ai-strategy-create-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.ai-strategy-create-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.ai-strategy-create-form label > span {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.ai-strategy-create-form input,
+.ai-strategy-create-form select,
+.ai-strategy-create-form textarea {
+    width: 100%;
+    border: 1px solid var(--glass-border);
+    border-radius: 7px;
+    background: rgba(30, 41, 59, 0.85);
+    color: var(--text-color);
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.55rem 0.75rem;
+}
+
+.ai-strategy-create-form select {
+    min-height: 38px;
+}
+
+.ai-strategy-create-form textarea {
+    min-height: 60px;
+    resize: vertical;
+}
+
+.ai-strategy-create-form input:focus,
+.ai-strategy-create-form select:focus,
+.ai-strategy-create-form textarea:focus {
+    border-color: var(--accent);
+    outline: 2px solid rgba(249, 115, 22, 0.22);
+    outline-offset: 1px;
+}
+
+.ai-strategy-create-wide,
+.ai-strategy-create-actions {
+    grid-column: 1 / -1;
+}
+
+.ai-strategy-create-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
 @media (max-width: 1100px) {
     .ai-strategy-editor-layout {
         grid-template-columns: 1fr;
@@ -5356,6 +5415,15 @@ th,
 }
 
 @media (max-width: 680px) {
+    .ai-strategy-create-form {
+        grid-template-columns: 1fr;
+    }
+
+    .ai-strategy-create-wide,
+    .ai-strategy-create-actions {
+        grid-column: auto;
+    }
+
     .ai-strategy-form-grid {
         grid-template-columns: 1fr;
     }

@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=58">
+    <link rel="stylesheet" href="/static/css/style.css?v=59">
 </head>
 
 <body class="namuh-dashboard">
@@ -1393,49 +1393,49 @@
                     </div>
                 </section>
 
-                <section class="card glass panel-add-ai-strategy" style="margin-top: 2rem;" hidden>
+                <section class="card glass panel-add-ai-strategy" hidden>
                     <div class="panel-header">
                         <h2>신규 AI 매수 전략 등록</h2>
                         <p class="section-help">나만의 AI 랭킹 파라미터를 입력하여 고유한 AI 전략을 시스템에 신설합니다.</p>
                     </div>
-                    <form class="manual-order-form" id="form-add-ai-strategy" style="display: grid; grid-template-columns: repeat(3, 1fr) !important; gap: 1rem; margin-top: 1.5rem;">
-                        <label style="display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">전략 이름</span>
-                            <input type="text" name="strat_name" placeholder="예: 단기 공격적 랭커 (GPT-4o)" required style="background: rgba(30, 41, 59, 0.85); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem;">
+                    <form class="manual-order-form ai-strategy-create-form" id="form-add-ai-strategy">
+                        <label>
+                            <span>전략 이름</span>
+                            <input type="text" name="strat_name" placeholder="예: 단기 공격적 랭커 (GPT-4o)" required>
                         </label>
-                        <label style="display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">타겟 AI 모델</span>
-                            <select name="strat_model" required style="background: rgba(30, 41, 59, 0.85); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; height: 38px;">
+                        <label>
+                            <span>타겟 AI 모델</span>
+                            <select name="strat_model" required>
                                 <option value="gpt-5-mini">🤖 gpt-5-mini (추천)</option>
                                 <option value="gpt-4o">🔥 gpt-4o</option>
                                 <option value="none">⚙️ none (로컬 룰베이스 전용)</option>
                             </select>
                         </label>
-                        <label style="display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">AI 가중치 (0.0 ~ 1.0)</span>
-                            <input type="number" name="strat_weight" step="0.1" min="0.0" max="1.0" value="0.4" required style="background: rgba(30, 41, 59, 0.85); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem;">
+                        <label>
+                            <span>AI 가중치 (0.0 ~ 1.0)</span>
+                            <input type="number" name="strat_weight" step="0.1" min="0.0" max="1.0" value="0.4" required>
                         </label>
-                        <label style="display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">최소 룰 점수 (1차 필터)</span>
-                            <input type="number" name="strat_min_rule_score" step="0.1" min="0.0" max="5.0" value="1.5" required style="background: rgba(30, 41, 59, 0.85); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem;">
+                        <label>
+                            <span>최소 룰 점수 (1차 필터)</span>
+                            <input type="number" name="strat_min_rule_score" step="0.1" min="0.0" max="5.0" value="1.5" required>
                         </label>
-                        <label style="display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">최소 AI 신뢰도 게이트</span>
-                            <input type="number" name="strat_min_confidence" step="0.05" min="0.0" max="1.0" value="0.6" required style="background: rgba(30, 41, 59, 0.85); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem;">
+                        <label>
+                            <span>최소 AI 신뢰도 게이트</span>
+                            <input type="number" name="strat_min_confidence" step="0.05" min="0.0" max="1.0" value="0.6" required>
                         </label>
-                        <label style="display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">AI 후보 승격 허용</span>
-                            <select name="strat_allow_promotion" required style="background: rgba(30, 41, 59, 0.85); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; height: 38px;">
+                        <label>
+                            <span>AI 후보 승격 허용</span>
+                            <select name="strat_allow_promotion" required>
                                 <option value="false">❌ 미허용 (기본값)</option>
                                 <option value="true">✅ 허용 (룰 미달도 AI 점수로 승격)</option>
                             </select>
                         </label>
-                        <label style="grid-column: span 3; display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">전략 상세 설명</span>
-                            <textarea name="strat_desc" placeholder="이 전략의 핵심 튜닝 성격이나 의도를 적어주세요." style="background: rgba(30, 41, 59, 0.85); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; min-height: 60px; resize: vertical; font-family: inherit;"></textarea>
+                        <label class="ai-strategy-create-wide">
+                            <span>전략 상세 설명</span>
+                            <textarea name="strat_desc" placeholder="이 전략의 핵심 튜닝 성격이나 의도를 적어주세요."></textarea>
                         </label>
-                        <div style="grid-column: span 3; text-align: right; margin-top: 0.5rem;">
-                            <button type="submit" style="background: #3b82f6; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">신규 AI 전략 등록</button>
+                        <div class="ai-strategy-create-actions">
+                            <button type="submit" class="button-primary">신규 AI 전략 등록</button>
                         </div>
                     </form>
                 </section>

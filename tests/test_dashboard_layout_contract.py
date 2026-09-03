@@ -17,7 +17,7 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("left: auto", STYLE)
         self.assertNotIn("margin-left: 190px", STYLE)
         self.assertNotIn("margin-left: 164px", STYLE)
-        self.assertIn('href="/static/css/style.css?v=58"', TEMPLATE)
+        self.assertIn('href="/static/css/style.css?v=59"', TEMPLATE)
 
     def test_ai_strategy_workspace_uses_shared_layout_classes(self):
         self.assertIn('class="ai-strategy-header-actions"', TEMPLATE)
@@ -37,6 +37,8 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("outline: 2px solid #f97316 !important", STYLE)
         self.assertIn("watchlist-data-card", TEMPLATE)
         self.assertIn(".watchlist-table-scroll", STYLE)
+        self.assertIn(".ai-strategy-create-form", STYLE)
+        self.assertNotIn('id="form-add-ai-strategy" style=', TEMPLATE)
 
     def test_mobile_navigation_remains_bottom_navigation(self):
         self.assertIn("@media (max-width: 768px)", STYLE)
