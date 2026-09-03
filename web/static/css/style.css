@@ -883,6 +883,7 @@ button:disabled {
 }
 
 .context-item {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -910,6 +911,24 @@ button:disabled {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+.context-item[data-state="good"] strong { color: #7ee2b8; }
+.context-item[data-state="warn"] strong { color: #ffd27d; }
+.context-item[data-state="danger"] strong { color: #ff9d9d; }
+.context-item[data-state="good"]::before,
+.context-item[data-state="warn"]::before,
+.context-item[data-state="danger"]::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 0;
+    width: 3px;
+    border-radius: 999px;
+}
+.context-item[data-state="good"]::before { background: #43c995; }
+.context-item[data-state="warn"]::before { background: #f3b64c; }
+.context-item[data-state="danger"]::before { background: #ef6d73; }
 
 .context-item-time strong {
     color: #cbd5e1;

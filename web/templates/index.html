@@ -35,15 +35,15 @@
             <section class="status-banner" id="status-banner" hidden></section>
 
             <section class="dashboard-context-strip" aria-label="현재 운용 컨텍스트">
-                <div class="context-item">
+                <div class="context-item" id="context-item-env" data-state="neutral">
                     <span>운용 환경</span>
                     <strong id="context-env">확인 중</strong>
                 </div>
-                <div class="context-item">
+                <div class="context-item" id="context-item-order" data-state="neutral">
                     <span>주문 상태</span>
                     <strong id="context-order">확인 중</strong>
                 </div>
-                <div class="context-item">
+                <div class="context-item" id="context-item-approval" data-state="neutral">
                     <span>승인 정책</span>
                     <strong id="context-approval">확인 중</strong>
                 </div>
@@ -2323,6 +2323,18 @@
                             loadHeikinAshiPerformance();
                         }
                     }
+                });
+                button.addEventListener('keydown', (event) => {
+                    const currentIndex = Array.from(buttons).indexOf(button);
+                    let nextIndex = null;
+                    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % buttons.length;
+                    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+                    if (event.key === 'Home') nextIndex = 0;
+                    if (event.key === 'End') nextIndex = buttons.length - 1;
+                    if (nextIndex === null) return;
+                    event.preventDefault();
+                    buttons[nextIndex].focus();
+                    buttons[nextIndex].click();
                 });
             });
 

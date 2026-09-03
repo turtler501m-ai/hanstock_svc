@@ -2,14 +2,24 @@
 (function (global) {
     async function renderRuntime(deps) {
         const health = await deps.fetchJson('/api/health');
-        deps.setText('runtime-env', health.trading_env === 'real' ? deps.labels.real : deps.labels.demo);
-        deps.setText('context-env', health.trading_env === 'real' ? deps.labels.real : deps.labels.demo);
+        const isReal = health.trading_env === 'real';
+        const isLive = Boolean(health.real_orders_enabled);
+        const canSubmit = Boolean(health.order_submission_enabled);
+        const autoApproval = Boolean(health.auto_approval_enabled);
+        const setContextState = (id, state) => {
+            const element = document.getElementById(id);
+            if (element) element.dataset.state = state;
+        };
+        setContextState('context-item-env', isReal ? 'danger' : 'good');
+        setContextState('context-item-order', isLive ? 'danger' : (canSubmit ? 'good' : 'warn'));
+        setContextState('context-item-approval', autoApproval ? 'warn' : 'good');
+        deps.setText('runtime-env', isReal ? deps.labels.real : deps.labels.demo);
+        deps.setText('context-env', isReal ? deps.labels.real : deps.labels.demo);
         deps.setText(
             'context-order',
-            health.real_orders_enabled ? deps.labels.liveEnabled :
-                (health.order_submission_enabled ? deps.labels.demoOrder : deps.labels.blocked)
+            isLive ? deps.labels.liveEnabled : (canSubmit ? deps.labels.demoOrder : deps.labels.blocked)
         );
-        deps.setText('context-approval', health.auto_approval_enabled ? deps.labels.autoApproval : deps.labels.manualApproval);
+        deps.setText('context-approval', autoApproval ? deps.labels.autoApproval : deps.labels.manualApproval);
         deps.setText('context-updated', new Date().toLocaleTimeString('ko-KR'));
         deps.setHtml('runtime-dry-run', health.dry_run ? deps.pill(deps.labels.on, 'warn') : deps.pill(deps.labels.off, 'buy'));
         deps.setHtml('runtime-order', health.order_submission_enabled ? deps.pill(deps.labels.enabled, 'buy') : deps.pill(deps.labels.blocked, 'warn'));
@@ -19,7 +29,7 @@
             dryRunButton.dataset.enabled = String(Boolean(health.dry_run));
             dryRunButton.textContent = health.dry_run ? deps.labels.disable : deps.labels.enable;
         }
-        const autoApprovalEnabled = Boolean(health.auto_approval_enabled);
+        const autoApprovalEnabled = autoApproval;
         const autoApprovalEl = document.getElementById('runtime-auto-approval');
         const autoApprovalButton = document.getElementById('btn-auto-approval');
         if (autoApprovalEl) autoApprovalEl.innerHTML = autoApprovalEnabled ? deps.pill(deps.labels.enabled, 'buy') : deps.pill(deps.labels.blocked, 'hold');
