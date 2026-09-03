@@ -5855,6 +5855,15 @@ th,
     white-space: nowrap;
 }
 
+body.namuh-dashboard :where(button, a, input, select, textarea, summary):focus-visible {
+    outline: 2px solid #f97316 !important;
+    outline-offset: 2px;
+}
+
+body.namuh-dashboard tbody tr:hover {
+    background: rgba(249, 115, 22, 0.08);
+}
+
 #table-watchlist {
     min-width: 1040px;
     table-layout: fixed;
