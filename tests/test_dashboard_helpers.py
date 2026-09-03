@@ -4,9 +4,23 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import src.dashboard as dashboard
+from src.dashboard.services.cache_policy import cache_age_seconds, mark_cache_fresh
 
 
 class DashboardHelperTests(unittest.TestCase):
+    def test_cache_policy_is_independent_from_dashboard_core(self):
+        captured_at = (datetime.now(dashboard.trader.KST) - timedelta(seconds=12)).isoformat()
+
+        age = cache_age_seconds(
+            {"_cache": {"cached_at": captured_at}},
+            now=lambda: datetime.now(dashboard.trader.KST),
+        )
+        fresh = mark_cache_fresh({"value": 1, "_cache": {"stale": True}})
+
+        self.assertIsNotNone(age)
+        self.assertGreaterEqual(age, 11)
+        self.assertFalse(fresh["_cache"]["stale"])
+
     def test_balance_cache_age_returns_elapsed_seconds(self):
         captured_at = (datetime.now(dashboard.trader.KST) - timedelta(seconds=12)).isoformat()
 

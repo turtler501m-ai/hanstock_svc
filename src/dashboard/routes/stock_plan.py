@@ -1,27 +1,15 @@
 """Risk, system and scheduler HTTP handlers."""
-import functools
 import uuid
-from fastapi import APIRouter
+from src.dashboard.routes.compat_router import CompatRouter, refresh_dependencies
 from src.dashboard.routes import stock as _stock
 def _refresh_legacy_dependencies() -> None:
-    globals().update({
-        name: value for name, value in vars(_stock).items()
-        if name not in {"router", "_refresh_legacy_dependencies", "_CompatRouter", "_stock"}
-        and not name.startswith("__")
-    })
-class _CompatRouter(APIRouter):
-    def api_route(self, path: str, **kwargs):
-        register = super().api_route(path, **kwargs)
-        def decorator(endpoint):
-            @functools.wraps(endpoint)
-            def dispatch(*args, **inner_kwargs):
-                _refresh_legacy_dependencies()
-                return endpoint(*args, **inner_kwargs)
-            register(dispatch)
-            return endpoint
-        return decorator
+    refresh_dependencies(globals(), (_stock,))
+
+_CompatRouter = CompatRouter
 _refresh_legacy_dependencies()
-router = _CompatRouter(tags=["stock", "stock-plan"])
+router = _CompatRouter(
+    namespace=globals(), dependencies=(_stock,), tags=["stock", "stock-plan"]
+)
 @router.get("/api/risk/status")
 def get_risk_status():
     def _build():

@@ -1,45 +1,19 @@
 """Performance HTTP handlers extracted from the legacy stock route module."""
 
-import functools
-import inspect
-
-from fastapi import APIRouter
+from src.dashboard.routes.compat_router import CompatRouter, refresh_dependencies
 from src.dashboard.routes import stock as _stock
 from src.dashboard.routes import stock_order as _order
 
 def _refresh_legacy_dependencies() -> None:
-    protected = {"router", "_refresh_legacy_dependencies", "_CompatRouter", "_stock", "_order"}
-    globals().update({
-        name: value for name, value in vars(_order).items()
-        if name not in protected and not name.startswith("__")
-    })
-    globals().update({
-        name: value for name, value in vars(_stock).items()
-        if name not in protected and not name.startswith("__")
-    })
+    refresh_dependencies(globals(), (_order, _stock))
 
-
-class _CompatRouter(APIRouter):
-    def api_route(self, path: str, **kwargs):
-        register = super().api_route(path, **kwargs)
-        def decorator(endpoint):
-            if inspect.iscoroutinefunction(endpoint):
-                @functools.wraps(endpoint)
-                async def dispatch(*args, **inner_kwargs):
-                    _refresh_legacy_dependencies()
-                    return await endpoint(*args, **inner_kwargs)
-            else:
-                @functools.wraps(endpoint)
-                def dispatch(*args, **inner_kwargs):
-                    _refresh_legacy_dependencies()
-                    return endpoint(*args, **inner_kwargs)
-            register(dispatch)
-            return endpoint
-        return decorator
+_CompatRouter = CompatRouter
 
 
 _refresh_legacy_dependencies()
-router = _CompatRouter(tags=["stock", "stock-performance"])
+router = _CompatRouter(
+    namespace=globals(), dependencies=(_order, _stock), tags=["stock", "stock-performance"]
+)
 
 
 def _merge_current_holding_change(result: dict, parsed: dict, today: str) -> None:

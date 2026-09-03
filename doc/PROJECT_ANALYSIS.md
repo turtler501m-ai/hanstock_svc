@@ -225,3 +225,58 @@ powershell -ExecutionPolicy Bypass -File tools\check-encoding.ps1
 | VM 운영 | `scripts/vm/update.sh`, `scripts/vm/server.sh`, `scripts/vm/hanstock-svc.service` |
 | 검증 | `tools/verify-local.ps1`, `tools/deployment-smoke.py`, `tests/` |
 
+## 11. 2026-09-03 재분석 결과
+
+### 규모 현황
+
+런타임 산출물과 Python 캐시는 제외한 현재 규모는 다음과 같다.
+
+| 영역 | 파일 수 | 소스 라인 수(대략) |
+|---|---:|---:|
+| `src/` | 273 | 44,078 |
+| `tests/` | 102 | 15,722 |
+| `web/` | 8 | 15,614 |
+| `scripts/`·`tools/` | 13 | 974 |
+| `config/` | 3 | 25,312 |
+
+가장 큰 비코드 데이터는 `config/kr_stock_metadata.json` 25,199줄이다. 이는 종목 메타데이터이므로 코드 분리 대상이 아니다.
+
+### 핵심 대형 파일의 현재 상태
+
+| 파일 | 라인 수 | 판단 |
+|---|---:|---|
+| `web/static/js/app.js` | 7,219 | 화면 기능별 JS 모듈 분리 우선 |
+| `web/static/css/style.css` | 4,096 | 공통/주문/성과/반응형 CSS 분리 가능 |
+| `web/templates/index.html` | 3,235 | 탭·컴포넌트 템플릿 분리 검토 |
+| `src/dashboard/core.py` | 2,948 | 캐시·계좌·후보·성과·스케줄 조정 책임이 집중됨 |
+| `src/dashboard/routes/stock_order.py` | 2,573 | 주문·승인·동기화·거래이력 라우트가 집중됨 |
+| `src/strategy/seven_split.py` | 1,760 | 스캔·신호·주문·포트폴리오 계산 분리 가능 |
+| `src/trader.py` | 1,277 | 실행 진입점과 계획 계산을 분리할 수 있음 |
+
+### 이미 적용된 분리
+
+대시보드 라우트는 `stock_analysis`, `stock_performance`, `stock_plan`, `stock_order`로 이미 분리되어 있다. DB도 AI scan/execution/risk, strategy, scheduler, trade, performance repository로 나뉜다. 자율전략은 `strategy/autonomy` 아래에 lifecycle, risk, order state, recovery, protection 경계를 갖는다.
+
+최근에는 `src/dashboard/services/cache_policy.py`를 추가해 캐시 timestamp·freshness 계산을 `dashboard/core.py`에서 분리했다. 기존 `core`의 호환 함수는 유지하여 테스트와 외부 호출 계약을 보호한다.
+
+### 남은 구조적 문제
+
+1. `dashboard.core`가 서비스 호출 조정자와 과거 호환 API를 동시에 맡는다.
+2. 라우트 모듈이 `from src.dashboard.core import *`와 `_refresh_legacy_dependencies()`에 의존한다. 바로 import를 끊으면 테스트·라우트 등록이 깨질 수 있다.
+3. `src.db.repository`는 여러 bounded repository를 재수출하는 façade라서 사용처가 많다. 직접 import를 일괄 변경하기보다 새 코드부터 담당 repository를 직접 사용해야 한다.
+4. 구형 승인/거래 경로와 통합 주문 원장이 함께 존재한다. `legacy_bridge.py`와 reconciliation을 제거하기 전에는 데이터 마이그레이션과 운영 이력 검증이 필요하다.
+5. 테스트 실행 시 `__pycache__`가 재생성된다. 이는 삭제 대상이 아니라 `.gitignore`로 관리되는 재생성 산출물이다.
+
+### 권장 리팩터링 순서
+
+```text
+cache policy (완료)
+  → dashboard account/cache facade
+  → stock_order approval / order-sync / trade-history
+  → dashboard performance calculations
+  → seven_split scan / signal / order planning
+  → trader runtime orchestration
+  → app.js feature modules
+```
+
+각 단계는 새 모듈을 먼저 만들고 기존 함수는 compatibility wrapper로 남긴 뒤, route contract와 전체 unittest를 통과시키고 사용처를 점진적으로 변경하는 방식이 안전하다. 목표 라인 수는 500줄을 참고값으로 사용하되, 하나의 업무 책임을 보존하는 것을 우선한다.

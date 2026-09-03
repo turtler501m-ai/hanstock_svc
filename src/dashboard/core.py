@@ -26,6 +26,10 @@ from src.notifier.slack import slack_order as _slack_order, slack_error as _slac
 from src.online_access import OnlineAccessBlockedError  # noqa: E402
 from src.runtime_state import PersistentRuntimeState  # noqa: E402
 from src.dashboard.services.cache_service import DashboardCacheService  # noqa: E402
+from src.dashboard.services.cache_policy import (  # noqa: E402
+    cache_age_seconds,
+    mark_cache_fresh,
+)
 from src.dashboard.services.api_audit_service import (  # noqa: E402
     ApiAuditMiddleware,
 )
@@ -599,24 +603,14 @@ def start_auto_approval_sweeper() -> bool:
 
 
 def _balance_cache_age_seconds(balance_data: dict) -> float | None:
-    cached_at = balance_data.get("_cache", {}).get("cached_at", "")
-    if not cached_at:
-        return None
-    try:
-        return (
-            trader.datetime.now(trader.KST)
-            - trader.datetime.fromisoformat(cached_at)
-        ).total_seconds()
-    except DashboardOperationError:
-        return None
+    return cache_age_seconds(
+        balance_data,
+        now=lambda: trader.datetime.now(trader.KST),
+    )
 
 
 def _mark_balance_cache_fresh(balance_data: dict) -> dict:
-    result = dict(balance_data)
-    metadata = dict(result.get("_cache") or {})
-    metadata["stale"] = False
-    result["_cache"] = metadata
-    return result
+    return mark_cache_fresh(balance_data)
 
 
 def _run_with_timeout(func, timeout_seconds: float):
