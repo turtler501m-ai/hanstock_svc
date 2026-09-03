@@ -161,7 +161,10 @@ class DashboardStockService:
                     symbol,
                     exc,
                 )
-                return {"current": price}
+                # Keep the quote contract complete when the broker is unavailable.
+                # build_orders prefers ask1 but must still be able to use the scan
+                # price without turning a recoverable quote outage into HTTP 500.
+                return {"current": price, "ask1": price, "bid1": price}
 
         if optimizer == "score_tilted_inverse_vol":
             orders = trader.build_orders(

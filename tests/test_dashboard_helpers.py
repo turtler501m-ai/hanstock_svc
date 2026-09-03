@@ -296,7 +296,10 @@ class DashboardHelperTests(unittest.TestCase):
         }
 
         def build_orders(candidates, quote_provider, held_count, cash):
-            self.assertEqual(quote_provider("251270"), {"current": 10000.0})
+            self.assertEqual(
+                quote_provider("251270"),
+                {"current": 10000.0, "ask1": 10000.0, "bid1": 10000.0},
+            )
             return []
 
         with patch.object(
