@@ -120,16 +120,9 @@ def _runtime_value(alias: str, settings_value):
 
 
 def operating_capital(account_total_eval: int | float = 0, *, runtime: TraderRuntimeContext | None = None) -> int:
-    """Return the configured capital available to Hanstock for this account."""
+    from src.strategy.budget import operating_capital as calculate
     settings = (runtime or TraderRuntimeContext.capture()).settings
-    configured_value = settings.total_capital
-    configured = max(0, int(configured_value or 0))
-    account_total = max(0, int(account_total_eval or 0))
-    if configured <= 0:
-        return account_total
-    if account_total <= 0:
-        return configured
-    return min(configured, account_total)
+    return calculate(account_total_eval, settings=settings)
 
 
 def available_buying_cash(
@@ -139,14 +132,14 @@ def available_buying_cash(
     *,
     runtime: TraderRuntimeContext | None = None,
 ) -> int:
-    """Cap new buys by configured capital, cash buffer, and current exposure."""
+    from src.strategy.budget import available_buying_cash as calculate
     runtime = runtime or TraderRuntimeContext.capture()
-    settings = runtime.settings
-    capital = operating_capital(account_total_eval, runtime=runtime)
-    cash_buffer = float(settings.cash_buffer or 0)
-    investable_limit = int(capital * max(0.0, 1.0 - cash_buffer))
-    remaining_exposure = max(0, investable_limit - max(0, int(stock_eval or 0)))
-    return min(max(0, int(broker_cash or 0)), remaining_exposure)
+    return calculate(
+        broker_cash,
+        stock_eval,
+        account_total_eval,
+        settings=runtime.settings,
+    )
 
 
 def buying_cash_diagnostics(
@@ -157,26 +150,15 @@ def buying_cash_diagnostics(
     locked_holding_eval: int | float = 0,
     runtime: TraderRuntimeContext | None = None,
 ) -> dict:
-    """Expose why new-buy cash is capped for dashboard/log diagnostics."""
+    from src.strategy.budget import buying_cash_diagnostics as calculate
     runtime = runtime or TraderRuntimeContext.capture()
-    settings = runtime.settings
-    capital = operating_capital(account_total_eval, runtime=runtime)
-    cash_buffer = float(settings.cash_buffer or 0)
-    investable_limit = int(capital * max(0.0, 1.0 - cash_buffer))
-    exposure_for_new_buys = max(0, int(stock_eval or 0) - int(locked_holding_eval or 0))
-    exposure_remaining = investable_limit - exposure_for_new_buys
-    broker_cash_int = max(0, int(broker_cash or 0))
-    return {
-        "broker_cash": broker_cash_int,
-        "stock_eval": max(0, int(stock_eval or 0)),
-        "locked_holding_eval": max(0, int(locked_holding_eval or 0)),
-        "exposure_for_new_buys": exposure_for_new_buys,
-        "operating_capital": capital,
-        "cash_buffer": cash_buffer,
-        "investable_limit": investable_limit,
-        "exposure_remaining": exposure_remaining,
-        "buying_cash": min(broker_cash_int, max(0, exposure_remaining)),
-    }
+    return calculate(
+        broker_cash,
+        stock_eval,
+        account_total_eval,
+        locked_holding_eval=locked_holding_eval,
+        settings=runtime.settings,
+    )
 
 
 def build_market_data_api(
