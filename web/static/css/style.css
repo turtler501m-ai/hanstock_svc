@@ -5390,3 +5390,47 @@ th,
     .watchlist-action-divider { display: none; }
     .watchlist-scan-button { width: 100%; }
 }
+
+/* Keep legacy strategy sub-tabs aligned with the current Namuh accent. */
+#dashboard-tab-plunge-bounce .pb-tab,
+#dashboard-tab-heikin-ashi .pb-tab {
+    border-bottom-color: transparent !important;
+    background: transparent !important;
+    color: #9fb0c5 !important;
+}
+
+#dashboard-tab-plunge-bounce .pb-tab:hover,
+#dashboard-tab-heikin-ashi .pb-tab:hover {
+    color: #f8fafc !important;
+    background: rgba(148, 163, 184, 0.09) !important;
+}
+
+#dashboard-tab-plunge-bounce .pb-tab.active,
+#dashboard-tab-heikin-ashi .pb-tab.active {
+    border-bottom-color: #f97316 !important;
+    color: #fdba74 !important;
+    background: rgba(249, 115, 22, 0.12) !important;
+}
+
+#dashboard-tab-plunge-bounce .badge.status-ok,
+#dashboard-tab-heikin-ashi .badge.status-ok {
+    border-color: rgba(249, 115, 22, 0.32) !important;
+    background: rgba(249, 115, 22, 0.12) !important;
+    color: #fdba74 !important;
+}
+
+/* Desktop dashboard uses the available viewport instead of a centered 1540px island. */
+@media (min-width: 981px) {
+    body.namuh-dashboard .dashboard-container {
+        width: 100%;
+        max-width: none;
+    }
+
+    body.namuh-dashboard .dashboard-tabs {
+        left: 1.25rem;
+    }
+
+    body.namuh-dashboard main {
+        margin-left: 190px;
+    }
+}
