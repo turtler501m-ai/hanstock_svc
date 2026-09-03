@@ -81,6 +81,11 @@ body.namuh-dashboard .app-header {
     box-shadow: 0 16px 34px rgba(127, 29, 29, 0.26);
 }
 
+body.namuh-dashboard {
+    --accent: #f97316;
+    --accent-soft: rgba(249, 115, 22, 0.14);
+}
+
 body.namuh-dashboard .app-header .eyebrow {
     color: #fdba74;
 }
@@ -5411,6 +5416,10 @@ th,
     .watchlist-add-form input { flex: 1; width: auto; }
     .watchlist-action-divider { display: none; }
     .watchlist-scan-button { width: 100%; }
+
+    body.namuh-dashboard .dashboard-tab.active::after {
+        background: #f97316 !important;
+    }
 }
 
 /* Keep legacy strategy sub-tabs aligned with the current Namuh accent. */
