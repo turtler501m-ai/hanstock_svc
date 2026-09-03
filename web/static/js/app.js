@@ -7015,7 +7015,7 @@ async function renderScheduleInfo() {
     }
 }
 
-async function renderSchedulerStrategyChecklist(schedules = []) {
+async function renderSchedulerStrategyChecklistLegacy(schedules = []) {
     const container = document.getElementById('scheduler-strategy-checklist');
     if (!container) return;
     const scheduled = new Set(schedules.filter((row) => row.enabled).map((row) => String(row.strategy_id)));
@@ -7057,7 +7057,21 @@ async function renderSchedulerStrategyChecklist(schedules = []) {
     }).join('') || '<span class="time-muted">실행 가능한 전략이 없습니다.</span>';
 }
 
+async function renderSchedulerStrategyChecklist(schedules = []) {
+    return window.HanstockDashboardSchedulerStrategyChecklist.render({
+        getActiveStrategyId,
+        strategyDisplayName,
+        formatKstTime,
+        toKorAction,
+        escapeHtml,
+    }, schedules);
+}
+
 function getScheduledStrategyIds() {
+    return window.HanstockDashboardSchedulerStrategyChecklist.selectedIds();
+}
+
+function getScheduledStrategyIdsLegacy() {
     return Array.from(document.querySelectorAll('.scheduler-strategy-checkbox:checked'))
         .map((input) => String(input.value || '').trim())
         .filter(Boolean);

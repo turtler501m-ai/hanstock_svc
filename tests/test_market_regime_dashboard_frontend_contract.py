@@ -101,6 +101,9 @@ STRATEGY_CONTEXT_JS = (
 AI_SCHEDULE_SETTINGS_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-ai-schedule-settings.js"
 ).read_text(encoding="utf-8")
+SCHEDULER_CHECKLIST_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-scheduler-strategy-checklist.js"
+).read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 
 
@@ -331,6 +334,13 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn("HanstockDashboardAiScheduleSettings", AI_SCHEDULE_SETTINGS_JS)
         self.assertIn("HanstockDashboardAiScheduleSettings.load", APP_JS)
         self.assertIn("HanstockDashboardAiScheduleSettings.save", APP_JS)
+
+    def test_scheduler_strategy_checklist_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-scheduler-strategy-checklist.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardSchedulerStrategyChecklist", SCHEDULER_CHECKLIST_JS)
+        self.assertIn("HanstockDashboardSchedulerStrategyChecklist.render", APP_JS)
 
     def test_dashboard_exposes_daily_market_regime_panel(self):
         required_markup = (
