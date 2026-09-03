@@ -491,6 +491,7 @@ async function renderRuntime() {
             liveEnabled: '\uc2e4\uc8fc\ubb38 \uac00\ub2a5', liveBlocked: '\uc2e4\uc8fc\ubb38 \ucc28\ub2e8', disable: '\ub044\uae30', enable: '\ucf1c\uae30', calls: '\uac74',
             demoOrder: '\ubaa8\uc758\uc8fc\ubb38 \uac00\ub2a5', autoApproval: '\uc790\ub3d9\uc2b9\uc778', manualApproval: '\uc218\ub3d9\uc2b9\uc778',
             healthGood: '\uc815\uc0c1 \uac31\uc2e0', healthWarn: '\uc8fc\uc758 \ud544\uc694', healthBad: '\uc810\uac80 \ud544\uc694',
+            realHeader: 'NAMUH REST API · 국내주식 실전운영', demoHeader: 'NAMUH REST API · 국내주식 모의운영',
             syncBlocked: '\ub3d9\uae30\ud654 \ubd88\uac00', sync: '\uc99d\uad8c \uae30\ub85d \ub3d9\uae30\ud654', syncBlockedTitle: '\ubaa8\uc758 \uc2e4\ud589(DRY_RUN) \uc911\uc5d0\ub294 \uc99d\uad8c \ub4f1\uacc4\uc88c \ub3d9\uae30\ud654\ub97c \uc0ac\uc6a9\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.',
         },
     });

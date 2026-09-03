@@ -15,6 +15,7 @@
         if (refreshStatus) refreshStatus.dataset.state = healthState;
         if (refreshDot) refreshDot.className = `dot ${healthState}`;
         if (refreshLabel) refreshLabel.textContent = healthState === 'good' ? deps.labels.healthGood : (healthState === 'warn' ? deps.labels.healthWarn : deps.labels.healthBad);
+        deps.setText('dashboard-eyebrow', isReal ? deps.labels.realHeader : deps.labels.demoHeader);
         const setContextState = (id, state) => {
             const element = document.getElementById(id);
             if (element) element.dataset.state = state;
