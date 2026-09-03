@@ -28,6 +28,7 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("box-shadow: inset 3px 0 #f97316", STYLE)
         self.assertIn("background: rgba(249, 115, 22, 0.14)", STYLE)
         self.assertIn('class="warning-note trade-sync-last-result"', TEMPLATE)
+        self.assertIn('role="status" aria-live="polite"', TEMPLATE)
         self.assertIn(".performance-cashflow-form", STYLE)
         self.assertNotIn("                    .badge {", TEMPLATE)
         self.assertIn(".trade-sync-last-result[hidden]", STYLE)
