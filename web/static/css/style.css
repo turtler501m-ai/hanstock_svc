@@ -601,6 +601,7 @@ h1 .highlight {
 
 .periodic-performance-container {
     margin-bottom: 2rem !important;
+    padding: 1.25rem !important;
     border-color: rgba(148, 163, 184, 0.16) !important;
     border-radius: 13px !important;
     background: #101d31 !important;
@@ -608,7 +609,28 @@ h1 .highlight {
 }
 
 .periodic-performance-container .tab-sub-menu {
+    display: flex;
+    gap: 0.45rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.55rem;
     border-bottom-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+.periodic-performance-container .dashboard-tab-sub {
+    padding: 0.45rem 0.85rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: #9fb0c5;
+    font-family: var(--font-sans, 'Noto Sans KR', sans-serif);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.periodic-performance-container .dashboard-tab-sub:hover {
+    background: rgba(148, 163, 184, 0.09);
+    color: #e7eef7;
 }
 
 .periodic-performance-container .dashboard-tab-sub.active {
@@ -617,9 +639,23 @@ h1 .highlight {
 }
 
 .performance-detail-panel {
+    display: none;
     border-color: rgba(249, 115, 22, 0.3);
     border-radius: 10px;
     background: rgba(7, 16, 29, 0.34);
+}
+
+.periodic-performance-chart {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    margin-bottom: 1.75rem;
+}
+
+@media (max-width: 760px) {
+    .periodic-performance-container .tab-sub-menu { overflow-x: auto; }
+    .periodic-performance-container .dashboard-tab-sub { flex: 0 0 auto; }
+    .periodic-performance-chart { height: 250px; }
 }
 
 /* Legacy strategy workspaces now inherit the same visual shell. */
