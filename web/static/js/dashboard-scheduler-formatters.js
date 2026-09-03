@@ -39,5 +39,16 @@
         }
     }
 
-    global.HanstockDashboardSchedulerFormatters = { approvalStatus, planQuantity, planPrice, kstTime };
+    function decision(value) {
+        if (value === 'execute' || value === 'approved') return '즉시 실행';
+        if (value === 'queue') return '승인 대기';
+        if (value === 'skip') return '수행 보류';
+        return value || '보류';
+    }
+
+    function planCategory(category) {
+        return ({ position: '보유종목', candidate: '매수후보', ai_rebalance: 'AI 리밸런싱' })[category] || category || 'AI 리밸런싱';
+    }
+
+    global.HanstockDashboardSchedulerFormatters = { approvalStatus, planQuantity, planPrice, kstTime, decision, planCategory };
 })(window);

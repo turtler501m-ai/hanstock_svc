@@ -7223,19 +7223,11 @@ function disableTriggerButtonsLegacy(disabled) {
 }
 
 function toKorDecision(dec) {
-    if (dec === 'execute' || dec === 'approved') return '즉시 실행';
-    if (dec === 'queue') return '승인 대기';
-    if (dec === 'skip') return '수행 보류';
-    return dec || '보류';
+    return window.HanstockDashboardSchedulerFormatters.decision(dec);
 }
 
 function toKorPlanCategory(category) {
-    const labels = {
-        position: '보유종목',
-        candidate: '매수후보',
-        ai_rebalance: 'AI 리밸런싱',
-    };
-    return labels[category] || category || 'AI 리밸런싱';
+    return window.HanstockDashboardSchedulerFormatters.planCategory(category);
 }
 
 function schedulerApprovalStatusLegacy(status) {
