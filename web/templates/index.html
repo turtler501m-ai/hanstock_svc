@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=59">
+    <link rel="stylesheet" href="/static/css/style.css?v=60">
 </head>
 
 <body class="namuh-dashboard">
@@ -450,7 +450,7 @@
                     </div>
                 </section>
 
-                <section class="card glass panel-candidates-history" style="margin-top: 2rem;">
+                <section class="card glass panel-candidates-history">
                     <div class="panel-header split-header">
                         <div>
                             <h2>매수후보 포착 히스토리</h2>
@@ -770,7 +770,7 @@
                     </section>
                 </div>
 
-                <div id="scheduler-running-panel" class="card glass panel-schedule-running schedule-running-panel" style="display: none;">
+                <div id="scheduler-running-panel" class="card glass panel-schedule-running schedule-running-panel" hidden>
                     <div class="schedule-running-header">
                         <div>
                             <span class="dot live pulsing"></span>
@@ -847,8 +847,8 @@
 
                     <div class="schedule-tables">
                         <div id="scheduler-runs-container">
-                            <div class="text-center" style="color: var(--text-muted); font-size: 0.95rem; padding: 2rem 0;">
-                                <i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i> 로딩 중이거나 내역이 없습니다...
+                            <div class="schedule-loading-message">
+                                <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> 로딩 중이거나 내역이 없습니다...
                             </div>
                         </div>
                     </div>

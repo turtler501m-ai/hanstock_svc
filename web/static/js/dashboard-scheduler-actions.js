@@ -16,7 +16,7 @@
         setButtonBusy(button, true);
         disableButtons(true);
         const panel = document.getElementById('scheduler-running-panel');
-        if (panel) panel.style.display = 'block';
+        if (panel) panel.hidden = false;
         const log = document.getElementById('scheduler-running-log');
         if (log) log.textContent = `[${new Date().toLocaleTimeString()}] ${mode} 스케줄 실행을 시작합니다.\n`;
         try {
@@ -40,7 +40,7 @@
         if (getInterval()) return;
         disableButtons(true);
         const panel = document.getElementById('scheduler-running-panel');
-        if (panel) panel.style.display = 'block';
+        if (panel) panel.hidden = false;
         const log = document.getElementById('scheduler-running-log');
         let attempts = 0;
         const intervalId = setInterval(async () => {

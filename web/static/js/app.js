@@ -4558,10 +4558,10 @@ async function renderScheduleInfo() {
         const runningPanel = document.getElementById('scheduler-running-panel');
         if (runningPanel) {
             if (runState.is_running) {
-                runningPanel.style.display = 'block';
+                runningPanel.hidden = false;
                 startSchedulerPolling(runState.mode);
             } else {
-                runningPanel.style.display = 'none';
+                runningPanel.hidden = true;
                 if (schedulerPollInterval) {
                     clearInterval(schedulerPollInterval);
                     schedulerPollInterval = null;

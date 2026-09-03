@@ -6,6 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = (ROOT / "web" / "templates" / "index.html").read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 SCHEDULER_ROWS = (ROOT / "web" / "static" / "js" / "dashboard-scheduler-rows.js").read_text(encoding="utf-8")
+SCHEDULER_ACTIONS = (ROOT / "web" / "static" / "js" / "dashboard-scheduler-actions.js").read_text(encoding="utf-8")
+APP_JS = (ROOT / "web" / "static" / "js" / "app.js").read_text(encoding="utf-8")
 
 
 class DashboardLayoutContractTests(unittest.TestCase):
@@ -17,7 +19,7 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("left: auto", STYLE)
         self.assertNotIn("margin-left: 190px", STYLE)
         self.assertNotIn("margin-left: 164px", STYLE)
-        self.assertIn('href="/static/css/style.css?v=59"', TEMPLATE)
+        self.assertIn('href="/static/css/style.css?v=60"', TEMPLATE)
 
     def test_ai_strategy_workspace_uses_shared_layout_classes(self):
         self.assertIn('class="ai-strategy-header-actions"', TEMPLATE)
@@ -39,6 +41,12 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn(".watchlist-table-scroll", STYLE)
         self.assertIn(".ai-strategy-create-form", STYLE)
         self.assertNotIn('id="form-add-ai-strategy" style=', TEMPLATE)
+
+    def test_scheduler_running_panel_uses_hidden_state_consistently(self):
+        self.assertIn('id="scheduler-running-panel" class="card glass panel-schedule-running schedule-running-panel" hidden', TEMPLATE)
+        self.assertIn("panel.hidden = false", SCHEDULER_ACTIONS)
+        self.assertIn("runningPanel.hidden = false", APP_JS)
+        self.assertIn("runningPanel.hidden = true", APP_JS)
 
     def test_mobile_navigation_remains_bottom_navigation(self):
         self.assertIn("@media (max-width: 768px)", STYLE)
