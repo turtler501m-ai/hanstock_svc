@@ -125,6 +125,9 @@ SCHEDULER_ROWS_JS = (
 AI_STRATEGY_TABLE_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-ai-strategy-table.js"
 ).read_text(encoding="utf-8")
+SCHEDULER_ROUNDS_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-scheduler-rounds.js"
+).read_text(encoding="utf-8")
 STRATEGY_ANALYSIS_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-strategy-analysis.js"
 ).read_text(encoding="utf-8")
@@ -421,6 +424,14 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardAiStrategyTable", AI_STRATEGY_TABLE_JS)
         self.assertIn("HanstockDashboardAiStrategyTable.render", APP_JS)
+
+    def test_scheduler_rounds_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-scheduler-rounds.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardSchedulerRounds", SCHEDULER_ROUNDS_JS)
+        self.assertIn("buildRounds", SCHEDULER_ROUNDS_JS)
+        self.assertIn("HanstockDashboardSchedulerRounds.buildRounds", APP_JS)
 
     def test_strategy_analysis_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-strategy-analysis.js?v=1"></script>'

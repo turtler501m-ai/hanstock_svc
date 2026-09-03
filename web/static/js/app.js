@@ -6764,7 +6764,13 @@ async function renderScheduleInfo() {
             }
             
             // Build groups dynamically by round
-            const uniqueRounds = new Map(); // round -> { time, results, approved, approvalErrors, mode }
+            const uniqueRounds = HanstockDashboardSchedulerRounds.buildRounds({
+                results, approved, approvalErrors, schedulerRuns,
+                fallbackTime: lastResult.recorded_at ? lastResult.recorded_at.replace("T", " ").split(" ")[1]?.substring(0, 5) || '-' : '-',
+                mode: lastResult.mode,
+            });
+            if (false) {
+            const legacyUniqueRounds = new Map(); // migration reference
             schedulerRuns.forEach(run => {
                 if (!run.round) return;
                 uniqueRounds.set(run.round, {
@@ -6822,6 +6828,7 @@ async function renderScheduleInfo() {
             }
             
             // Initialize expanded rounds set if not exists
+            }
             const sortedRoundIds = Array.from(uniqueRounds.keys()).sort((a, b) => b - a); // DESC: latest at top
             if (!window._expandedRounds) {
                 window._expandedRounds = new Set();
