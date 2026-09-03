@@ -1848,7 +1848,8 @@ def _trade_is_dry_run(trade: dict) -> bool:
     return trade_is_dry_run(trade)
 
 
-def _trade_is_sync_adjustment(trade: dict) -> bool:
+"""
+def _trade_is_sync_adjustment_legacy(trade: dict) -> bool:
     reason = str(trade.get("reason") or "").lower()
     # Broker history imports are actual fills, not synthetic balance adjustments.
     # They must participate in realized-PnL reconstruction.
@@ -1865,6 +1866,14 @@ def _trade_is_sync_adjustment(trade: dict) -> bool:
     if any(token in reason for token in broken_tokens):
         return True
     return False
+
+
+"""
+
+def _trade_is_sync_adjustment(trade: dict) -> bool:
+    from src.dashboard.services.performance_metrics import trade_is_sync_adjustment
+
+    return trade_is_sync_adjustment(trade)
 
 
 def _filled_price_matches_order(trade: dict, *, tolerance: float = 0.30) -> bool:

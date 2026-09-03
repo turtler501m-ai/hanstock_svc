@@ -95,3 +95,15 @@ def filled_price_matches_order(trade: dict, *, tolerance: float = 0.30) -> bool:
     if filled_price <= 0 or order_price <= 0:
         return True
     return order_price * (1.0 - tolerance) <= filled_price <= order_price * (1.0 + tolerance)
+
+
+def trade_is_sync_adjustment(trade: dict) -> bool:
+    """Identify synthetic synchronization rows excluded from realized PnL."""
+    reason = str(trade.get("reason") or "").lower()
+    if reason.strip() == "broker history import":
+        return False
+    if any(token in reason for token in ("sync", "adjust", "correction", "import")):
+        return True
+    if any(token in reason for token in ("\ub3d9\uae30\ud654", "\ubcf4\uc815", "\uc870\uc815")):
+        return True
+    return False

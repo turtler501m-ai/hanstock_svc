@@ -21,6 +21,7 @@ from src.dashboard.routes.stock_performance import (
 )
 from src.dashboard.services.performance_metrics import (
     filled_price_matches_order,
+    trade_is_sync_adjustment,
     trade_is_dry_run,
     trade_is_ok,
 )
@@ -38,6 +39,11 @@ class DashboardPeriodicPerformanceTests(unittest.TestCase):
         self.assertTrue(filled_price_matches_order({"price": 100, "filled_price": 125}))
         self.assertFalse(filled_price_matches_order({"price": 100, "filled_price": 140}))
         self.assertTrue(filled_price_matches_order({"price": 0, "filled_price": 999}))
+
+    def test_sync_adjustments_exclude_synthetic_rows_but_keep_imports(self):
+        self.assertTrue(trade_is_sync_adjustment({"reason": "balance sync"}))
+        self.assertTrue(trade_is_sync_adjustment({"reason": "\ubcf4\uc815"}))
+        self.assertFalse(trade_is_sync_adjustment({"reason": "broker history import"}))
 
     def test_live_holding_change_creates_quiet_day_and_month_rows(self):
         result = {"daily": [], "monthly": [], "strategy_validation": []}
