@@ -544,6 +544,84 @@ h1 .highlight {
     .market-regime-simple-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* Market and performance: emphasize interpretation first, evidence second. */
+.market-regime-hero {
+    border-top: 3px solid #f97316;
+    background: linear-gradient(135deg, #13243b, #101d31) !important;
+}
+
+.market-regime-hero[data-quality="good"] {
+    border-color: rgba(34, 197, 94, 0.55);
+}
+
+.market-regime-hero[data-quality="degraded"] {
+    border-color: rgba(245, 158, 11, 0.6);
+}
+
+.market-regime-hero[data-quality="insufficient"] {
+    border-color: rgba(239, 68, 68, 0.65);
+}
+
+.market-regime-decision {
+    border: 1px solid rgba(148, 163, 184, 0.13);
+    border-radius: 12px;
+    background: rgba(7, 16, 29, 0.26);
+}
+
+.market-regime-action-box {
+    border: 1px solid rgba(249, 115, 22, 0.28);
+    background: rgba(249, 115, 22, 0.1);
+}
+
+.market-regime-simple-grid > div,
+.market-regime-metric-list > div {
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(7, 16, 29, 0.3);
+}
+
+.panel-trades {
+    border-top: 3px solid #f97316 !important;
+}
+
+.performance-summary {
+    gap: 0.55rem;
+}
+
+.performance-summary > div,
+.performance-kpi {
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 10px;
+    background: rgba(7, 16, 29, 0.28);
+}
+
+.performance-summary strong,
+.performance-kpi strong {
+    font-family: var(--font-mono);
+}
+
+.periodic-performance-container {
+    margin-bottom: 2rem !important;
+    border-color: rgba(148, 163, 184, 0.16) !important;
+    border-radius: 13px !important;
+    background: #101d31 !important;
+    backdrop-filter: none !important;
+}
+
+.periodic-performance-container .tab-sub-menu {
+    border-bottom-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+.periodic-performance-container .dashboard-tab-sub.active {
+    background: rgba(249, 115, 22, 0.14) !important;
+    color: #fdba74 !important;
+}
+
+.performance-detail-panel {
+    border-color: rgba(249, 115, 22, 0.3);
+    border-radius: 10px;
+    background: rgba(7, 16, 29, 0.34);
+}
+
 /* Legacy strategy workspaces now inherit the same visual shell. */
 #dashboard-tab-plunge-bounce .card,
 #dashboard-tab-heikin-ashi .card {
