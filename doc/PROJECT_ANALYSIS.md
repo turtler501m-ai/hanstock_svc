@@ -273,7 +273,7 @@ powershell -ExecutionPolicy Bypass -File tools\check-encoding.ps1
 
 ```text
 cache policy (완료)
-  → dashboard common API / formatters / UI / market regime / strategy audit / AI allocation screen (진행 중)
+  → dashboard common API / formatters / UI / market regime / strategy audit / AI allocation / candidate history screen (진행 중)
   → dashboard account/cache facade (완료)
   → stock_order approval / order-sync / trade-history
   → dashboard performance calculations

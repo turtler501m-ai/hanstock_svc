@@ -3662,75 +3662,11 @@ async function refreshMarketRegimeData() {
 }
 
 async function renderCandidateHistory() {
-    try {
-        const data = await fetchJson(withActiveStrategy('/api/candidates/history', { limit: 50 }), 30000);
-        const tbody = document.querySelector('#table-candidates-history tbody');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '';
-        const historyList = data.history || [];
-        if (!historyList.length) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">포착된 매수후보 기록이 없습니다.</td></tr>`;
-            return;
-        }
-        
-        historyList.forEach(item => {
-            const tr = document.createElement('tr');
-            
-            const rsiVal = item.rsi != null ? `RSI ${Number(item.rsi).toFixed(1)}` : '';
-            const rsi2Val = item.rsi2 != null ? `RSI2 ${Number(item.rsi2).toFixed(1)}` : '';
-            const macdVal = item.macd_hist != null ? `MACD ${Number(item.macd_hist).toFixed(2)}` : '';
-            const sma20 = item.sma20 || 0;
-            const sma60 = item.sma60 || 0;
-            const smaVal = sma20 > 0 && sma60 > 0 ? (sma20 > sma60 ? '단기↑중기선 위' : '단기↓중기선 아래') : '';
-            const indicatorParts = [rsiVal, rsi2Val, macdVal, smaVal].filter(Boolean);
-            const indicatorText = indicatorParts.length ? indicatorParts.join(' | ') : '-';
-            
-            const reasonsText = (item.reasons || '').split(',').map(r => strategyReasonLabel(r)).join(' · ');
-            const envText = item.env === 'real' ? pill('실전', 'sell') : pill('모의', 'hold');
-            
-            tr.innerHTML = `
-                <td><strong>${escapeHtml(item.scanned_at)}</strong></td>
-                <td>
-                    <span class="symbol-name">${escapeHtml(item.name || item.symbol)}</span>
-                    <span class="symbol-code">${item.symbol}</span>
-                </td>
-                <td>${pill(formatNumber(item.score, 2), item.score >= 3 ? 'buy' : 'warn')}</td>
-                <td>${formatCurrency(item.price)}</td>
-                <td><small style="color: #94a3b8;">${escapeHtml(indicatorText)}</small></td>
-                <td><div class="reason-cell" title="${escapeHtml(reasonsText)}">${escapeHtml(reasonsText)}</div></td>
-                <td>${envText}</td>
-                <td>
-                    <button type="button" class="button-ghost delete-candidate-history" data-id="${item.id}" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2); padding: 4px 8px; font-size: 0.8rem; height: auto; min-height: auto;">삭제</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-        
-        const deleteButtons = tbody.querySelectorAll('.delete-candidate-history');
-        deleteButtons.forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const id = btn.dataset.id;
-                if (!id) return;
-                if (confirm('이 매수후보 포착 기록을 데이터베이스에서 삭제하시겠습니까?')) {
-                    try {
-                        const res = await fetchJson(`/api/candidates/history/${id}`, 10000, { method: 'DELETE' });
-                        if (res.ok) {
-                            setStatus('매수후보 포착 기록이 성공적으로 삭제되었습니다.', true);
-                            await renderCandidateHistory();
-                        }
-                    } catch (err) {
-                        console.error('Failed to delete candidate history', err);
-                        alert('삭제 처리 중 오류가 발생했습니다: ' + err.message);
-                    }
-                }
-            });
-        });
-        
-    } catch (err) {
-        console.error('Failed to fetch candidate history', err);
-        setTableMessage('#table-candidates-history tbody', 8, err.message);
-    }
+    return window.HanstockDashboardCandidateHistoryScreen.render({
+        fetchJson, deleteJson, withActiveStrategy, strategyReasonLabel, pill,
+        formatNumber, formatCurrency, escapeHtml, setStatus, setTableMessage,
+        reload: renderCandidateHistory,
+    });
 }
 
 async function renderAiAllocation() {

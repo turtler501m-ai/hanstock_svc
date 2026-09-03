@@ -17,6 +17,9 @@ STRATEGY_AUDIT_SCREEN_JS = (
 AI_ALLOCATION_SCREEN_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-ai-allocation-screen.js"
 ).read_text(encoding="utf-8")
+CANDIDATE_HISTORY_SCREEN_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-candidate-history-screen.js"
+).read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 
 
@@ -49,6 +52,14 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn("HanstockDashboardAiAllocationScreen", AI_ALLOCATION_SCREEN_JS)
         self.assertIn("data-source=", AI_ALLOCATION_SCREEN_JS)
         self.assertIn("ai-allocation", AI_ALLOCATION_SCREEN_JS)
+
+    def test_candidate_history_screen_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-candidate-history-screen.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardCandidateHistoryScreen", CANDIDATE_HISTORY_SCREEN_JS)
+        self.assertIn("HanstockDashboardCandidateHistoryScreen.render", APP_JS)
+        self.assertNotIn("const historyList = data.history || []", APP_JS)
 
     def test_dashboard_exposes_daily_market_regime_panel(self):
         required_markup = (
