@@ -18,7 +18,7 @@
         const card = document.createElement('div');
         card.className = 'card glass scheduler-round-card';
         card.innerHTML = `
-            <div class="round-header scheduler-round-header" onclick="toggleRoundCollapse(${round})">
+            <div class="round-header scheduler-round-header" role="button" tabindex="0" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="round-body-${round}" onclick="toggleRoundCollapse(${round})">
                 <div class="scheduler-round-heading">
                     <span class="badge scheduler-round-number">${round}차 실행</span>
                     <span class="scheduler-round-time">◷ ${data.time || '-'}</span>
@@ -40,6 +40,14 @@
                 <h4 class="scheduler-round-section-title">생성된 매매 계획 및 판단</h4>
                 <div class="table-responsive scheduler-round-table-wrap"><table class="table-plans scheduler-table"><thead><tr><th>종목코드</th><th>종목명</th><th>전략</th><th>분류</th><th>결정</th><th>수량</th><th>가격</th><th>근거</th></tr></thead><tbody></tbody></table></div>
             </div>`;
+        const header = card.querySelector('.scheduler-round-header');
+        if (header) {
+            header.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                global.toggleRoundCollapse?.(round);
+            });
+        }
         return card;
     }
 
