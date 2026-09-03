@@ -1948,18 +1948,8 @@ def _account_trades(trades: list[dict]) -> list[dict]:
 
 
 def _period_bucket() -> dict:
-    return {
-        "order_count": 0,
-        "buy_count": 0,
-        "sell_count": 0,
-        "buy_amount": 0,
-        "sell_amount": 0,
-        "realized_pnl": 0,
-        "cost_of_sold": 0,
-        "realized_pnl_rate": 0.0,
-        "net_cashflow": 0,
-        "details": [],
-    }
+    from src.dashboard.services.performance_metrics import period_bucket
+    return period_bucket()
 
 
 def _strategy_label(strategy_id: str) -> str:
