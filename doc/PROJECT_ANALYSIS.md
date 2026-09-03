@@ -280,3 +280,16 @@ cache policy (완료)
 ```
 
 각 단계는 새 모듈을 먼저 만들고 기존 함수는 compatibility wrapper로 남긴 뒤, route contract와 전체 unittest를 통과시키고 사용처를 점진적으로 변경하는 방식이 안전하다. 목표 라인 수는 500줄을 참고값으로 사용하되, 하나의 업무 책임을 보존하는 것을 우선한다.
+
+### 프론트엔드 분리 설계
+
+`app.js`는 비모듈 전역 스크립트이므로 다음 순서로 분리한다.
+
+1. `dashboard-api.js`: `fetchJson`, `postJson`, `deleteJson`와 공통 HTTP 오류 처리
+2. `dashboard-formatters.js`: 금액·수량·수익률·HTML escape·상태 label
+3. `dashboard-state.js`: watchlist/holdings/strategy/scheduler 상태
+4. `dashboard-performance.js`: 성과·차트·시장국면 화면
+5. `dashboard-strategies.js`: AI 전략·후보·watchlist 화면
+6. `dashboard-orders.js`: 승인·주문·거래 동기화 화면
+
+각 파일은 기존 non-module 페이지와 호환되도록 필요한 공개 함수만 `window.HanstockDashboard` namespace에 등록하고, `app.js`는 단계적으로 그 namespace를 사용한다. HTML의 script 순서는 API → formatters → state → feature modules → legacy bridge 순서로 고정한다. 기능 이동 후 기존 전역 함수는 한 릴리스 동안 wrapper로 유지하고, `test_common_dashboard_frontend_contract.py`의 selector·API 계약을 통과시킨 뒤 제거한다.
