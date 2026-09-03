@@ -6710,10 +6710,13 @@ async function renderScheduleInfo() {
             const results = lastResult.result.results || [];
             const approved = lastResult.result.auto_approved || [];
             const approvalErrors = lastResult.result.auto_approval_errors || [];
-            const runErrors = lastResult.result.errors || lastResult.result.retry_errors || [];
             const schedulerRuns = lastResult.result.execution_runs || [];
             const summaryCounts = lastResult.result.summary_counts || {};
             
+            const summaryResult = HanstockDashboardSchedulerSummary.render(lastResult, results, approved, approvalErrors, schedulerRuns, { formatKstTime });
+            const aggregateStatus = summaryResult.aggregateStatus;
+            const runErrors = summaryResult.runErrors;
+            if (false) {
             // Update daily total summary metrics at the top
             const totalPlanCount = summaryCounts.plan_count ?? results.length;
             const queuedCreatedCount = results.filter(r => r.decision === 'queue').length;
@@ -6763,6 +6766,7 @@ async function renderScheduleInfo() {
                 statusEl.style.color = isFailure ? 'var(--danger)' : (isWarning ? '#f59e0b' : 'var(--success)');
             }
             
+            }
             // Build groups dynamically by round
             const uniqueRounds = HanstockDashboardSchedulerRounds.buildRounds({
                 results, approved, approvalErrors, schedulerRuns,
