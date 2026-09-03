@@ -1168,7 +1168,8 @@ function renderRisk(balance) {
     });
 }
 
-function renderHoldingAccountSummary(balance, displayTotal, realizedPnl = 0) {
+/* Legacy holding summary renderer retained below only as migration reference.
+function renderHoldingAccountSummaryLegacy(balance, displayTotal, realizedPnl = 0) {
     const summaryEl = document.getElementById('holding-account-summary');
     if (!summaryEl) {
         return;
@@ -1215,6 +1216,18 @@ function renderHoldingAccountSummary(balance, displayTotal, realizedPnl = 0) {
             <small>목록 헤더 클릭 시 정렬</small>
         </div>
     `;
+}
+*/
+
+function renderHoldingAccountSummary(balance, displayTotal, realizedPnl = 0) {
+    return window.HanstockDashboardHoldingSummaryScreen.render(balance, displayTotal, realizedPnl, {
+        escapeHtml,
+        formatCurrency,
+        formatNumber,
+        labels: {
+            stale: '\ucd5c\uadfc \uce90\uc2dc \uacc4\uc88c\uc815\ubcf4', current: '\ud604\uc7ac \uacc4\uc88c\uc815\ubcf4', total: '\ucd1d \ud3c9\uac00\uae08\uc561', stock: '\uc8fc\uc2dd \ud3c9\uac00', cash: '\ud604\uae08', ratio: '\ube44\uc911', orderable: '\uc8fc\ubb38\uac00\ub2a5', pnl: '\ud3c9\uac00\uc190\uc775', realized: '\uc2e4\ud604\uc190\uc775', holdings: '\ubcf4\uc720\uc885\ubaa9', items: '\uac1c', sortHint: '\ubaa9\ub85d \ud5e4\ub354 \ud074\ub9ad \uc2dc \uc815\ub82c',
+        },
+    });
 }
 
 function holdingSortValue(holding, key) {
