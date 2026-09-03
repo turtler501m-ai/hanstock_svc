@@ -544,6 +544,127 @@ h1 .highlight {
     .market-regime-simple-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* Decision surfaces: make operational state readable before detail tables. */
+.status-indicator {
+    min-height: 32px;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.status-indicator .dot {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+}
+
+.panel-runtime {
+    border-left: 3px solid #f97316;
+}
+
+.runtime-grid {
+    gap: 0.55rem;
+}
+
+.runtime-grid > div {
+    min-height: 68px;
+    padding: 0.72rem 0.8rem;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 10px;
+    background: rgba(7, 16, 29, 0.34);
+}
+
+.runtime-grid strong {
+    display: block;
+    margin-top: 0.25rem;
+    color: #f8fafc;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+}
+
+.runtime-grid .inline-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.45rem;
+}
+
+.runtime-grid .compact-button {
+    min-height: 28px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.72rem;
+}
+
+.empty-state {
+    min-height: 92px;
+    padding: 1.4rem 1rem !important;
+    color: #9fb0c5;
+    background: rgba(7, 16, 29, 0.22);
+    text-align: center;
+    vertical-align: middle;
+}
+
+.table-responsive {
+    border: 1px solid rgba(148, 163, 184, 0.13);
+    border-radius: 10px;
+    background: rgba(7, 16, 29, 0.2);
+}
+
+table thead th {
+    color: #b8c7d9;
+    background: #172943;
+    font-size: 0.74rem;
+    letter-spacing: 0.015em;
+    white-space: nowrap;
+}
+
+table tbody tr {
+    border-bottom-color: rgba(148, 163, 184, 0.1);
+}
+
+table tbody tr:hover {
+    background: rgba(249, 115, 22, 0.07);
+}
+
+.button-danger {
+    border: 1px solid rgba(239, 68, 68, 0.48);
+    background: rgba(127, 29, 29, 0.28);
+    color: #fecaca;
+    box-shadow: none;
+}
+
+.button-danger:hover {
+    border-color: #f87171;
+    background: rgba(185, 28, 28, 0.42);
+}
+
+.holding-page-heading,
+.page-heading,
+.panel-header {
+    gap: 0.8rem;
+}
+
+.holding-eyebrow,
+.holding-card-kicker {
+    color: #fb923c;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+@media (max-width: 760px) {
+    .runtime-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .runtime-grid > div {
+        min-height: 64px;
+        padding: 0.6rem;
+    }
+    .holding-page-heading {
+        align-items: flex-start;
+    }
+}
+
 /* Hanstock control-center refresh.
    Keep the existing DOM/API contract while giving the dashboard a calmer,
    status-first information hierarchy. */
