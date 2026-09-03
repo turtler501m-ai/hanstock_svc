@@ -1308,7 +1308,8 @@ function holdingPnlStatus(holding) {
     return pnl < 0 ? 'loss' : (pnl > 0 ? 'profit' : 'flat');
 }
 
-function renderHoldingStrategySummary(balance) {
+/* Legacy holding strategy summary renderer retained below only as migration reference.
+function renderHoldingStrategySummaryLegacy(balance) {
     const summaryRows = balance.strategy_summary || [];
     const holdingSummary = balance.holding_summary || {};
     const tbody = document.querySelector('#table-holding-strategies tbody');
@@ -1398,6 +1399,21 @@ function renderHoldingStrategySummary(balance) {
             `
             : '<div class="holding-loss-empty">현재 손실 보유종목이 없습니다.</div>';
     }
+}
+*/
+
+function renderHoldingStrategySummary(balance) {
+    holdingStrategyFilter = window.HanstockDashboardHoldingStrategySummaryScreen.render(balance, holdingStrategyFilter, {
+        setText: (id, value) => setElementText(id, value),
+        setTableMessage,
+        escapeHtml,
+        formatNumber,
+        formatCurrency,
+        formatPercent,
+        pnlStatus: holdingPnlStatus,
+        sellAll: (button) => sellAllStrategyAttribution(button),
+        labels: { items: '\uac1c', strategy: '\uc804\ub7b5', separator: '\u00b7', unattributed: '\uadc0\uc18d \ubbf8\ud655\uc778', empty: '\uc804\ub7b5\ubcc4 \uadc0\uc18d \uc815\ubcf4\uac00 \uc5c6\uc2b5\ub2c8\ub2e4', loss: '\uc190\uc2e4', profit: '\uc218\uc775', flat: '\ubcf4\ud569', sellAll: '\uc804\ub7c9 \ub9e4\ub3c4', all: '\uc804\uccb4 \uc804\ub7b5', lossTitle: '\uc190\uc2e4 \uc885\ubaa9 \uc6b0\uc120 \ud655\uc778', noLoss: '\ud604\uc7ac \uc190\uc2e4 \ubcf4\uc720\uc885\ubaa9\uc774 \uc5c6\uc2b5\ub2c8\ub2e4', },
+    });
 }
 
 /* Legacy holdings table renderer retained below only as migration reference.

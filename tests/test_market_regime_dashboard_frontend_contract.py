@@ -53,6 +53,9 @@ HOLDING_SUMMARY_SCREEN_JS = (
 HOLDINGS_SCREEN_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-holdings-screen.js"
 ).read_text(encoding="utf-8")
+HOLDING_STRATEGY_SUMMARY_SCREEN_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-holding-strategy-summary-screen.js"
+).read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 
 
@@ -170,6 +173,13 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardHoldingsScreen", HOLDINGS_SCREEN_JS)
         self.assertIn("HanstockDashboardHoldingsScreen.render", APP_JS)
+
+    def test_holding_strategy_summary_screen_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-holding-strategy-summary-screen.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardHoldingStrategySummaryScreen", HOLDING_STRATEGY_SUMMARY_SCREEN_JS)
+        self.assertIn("HanstockDashboardHoldingStrategySummaryScreen.render", APP_JS)
 
     def test_dashboard_exposes_daily_market_regime_panel(self):
         required_markup = (
