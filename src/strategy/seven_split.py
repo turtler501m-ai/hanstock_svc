@@ -24,6 +24,11 @@ from src.strategy.position_tracker import (
     update_position_peak,
     update_strategy_position_risk,
 )
+from src.strategy.momentum_metrics import (
+    period_return as _period_return,
+    relative_momentum_score as _relative_momentum_score,
+    volatility as calc_volatility,
+)
 
 WATCHLIST = []
 
@@ -258,44 +263,6 @@ KOSDAQ_SYMBOLS = {
 }
 
 
-def _period_return(prices: list[float], days: int) -> float:
-    """Return percentage change over a completed lookback window."""
-    if len(prices) <= days:
-        return 0.0
-    start = float(prices[-days - 1] or 0)
-    end = float(prices[-1] or 0)
-    if start <= 0 or end <= 0:
-        return 0.0
-    return round((end / start - 1) * 100, 2)
-
-
-def _relative_momentum_score(prices: list[float]) -> dict:
-    """Favor persistent 3-12 month winners while penalizing near-term blow-offs."""
-    returns = {
-        "return_20d": _period_return(prices, 20),
-        "return_60d": _period_return(prices, 60),
-        "return_120d": _period_return(prices, 120),
-    }
-    score = 0.0
-    reasons: list[str] = []
-    if returns["return_60d"] >= 8:
-        score += 1.0
-        reasons.append(f"60d momentum {returns['return_60d']:+.1f}%")
-    elif returns["return_60d"] <= -8:
-        score -= 1.0
-        reasons.append(f"weak 60d momentum {returns['return_60d']:+.1f}%")
-    if returns["return_120d"] >= 12:
-        score += 1.0
-        reasons.append(f"120d momentum {returns['return_120d']:+.1f}%")
-    elif returns["return_120d"] <= -12:
-        score -= 1.0
-        reasons.append(f"weak 120d momentum {returns['return_120d']:+.1f}%")
-    if returns["return_20d"] >= 25:
-        score -= 1.5
-        reasons.append(f"short-term overextension {returns['return_20d']:+.1f}%")
-    return {**returns, "score": score, "reasons": reasons}
-
-
 def get_yfinance_ticker(code: str) -> str:
     """종목 코드별 야후 파이낸스 적합한 티커 심볼을 반환한다."""
     if code in KOSDAQ_SYMBOLS:
@@ -495,21 +462,6 @@ def calc_strategy_profile(prices: list[float], highs: list[float] | None = None,
         "rsi_oversold_rebound": rsi_rebound_metadata,
         "features": feature_payload,
     }
-
-
-def calc_volatility(prices: list[float], period: int = 20) -> float:
-    if len(prices) < period + 1:
-        return 0.0
-    window = prices[-(period + 1):]
-    returns = []
-    for i in range(1, len(window)):
-        if window[i - 1] > 0:
-            returns.append((window[i] / window[i - 1]) - 1)
-    if not returns:
-        return 0.0
-    mean = sum(returns) / len(returns)
-    variance = sum((r - mean) ** 2 for r in returns) / len(returns)
-    return variance ** 0.5
 
 
 def generate_ai_weight_plan(holdings: list[dict], total_eval: int) -> dict:
