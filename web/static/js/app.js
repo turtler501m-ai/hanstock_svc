@@ -3255,7 +3255,7 @@ async function renderStrategyLookupHistory() {
     });
 }
 
-async function renderCachedStrategyPreviews(strategyIds, strategies = [], options = {}) {
+async function renderCachedStrategyPreviewsLegacy(strategyIds, strategies = [], options = {}) {
     const updating = options.updating !== false;
     const finalError = options.error || null;
     const optimizer = document.getElementById('select-portfolio-optimizer')?.value || 'score_tilted_inverse_vol';
@@ -3282,11 +3282,22 @@ async function renderCachedStrategyPreviews(strategyIds, strategies = [], option
     renderStrategyPreviewCards(results, strategies);
 }
 
-function finishStrategyPreviewUpdatingState() {
+function finishStrategyPreviewUpdatingStateLegacy() {
     document.querySelectorAll('.strategy-preview-card .strategy-preview-metrics .is-complete')
         .forEach((status) => {
             status.textContent = '업데이트 완료';
         });
+}
+
+async function renderCachedStrategyPreviews(strategyIds, strategies = [], options = {}) {
+    return window.HanstockDashboardStrategyPreviewCache.renderCached({
+        fetchJson,
+        renderCards: renderStrategyPreviewCards,
+    }, strategyIds, strategies, options);
+}
+
+function finishStrategyPreviewUpdatingState() {
+    return window.HanstockDashboardStrategyPreviewCache.finishUpdating();
 }
 
 async function renderCandidates(options = {}) {
