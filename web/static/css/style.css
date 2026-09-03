@@ -3823,8 +3823,9 @@ tbody tr:hover {
     }
 
     .dashboard-tab.active {
-        border-color: rgba(59, 130, 246, 0.45) !important;
-        background: rgba(59, 130, 246, 0.22) !important;
+        border-color: rgba(249, 115, 22, 0.48) !important;
+        background: rgba(249, 115, 22, 0.18) !important;
+        color: #fed7aa !important;
     }
 
     .dashboard-tab::after {
