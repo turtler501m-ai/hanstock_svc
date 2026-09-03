@@ -1192,6 +1192,28 @@ body.namuh-dashboard {
     padding: 1.25rem;
 }
 
+body.namuh-dashboard .skip-link {
+    position: fixed;
+    top: 0.75rem;
+    left: 1.25rem;
+    z-index: 100;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid rgba(249, 115, 22, 0.55);
+    border-radius: 8px;
+    background: #101d31;
+    color: #fed7aa;
+    font-size: 0.8rem;
+    font-weight: 700;
+    transform: translateY(-180%);
+    transition: transform 0.18s ease;
+}
+
+body.namuh-dashboard .skip-link:focus {
+    transform: translateY(0);
+    outline: 3px solid rgba(249, 115, 22, 0.2);
+    outline-offset: 2px;
+}
+
 .dashboard-container {
     max-width: 1540px;
 }
