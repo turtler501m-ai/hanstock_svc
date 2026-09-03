@@ -5855,6 +5855,63 @@ th,
     white-space: nowrap;
 }
 
+#table-watchlist {
+    min-width: 1040px;
+    table-layout: fixed;
+}
+
+#table-watchlist tbody tr {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    transition: background 0.15s ease;
+}
+
+#table-watchlist tbody tr:hover {
+    background: rgba(249, 115, 22, 0.08);
+}
+
+#table-watchlist th,
+#table-watchlist td {
+    vertical-align: middle;
+}
+
+#table-watchlist th:nth-child(1),
+#table-watchlist td:nth-child(1) { width: 52px; }
+
+#table-watchlist th:nth-child(2),
+#table-watchlist td:nth-child(2) { width: 90px; }
+
+#table-watchlist th:nth-child(4),
+#table-watchlist td:nth-child(4) { width: 96px; }
+
+#table-watchlist th:nth-child(5),
+#table-watchlist td:nth-child(5) { width: 138px; }
+
+#table-watchlist th:nth-child(6),
+#table-watchlist td:nth-child(6) { width: 98px; }
+
+#table-watchlist th:nth-child(7),
+#table-watchlist td:nth-child(7),
+#table-watchlist th:nth-child(8),
+#table-watchlist td:nth-child(8) { width: 84px; }
+
+#table-watchlist th:nth-child(10),
+#table-watchlist td:nth-child(10) { width: 88px; }
+
+#table-watchlist th:nth-child(11),
+#table-watchlist td:nth-child(11) { width: 72px; }
+
+#table-watchlist td:nth-child(9) {
+    overflow: hidden;
+    color: var(--text-muted) !important;
+    font-size: 0.8rem !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#table-watchlist .sort-icon {
+    color: #fdba74 !important;
+}
+
 .performance-cashflow-form button {
     min-height: 36px;
 }
