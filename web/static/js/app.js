@@ -1943,7 +1943,7 @@ async function syncStrategiesToDropdown() {
     }
 }
 
-async function renderStrategyContext() {
+async function renderStrategyContextLegacy() {
     try {
         const data = await fetchJson(withActiveStrategy('/api/strategy-context'));
         if (data.analysis_flow?.cycle) activeAnalysisCycle = data.analysis_flow.cycle;
@@ -1967,6 +1967,17 @@ async function renderStrategyContext() {
     } catch (err) {
         console.error('Failed to render strategy context:', err);
     }
+}
+
+async function renderStrategyContext() {
+    return window.HanstockDashboardStrategyContext.render({
+        fetchJson,
+        withActiveStrategy,
+        setCycle: (value) => { activeAnalysisCycle = value; },
+        setText: setElementText,
+        formatNumber,
+        strategyStatusLabel,
+    });
 }
 
 const STRATEGY_AUDIT_MODULE = window.HanstockDashboardStrategyAudit;
