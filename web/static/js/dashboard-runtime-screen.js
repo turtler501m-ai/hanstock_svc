@@ -6,6 +6,15 @@
         const isLive = Boolean(health.real_orders_enabled);
         const canSubmit = Boolean(health.order_submission_enabled);
         const autoApproval = Boolean(health.auto_approval_enabled);
+        const refreshStatus = document.getElementById('dashboard-refresh-status');
+        const refreshDot = document.getElementById('dashboard-refresh-dot');
+        const refreshLabel = document.getElementById('dashboard-refresh-label');
+        const healthState = health.ok && !health.online_access_blocked && !health.kill_switch_active
+            ? (health.demo_trading_ready === false ? 'warn' : 'good')
+            : 'danger';
+        if (refreshStatus) refreshStatus.dataset.state = healthState;
+        if (refreshDot) refreshDot.className = `dot ${healthState}`;
+        if (refreshLabel) refreshLabel.textContent = healthState === 'good' ? deps.labels.healthGood : (healthState === 'warn' ? deps.labels.healthWarn : deps.labels.healthBad);
         const setContextState = (id, state) => {
             const element = document.getElementById(id);
             if (element) element.dataset.state = state;

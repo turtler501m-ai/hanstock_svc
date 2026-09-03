@@ -1019,6 +1019,11 @@ button:disabled {
 .status-indicator .dot {
     box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
 }
+.status-indicator[data-state="good"] { color: #8ce7c4; }
+.status-indicator[data-state="warn"] { color: #ffd27d; }
+.status-indicator[data-state="danger"] { color: #ff9d9d; }
+.status-indicator .dot.warn { background: #f3b64c; box-shadow: 0 0 0 3px rgba(243, 182, 76, 0.14); }
+.status-indicator .dot.danger { background: #ef6d73; box-shadow: 0 0 0 3px rgba(239, 109, 115, 0.14); }
 
 .panel-runtime {
     border-left: 3px solid #f97316;
