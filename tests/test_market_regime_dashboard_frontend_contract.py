@@ -98,6 +98,9 @@ STRATEGY_SETTINGS_SAVE_JS = (
 STRATEGY_CONTEXT_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-strategy-context.js"
 ).read_text(encoding="utf-8")
+AI_SCHEDULE_SETTINGS_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-ai-schedule-settings.js"
+).read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 
 
@@ -320,6 +323,14 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardStrategyContext", STRATEGY_CONTEXT_JS)
         self.assertIn("HanstockDashboardStrategyContext.render", APP_JS)
+
+    def test_ai_schedule_settings_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-ai-schedule-settings.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardAiScheduleSettings", AI_SCHEDULE_SETTINGS_JS)
+        self.assertIn("HanstockDashboardAiScheduleSettings.load", APP_JS)
+        self.assertIn("HanstockDashboardAiScheduleSettings.save", APP_JS)
 
     def test_dashboard_exposes_daily_market_regime_panel(self):
         required_markup = (

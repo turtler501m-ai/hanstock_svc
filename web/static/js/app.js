@@ -6452,12 +6452,12 @@ window.addEventListener('load', () => {
 
 const AI_SCHEDULE_ID = 'ai_stock_default_v1';
 
-function scheduleHmToInput(value, fallback) {
+function scheduleHmToInputLegacy(value, fallback) {
     const clean = String(value || fallback).replace(':', '').padStart(4, '0');
     return `${clean.slice(0, 2)}:${clean.slice(2, 4)}`;
 }
 
-async function loadAiScheduleSettings() {
+async function loadAiScheduleSettingsLegacy() {
     const response = await fetchJson(`/api/strategy/${AI_SCHEDULE_ID}/schedule`);
     const schedule = response.schedule || {};
     const enabled = document.getElementById('ai-schedule-enabled');
@@ -6475,7 +6475,7 @@ async function loadAiScheduleSettings() {
     return schedule;
 }
 
-async function saveAiScheduleSettings() {
+async function saveAiScheduleSettingsLegacy() {
     const status = document.getElementById('ai-schedule-save-status');
     const payload = {
         enabled: Boolean(document.getElementById('ai-schedule-enabled')?.checked),
@@ -6498,6 +6498,19 @@ async function saveAiScheduleSettings() {
     await postJson(`/api/strategy/${AI_SCHEDULE_ID}/schedule`, payload);
     if (status) status.textContent = '저장됨';
     await renderScheduleInfo();
+}
+
+async function loadAiScheduleSettings() {
+    return window.HanstockDashboardAiScheduleSettings.load({ fetchJson, scheduleId: AI_SCHEDULE_ID });
+}
+
+async function saveAiScheduleSettings() {
+    return window.HanstockDashboardAiScheduleSettings.save({
+        fetchJson,
+        postJson,
+        scheduleId: AI_SCHEDULE_ID,
+        renderInfo: renderScheduleInfo,
+    });
 }
 
 async function renderScheduleInfo() {
