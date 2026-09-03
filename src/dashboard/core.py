@@ -1882,7 +1882,7 @@ def _filled_price_matches_order(trade: dict, *, tolerance: float = 0.30) -> bool
     return filled_price_matches_order(trade, tolerance=tolerance)
 
 
-def _account_trades(trades: list[dict]) -> list[dict]:
+def _account_trades_legacy(trades: list[dict]) -> list[dict]:
     account_rows = []
     # If the trader is running in dry-run/demo mode, or if there are no live trades, show dry-run trades
     show_dry_run = trader.runtime_flags().dry_run or (trader.runtime_flags().trading_env == "demo")
@@ -1909,6 +1909,14 @@ def _account_trades(trades: list[dict]) -> list[dict]:
             trade = {**trade, "qty": filled_qty, "price": filled_price or _to_int(trade.get("price"))}
         account_rows.append(trade)
     return account_rows
+
+
+def _account_trades(trades: list[dict]) -> list[dict]:
+    from src.dashboard.services.performance_metrics import account_trades
+
+    flags = trader.runtime_flags()
+    show_dry_run = flags.dry_run or flags.trading_env == "demo"
+    return account_trades(trades, show_dry_run=show_dry_run)
 
 
 def _period_bucket() -> dict:

@@ -107,3 +107,35 @@ def trade_is_sync_adjustment(trade: dict) -> bool:
     if any(token in reason for token in ("\ub3d9\uae30\ud654", "\ubcf4\uc815", "\uc870\uc815")):
         return True
     return False
+
+
+def account_trades(trades: list[dict], *, show_dry_run: bool) -> list[dict]:
+    """Filter and normalize executed trades used by account performance views."""
+    account_rows = []
+    for trade in trades:
+        if not trade_is_ok(trade) or trade_is_sync_adjustment(trade):
+            continue
+        if not show_dry_run and trade_is_dry_run(trade):
+            continue
+        order_status = str(trade.get("order_status") or "")
+        try:
+            filled_qty = int(float(trade.get("filled_qty") or 0))
+            filled_price = int(float(trade.get("filled_price") or 0))
+        except (TypeError, ValueError):
+            filled_qty = 0
+            filled_price = 0
+        if order_status in {"submitted", "partial", "open"} and filled_qty <= 0:
+            continue
+        if filled_qty > 0 and not filled_price_matches_order(trade):
+            if order_status in {"submitted", "partial", "open"}:
+                continue
+            filled_qty = 0
+            filled_price = 0
+        if filled_qty > 0:
+            try:
+                fallback_price = int(float(trade.get("price") or 0))
+            except (TypeError, ValueError):
+                fallback_price = 0
+            trade = {**trade, "qty": filled_qty, "price": filled_price or fallback_price}
+        account_rows.append(trade)
+    return account_rows

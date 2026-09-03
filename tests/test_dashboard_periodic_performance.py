@@ -20,6 +20,7 @@ from src.dashboard.routes.stock_performance import (
     _merge_stored_holding_changes,
 )
 from src.dashboard.services.performance_metrics import (
+    account_trades,
     filled_price_matches_order,
     trade_is_sync_adjustment,
     trade_is_dry_run,
@@ -28,6 +29,16 @@ from src.dashboard.services.performance_metrics import (
 
 
 class DashboardPeriodicPerformanceTests(unittest.TestCase):
+    def test_account_trades_service_filters_and_normalizes_fills(self):
+        rows = account_trades([
+            {"ok": 1, "dry_run": 0, "order_status": "filled", "filled_qty": 2, "filled_price": 105, "price": 100},
+            {"ok": 1, "dry_run": 0, "order_status": "open", "filled_qty": 0, "price": 100},
+            {"ok": 1, "dry_run": 1, "order_status": "filled", "filled_qty": 1, "filled_price": 100, "price": 100},
+        ], show_dry_run=False)
+        self.assertEqual(rows[0]["qty"], 2)
+        self.assertEqual(rows[0]["price"], 105)
+        self.assertEqual(len(rows), 1)
+
     def test_trade_quality_helpers_are_safe_for_malformed_values(self):
         self.assertTrue(trade_is_ok({"ok": "1"}))
         self.assertFalse(trade_is_ok({"ok": "0"}))
