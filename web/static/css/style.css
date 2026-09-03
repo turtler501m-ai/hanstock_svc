@@ -5778,6 +5778,30 @@ th,
     margin-bottom: 2rem;
 }
 
+.pb-history-card {
+    margin-top: 1.5rem;
+}
+
+.pb-history-scroll {
+    max-height: 350px;
+    margin-top: 1rem;
+    overflow-y: auto;
+}
+
+.pb-history-table {
+    width: 100%;
+}
+
+.pb-performance-summary {
+    margin-bottom: 2rem;
+}
+
+.pb-performance-count {
+    margin-top: 0.5rem;
+    font-size: 1.15rem !important;
+    font-weight: 600;
+}
+
 .metric-value.positive {
     color: #10b981;
     text-shadow: 0 0 10px rgba(16, 185, 129, 0.2);

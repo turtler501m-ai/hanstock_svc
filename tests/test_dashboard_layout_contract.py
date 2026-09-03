@@ -19,7 +19,9 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("left: auto", STYLE)
         self.assertNotIn("margin-left: 190px", STYLE)
         self.assertNotIn("margin-left: 164px", STYLE)
-        self.assertIn('href="/static/css/style.css?v=63"', TEMPLATE)
+        self.assertIn('href="/static/css/style.css?v=64"', TEMPLATE)
+        self.assertIn(".pb-history-card", STYLE)
+        self.assertNotIn('id="table-pb-sched-history" style=', TEMPLATE)
 
     def test_ai_strategy_workspace_uses_shared_layout_classes(self):
         self.assertIn('class="ai-strategy-header-actions"', TEMPLATE)

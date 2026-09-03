@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=63">
+    <link rel="stylesheet" href="/static/css/style.css?v=64">
 </head>
 
 <body class="namuh-dashboard">
@@ -1710,7 +1710,7 @@
                     </div>
 
                     <!-- 전체 종목 실시간 스캔 결과 -->
-                    <section class="card glass" style="margin-top: 1.5rem;">
+                    <section class="card glass pb-history-card">
                         <div class="panel-header split-header">
                             <div>
                                 <h2>전체 종목 실시간 스캔 & 진단</h2>
@@ -1762,8 +1762,8 @@
                                 새로고침
                             </button>
                         </div>
-                        <div class="table-responsive" style="margin-top: 1rem; max-height: 350px; overflow-y: auto;">
-                            <table id="table-pb-sched-history" style="width:100%;">
+                        <div class="table-responsive pb-history-scroll">
+                            <table id="table-pb-sched-history" class="pb-history-table">
                                 <thead>
                                     <tr>
                                         <th>실행 일시</th>
@@ -1796,7 +1796,7 @@
                     </section>
 
                     <!-- 최근 스캔 기록 로그 (Scan History) -->
-                    <section class="card glass" style="margin-top: 1.5rem;">
+                    <section class="card glass pb-history-card">
                         <div class="panel-header split-header">
                             <div>
                                 <h2>최근 포착 및 스캔 기록 로그</h2>
@@ -1806,8 +1806,8 @@
                                 새로고침
                             </button>
                         </div>
-                        <div class="table-responsive" style="margin-top: 1rem; max-height: 350px; overflow-y: auto;">
-                            <table id="table-pb-scan-history" style="width:100%;">
+                        <div class="table-responsive pb-history-scroll">
+                            <table id="table-pb-scan-history" class="pb-history-table">
                                 <thead>
                                     <tr>
                                         <th>스캔 일시</th>
@@ -1834,7 +1834,7 @@
 
                 <!-- 탭 2: 전략 성과분석 -->
                 <section class="pb-section" id="pb-tab-performance">
-                    <section class="summary-grid" style="margin-bottom: 2rem;">
+                    <section class="summary-grid pb-performance-summary">
                         <div class="card glass">
                             <h3>누적 실현 손익</h3>
                             <div class="value" id="pb-perf-pnl">-</div>
@@ -1853,7 +1853,7 @@
                         </div>
                         <div class="card glass">
                             <h3>익절/손절 횟수</h3>
-                            <div class="value" id="pb-perf-counts" style="font-size:1.15rem; font-weight:600; margin-top:8px;">-</div>
+                            <div class="value pb-performance-count" id="pb-perf-counts">-</div>
                         </div>
                     </section>
 
