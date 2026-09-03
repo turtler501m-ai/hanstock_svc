@@ -32,6 +32,7 @@ class NHPlugRestClient:
 
     _tokens: dict[tuple[str, str], tuple[str, datetime]] = {}
     _lock = threading.Lock()
+    _token_issue_lock = threading.Lock()
     _last_call = 0.0
     _throttle_lock = threading.Lock()
 
@@ -73,22 +74,34 @@ class NHPlugRestClient:
         if cached and now < cached[1] - timedelta(seconds=60):
             self._token, self._expires_at = cached
             return self._token
-        response = self._session.post(
-            f"{AUTH_BASE_URL}/oauth2/token",
-            data={"appkey": self.app_key, "appsecretkey": self._app_secret,
-                  "grant_type": "client_credentials", "scope": "oob"},
-            headers={"content-type": "application/x-www-form-urlencoded"},
-            timeout=self.timeout,
-        )
-        payload = self._decode(response, "token")
-        token = str(payload.get("access_token") or payload.get("token") or "")
-        if not token:
-            raise NHPlugApiError("NHPLUG token response did not contain access_token")
-        expires = float(payload.get("expires_in") or 86400)
-        self._token, self._expires_at = token, now + timedelta(seconds=expires)
-        with self._lock:
-            self._tokens[self._cache_key()] = (self._token, self._expires_at)
-        return token
+        with self._token_issue_lock:
+            # Another request may have issued the token while this request was
+            # waiting. Always re-check both caches before calling OAuth again.
+            now = datetime.now(timezone.utc)
+            if self._token and self._expires_at and now < self._expires_at - timedelta(seconds=60):
+                return self._token
+            with self._lock:
+                cached = self._tokens.get(self._cache_key())
+            if cached and now < cached[1] - timedelta(seconds=60):
+                self._token, self._expires_at = cached
+                return self._token
+
+            response = self._session.post(
+                f"{AUTH_BASE_URL}/oauth2/token",
+                data={"appkey": self.app_key, "appsecretkey": self._app_secret,
+                      "grant_type": "client_credentials", "scope": "oob"},
+                headers={"content-type": "application/x-www-form-urlencoded"},
+                timeout=self.timeout,
+            )
+            payload = self._decode(response, "token")
+            token = str(payload.get("access_token") or payload.get("token") or "")
+            if not token:
+                raise NHPlugApiError("NHPLUG token response did not contain access_token")
+            expires = float(payload.get("expires_in") or 86400)
+            self._token, self._expires_at = token, now + timedelta(seconds=expires)
+            with self._lock:
+                self._tokens[self._cache_key()] = (self._token, self._expires_at)
+            return token
 
     def post(self, path: str, body: Mapping[str, Any] | None = None,
              *, request_kind: str = "query") -> NHPlugPage:
