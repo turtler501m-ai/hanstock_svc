@@ -39,6 +39,9 @@ mkdir -p "$ROOT_DIR/logs" "$ROOT_DIR/.runtime"
 echo "[update] installing Kiwoom market-regime preflight cron"
 bash "$ROOT_DIR/scripts/vm/install-market-regime-preflight-cron.sh"
 
+echo "[update] installing Hanstock strategy dispatcher cron"
+bash "$ROOT_DIR/scripts/vm/install-strategy-dispatch-cron.sh"
+
 echo "[update] verifying Kiwoom database isolation"
 "$PYTHON" "$ROOT_DIR/tools/verify-instance-isolation.py" --root "$ROOT_DIR"
 

@@ -57,6 +57,24 @@ class HanstockServiceBoundaryTests(unittest.TestCase):
         self.assertIn(".venv/bin/python -m src.market_regime preflight", script)
         self.assertNotIn("market-regime-preflight.sh", script)
 
+    def test_local_entrypoints_exist(self):
+        for relative in (
+            "codex-a.ps1",
+            "codex-b.ps1",
+            "tools/server.ps1",
+            "scripts/local/server.cmd",
+        ):
+            self.assertTrue((ROOT / relative).is_file(), relative)
+
+    def test_deployment_installs_isolated_strategy_cron(self):
+        update = (ROOT / "scripts" / "vm" / "update.sh").read_text(encoding="utf-8")
+        installer = (ROOT / "scripts" / "vm" / "install-strategy-dispatch-cron.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("install-strategy-dispatch-cron.sh", update)
+        self.assertIn("hanstock-svc-strategy-dispatch", installer)
+        self.assertNotIn("hanstock-kw-strategy-dispatch", installer)
+
 
 if __name__ == "__main__":
     unittest.main()
