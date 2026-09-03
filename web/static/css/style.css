@@ -759,6 +759,62 @@ h1 .highlight {
     border-left: 3px solid rgba(249, 115, 22, 0.7) !important;
 }
 
+.ai-strategy-control-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.85rem;
+    margin-bottom: 1.5rem;
+    padding: 0.8rem 1rem;
+}
+
+.ai-strategy-control-field {
+    display: flex;
+    flex: 1 1 220px;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.ai-strategy-control-field span {
+    color: #9fb0c5;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.ai-strategy-control-field select {
+    width: 100%;
+    min-height: 38px;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 8px;
+    background: #0d192b;
+    color: #e7eef7;
+    font-size: 0.82rem;
+}
+
+.ai-strategy-control-field select:focus-visible {
+    border-color: rgba(249, 115, 22, 0.72);
+    outline: 3px solid rgba(249, 115, 22, 0.18);
+}
+
+.ai-strategy-apply {
+    flex: 0 0 auto;
+    min-height: 38px;
+    white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+    .ai-strategy-control-bar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ai-strategy-apply {
+        width: 100%;
+    }
+}
+
 .ai-strategy-detail-form input,
 .ai-strategy-detail-form select,
 .ai-strategy-detail-form textarea,
