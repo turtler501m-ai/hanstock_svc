@@ -257,7 +257,7 @@ powershell -ExecutionPolicy Bypass -File tools\check-encoding.ps1
 
 대시보드 라우트는 `stock_analysis`, `stock_performance`, `stock_plan`, `stock_order`로 이미 분리되어 있다. DB도 AI scan/execution/risk, strategy, scheduler, trade, performance repository로 나뉜다. 자율전략은 `strategy/autonomy` 아래에 lifecycle, risk, order state, recovery, protection 경계를 갖는다.
 
-최근에는 `src/dashboard/services/cache_policy.py`를 추가해 캐시 timestamp·freshness 계산을 `dashboard/core.py`에서 분리했다. 또한 `src/dashboard/services/order_reconciliation.py`를 추가해 전략별 보유수량 집계와 브로커 잔고 조정 배분 계산을 `stock_order.py`에서 분리했다. 기존 `core`·`stock_order`의 호환 함수는 유지하여 테스트와 외부 호출 계약을 보호한다.
+최근에는 `src/dashboard/services/cache_policy.py`를 추가해 캐시 timestamp·freshness 계산을 `dashboard/core.py`에서 분리했다. 또한 `src/dashboard/services/order_reconciliation.py`를 추가해 전략별 보유수량 집계와 브로커 잔고 조정 배분 계산을 `stock_order.py`에서 분리했다. `src/dashboard/services/performance_metrics.py`에는 기간 버킷과 시장지표 정규화·일/월 컨텍스트 계산을 이동했다. 기존 `core`·`stock_order`의 호환 함수는 유지하여 테스트와 외부 호출 계약을 보호한다.
 
 ### 남은 구조적 문제
 
