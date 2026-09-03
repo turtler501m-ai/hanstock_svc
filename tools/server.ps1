@@ -221,5 +221,3 @@ switch ($Action) {
         Watch-Logs
     }
 }
-
-
