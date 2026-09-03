@@ -15,7 +15,8 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("position: static !important", STYLE)
         self.assertIn("margin-left: 0 !important", STYLE)
         self.assertIn("left: auto", STYLE)
-        self.assertNotIn("body.namuh-dashboard main {\n        margin-left: 190px;", STYLE)
+        self.assertNotIn("margin-left: 190px", STYLE)
+        self.assertNotIn("margin-left: 164px", STYLE)
         self.assertIn('href="/static/css/style.css?v=49"', TEMPLATE)
 
     def test_ai_strategy_workspace_uses_shared_layout_classes(self):
