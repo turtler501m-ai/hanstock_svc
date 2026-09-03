@@ -151,7 +151,7 @@ class NHPlugBrokerAdapter:
             if start.weekday() < 5:
                 page = self.client.post("/krstock/inquiry/v1/dailyOrderExecution", {
                     "orr_dt": start.strftime("%Y%m%d"), "act_no": self.account,
-                    "itg_orr_no": "", "orr_mkt_cd": "", "ost_cns_dit": "1"})
+                    "orr_mkt_cd": "", "ost_cns_dit": "1"})
                 rows.extend(_rows(getattr(page, "data", page), "Output_1"))
             start += timedelta(days=1)
         return [self._execution(r) for r in rows]
