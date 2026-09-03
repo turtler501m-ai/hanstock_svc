@@ -263,58 +263,6 @@ function strategyOperationLabel(operation) {
     return '승인/검증 필요';
 }
 
-function buildCandidateStrategyMarkupLegacy(row) {
-    const ruleScore = Number(row.rule_score ?? row.score ?? 0);
-    const finalScore = Number(row.final_score ?? row.score ?? ruleScore);
-    const mlScore = row.ml_score == null ? null : Number(row.ml_score);
-    const modelStatus = row.ai_model_status || (row.ai_enabled ? 'fallback' : 'disabled');
-    const modelVersion = row.ai_model_version || '-';
-    const weight = Number(row.ai_score_weight || 0);
-    const topFeatures = (row.top_features || [])
-        .slice(0, 3)
-        .map((item) => `<span>${escapeHtml(item.name)} ${formatNumber(item.value, 3)}</span>`)
-        .join('');
-    const fallback = row.ai_fallback_reason
-        ? `<div class="candidate-ai-note">${escapeHtml(row.ai_fallback_reason)}</div>`
-        : '';
-    const strategyRisk = row.strategy_risk || row.indicators?.strategy_risk || {};
-    const conditionItems = [
-        ['추세', strategyRisk.trend_ok],
-        ['회복', strategyRisk.recovery_confirmed ?? strategyRisk.rsi_recovered ?? strategyRisk.ha_confirmed],
-        ['돌파', strategyRisk.price_confirmed ?? strategyRisk.breakout_confirmed],
-        ['이벤트', strategyRisk.event_risk === false],
-        ['재진입', strategyRisk.reentry_reset_ok],
-    ].filter(([, value]) => value !== undefined)
-        .map(([label, passed]) => `<span>${escapeHtml(label)} ${passed ? '통과' : '대기'}</span>`)
-        .join('');
-    const riskItems = [];
-    if (strategyRisk.phase) riskItems.push(`단계 ${strategyRisk.phase}`);
-    if (strategyRisk.grade) riskItems.push(`등급 ${strategyRisk.grade}`);
-    if (strategyRisk.stop) riskItems.push(`손절 ${formatNumber(strategyRisk.stop, 0)}`);
-    if (strategyRisk.stop_distance_pct) riskItems.push(`손절폭 ${formatNumber(strategyRisk.stop_distance_pct, 2)}%`);
-    const strategyDetails = conditionItems || riskItems.length
-        ? `<div class="candidate-feature-list">${conditionItems}${riskItems.map((item) => `<span>${escapeHtml(item)}</span>`).join('')}</div>`
-        : '';
-
-    return `
-        <div class="candidate-ai-cell">
-            <div class="candidate-score-grid">
-                <div><span>룰</span><strong>${formatNumber(ruleScore, 2)}</strong></div>
-                <div><span>AI</span><strong>${mlScore == null ? '-' : formatNumber(mlScore, 2)}</strong></div>
-                <div><span>최종</span><strong>${formatNumber(finalScore, 2)}</strong></div>
-            </div>
-            <div class="candidate-ai-meta">
-                ${pill(aiModelStatusLabel(modelStatus), aiModelStatusKind(modelStatus))}
-                <span>${escapeHtml(modelVersion)}</span>
-                <span>가중 ${formatNumber(weight * 100, 0)}%</span>
-            </div>
-            ${topFeatures ? `<div class="candidate-feature-list">${topFeatures}</div>` : ''}
-            ${strategyDetails}
-            ${fallback}
-        </div>
-    `;
-}
-
 function buildCandidateStrategyMarkup(row) {
     return window.HanstockDashboardCandidateStrategy.render({
         escapeHtml,
@@ -323,48 +271,6 @@ function buildCandidateStrategyMarkup(row) {
         aiModelStatusLabel,
         aiModelStatusKind,
     }, row);
-}
-
-function buildAiModalMarkupLegacy(payload) {
-    const reasons = Array.isArray(payload.reasons) ? payload.reasons : [];
-    const summary = payload.reasoning_kr || aiActionGuide(payload.action, payload.name);
-    const reasonItems = reasons.length
-        ? reasons.map((reason) => `<li>${escapeHtml(strategyReasonLabel(reason))}</li>`).join('')
-        : '<li>뚜렷한 기술적 신호가 충분하지 않아 보수적으로 판단했습니다.</li>';
-
-    const signalItems = [
-        `AI 점수는 <strong>${escapeHtml(formatNumber(payload.score, 2))}</strong>점입니다.`,
-        `현재 비중은 <strong>${escapeHtml(formatNumber(payload.currentWeight * 100, 1))}%</strong>, 목표 비중은 <strong>${escapeHtml(formatNumber(payload.targetWeight * 100, 1))}%</strong>입니다.`,
-        `차이 금액은 <strong>${escapeHtml(formatCurrency(payload.deltaValue))}</strong>이며, 실행 액션은 <strong>${escapeHtml(aiDecisionLabel(payload.action))}</strong>입니다.`,
-        `최근 변동성은 <strong>${escapeHtml(formatNumber(payload.volatility * 100, 1))}%</strong>로 계산되었습니다.`
-    ].map((line) => `<li>${line}</li>`).join('');
-
-    const rawReasons = reasons.length
-        ? `<div class="ai-modal-raw">${escapeHtml(reasons.join(' | '))}</div>`
-        : '';
-
-    return `
-        <div class="ai-modal-summary">
-            <div class="ai-modal-badge ${escapeHtml(payload.action)}">${escapeHtml(aiDecisionLabel(payload.action))}</div>
-            <p>${escapeHtml(summary)}</p>
-        </div>
-        <div class="ai-modal-section">
-            <h3>한눈에 보기</h3>
-            <ul class="ai-modal-list">${signalItems}</ul>
-        </div>
-        <div class="ai-modal-section">
-            <h3>왜 이런 판단이 나왔나</h3>
-            <ul class="ai-modal-list">${reasonItems}</ul>
-            ${rawReasons}
-        </div>
-        <div class="ai-modal-section">
-            <h3>읽는 법</h3>
-            <p class="ai-modal-footnote">
-                목표 비중은 “이 종목을 전체 자산에서 어느 정도까지 가져가면 좋은지”를 뜻합니다.
-                현재 비중보다 목표 비중이 높으면 매수 쪽, 낮으면 축소 쪽으로 해석하면 됩니다.
-            </p>
-        </div>
-    `;
 }
 
 function buildAiModalMarkup(payload) {
@@ -501,146 +407,6 @@ function setPerformanceDetailPanelOpen(open) {
     panel.style.display = open ? 'block' : 'none';
 }
 
-function renderPerformanceDetailPanelLegacy(item) {
-    const panel = document.getElementById('performance-detail-panel');
-    const titleEl = document.getElementById('performanceDetailTitle');
-    const subtitleEl = document.getElementById('performanceDetailSubtitle');
-    const bodyEl = document.getElementById('performanceDetailBody');
-    if (!panel || !titleEl || !subtitleEl || !bodyEl) return;
-
-    const details = Array.isArray(item.details) ? item.details : [];
-    titleEl.textContent = `${item.period || '-'} 성과 상세 목록`;
-    subtitleEl.textContent = '선택한 성과 기간의 매수/매도 체결 기준 상세 내역입니다.';
-
-    const pnl = Number(item.realized_pnl || 0);
-    const pnlRate = Number(item.realized_pnl_rate || 0);
-    const pnlClass = pnl > 0 ? 'text-success' : (pnl < 0 ? 'text-danger' : '');
-    const holdingChange = item.holding_change_pct == null ? null : Number(item.holding_change_pct);
-    const kospiChange = item.kospi_change_pct == null ? null : Number(item.kospi_change_pct);
-    const kosdaqChange = item.kosdaq_change_pct == null ? null : Number(item.kosdaq_change_pct);
-    const excessVsKospi = holdingChange == null || kospiChange == null
-        ? null
-        : holdingChange - kospiChange;
-    const excessVsKosdaq = holdingChange == null || kosdaqChange == null
-        ? null
-        : holdingChange - kosdaqChange;
-    const changeClass = (value) => Number(value) > 0
-        ? 'text-success'
-        : (Number(value) < 0 ? 'text-danger' : '');
-    const changeText = (value) => value == null
-        ? '-'
-        : `${Number(value) > 0 ? '+' : ''}${Number(value).toFixed(2)}%`;
-    const summaryHtml = `
-        <div class="performance-detail-summary">
-            <div>
-                <span>거래 건수</span>
-                <strong>${Number(item.order_count || 0).toLocaleString()}건</strong>
-            </div>
-            <div>
-                <span>매수/매도 금액</span>
-                <strong>${formatCurrency(item.buy_amount)} / ${formatCurrency(item.sell_amount)}</strong>
-            </div>
-            <div>
-                <span>실현손익</span>
-                <strong class="${pnlClass}">${pnl > 0 ? '+' : ''}${formatCurrency(pnl)}</strong>
-            </div>
-            <div>
-                <span>실현수익률</span>
-                <strong class="${pnlClass}">${pnlRate > 0 ? '+' : ''}${pnlRate.toFixed(2)}%</strong>
-            </div>
-            <div>
-                <span>보유주식 당일 등락</span>
-                <strong class="${changeClass(holdingChange)}">${changeText(holdingChange)}</strong>
-                <small>반영 ${Number(item.holding_change_symbol_count || 0)}종목 · 자료누락 ${Number(item.holding_change_missing_count || 0)}종목</small>
-            </div>
-            <div>
-                <span>KOSPI 대비</span>
-                <strong class="${changeClass(excessVsKospi)}">${changeText(excessVsKospi)}</strong>
-                <small>KOSPI ${changeText(kospiChange)}</small>
-            </div>
-            <div>
-                <span>KOSDAQ 대비</span>
-                <strong class="${changeClass(excessVsKosdaq)}">${changeText(excessVsKosdaq)}</strong>
-                <small>KOSDAQ ${changeText(kosdaqChange)}</small>
-            </div>
-        </div>
-    `;
-
-    if (!details.length) {
-        bodyEl.innerHTML = `${summaryHtml}<p class="ai-modal-footnote">해당 기간의 세부 거래가 없습니다.</p>`;
-        setPerformanceDetailPanelOpen(true);
-        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        return;
-    }
-
-    const detailColumns = [
-        ['ts', '시간'], ['symbol', '종목'], ['name', '종목명'], ['action', '구분'],
-        ['qty', '수량'], ['price', '단가'], ['amount', '금액'], ['realized_pnl', '실현손익'],
-        ['realized_pnl_rate', '수익률'], ['strategy_name', '매매 전략'], ['reason', '사유']
-    ];
-    const renderRows = (sortedDetails) => sortedDetails.map((detail) => {
-        const action = String(detail.action || '').toLowerCase();
-        const pnl = Number(detail.realized_pnl || 0);
-        const pnlClass = pnl > 0 ? 'text-success' : (pnl < 0 ? 'text-danger' : '');
-        return `
-            <tr>
-                <td>${escapeHtml(detail.ts || '-')}</td>
-                <td>${escapeHtml(detail.symbol || '-')}</td>
-                <td>${escapeHtml(detail.name || '-')}</td>
-                <td>${escapeHtml(toKorAction(action))}</td>
-                <td>${Number(detail.qty || 0).toLocaleString()}</td>
-                <td>${formatCurrency(detail.price)}</td>
-                <td>${formatCurrency(detail.amount)}</td>
-                <td class="${pnlClass}">${pnl > 0 ? '+' : ''}${formatCurrency(pnl)}</td>
-                <td class="${pnlClass}">${formatPercent(detail.realized_pnl_rate || 0)}</td>
-                <td>
-                    <strong>${escapeHtml(detail.strategy_name || detail.strategy_id || '전략 미기록')}</strong>
-                    ${detail.strategy_id ? `<div class="time-muted">${escapeHtml(detail.strategy_id)}</div>` : ''}
-                </td>
-                <td>${escapeHtml(translateReason(detail.reason || '-'))}</td>
-            </tr>
-        `;
-    }).join('');
-
-    bodyEl.innerHTML = `
-        ${summaryHtml}
-        <div class="table-responsive performance-detail-table-wrap">
-            <table class="performance-detail-table">
-                <thead>
-                    <tr>
-                        ${detailColumns.map(([key, label]) => `<th><button type="button" class="sortable-header" data-sort-key="${key}" aria-label="${label} 기준 정렬">${label} ↕</button></th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>${renderRows(details)}</tbody>
-            </table>
-        </div>
-    `;
-    let sortKey = '';
-    let sortDirection = 1;
-    bodyEl.querySelectorAll('.sortable-header').forEach((button) => {
-        button.addEventListener('click', () => {
-            const nextKey = button.dataset.sortKey;
-            sortDirection = sortKey === nextKey ? sortDirection * -1 : 1;
-            sortKey = nextKey;
-            const sorted = [...details].sort((left, right) => {
-                const leftValue = left[sortKey] ?? '';
-                const rightValue = right[sortKey] ?? '';
-                const numeric = ['qty', 'price', 'amount', 'realized_pnl', 'realized_pnl_rate'].includes(sortKey);
-                if (numeric) return (Number(leftValue) - Number(rightValue)) * sortDirection;
-                return String(leftValue).localeCompare(String(rightValue), 'ko') * sortDirection;
-            });
-            const tbody = bodyEl.querySelector('.performance-detail-table tbody');
-            if (tbody) tbody.innerHTML = renderRows(sorted);
-            bodyEl.querySelectorAll('.sortable-header').forEach((header) => {
-                const active = header.dataset.sortKey === sortKey;
-                header.textContent = `${detailColumns.find(([key]) => key === header.dataset.sortKey)?.[1] || ''}${active ? (sortDirection > 0 ? ' ▲' : ' ▼') : ' ↕'}`;
-            });
-        });
-    });
-    setPerformanceDetailPanelOpen(true);
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
 function renderPerformanceDetailPanel(item) {
     return window.HanstockDashboardPerformanceDetail.render({
         escapeHtml,
@@ -650,121 +416,6 @@ function renderPerformanceDetailPanel(item) {
         translateReason,
         setOpen: setPerformanceDetailPanelOpen,
     }, item);
-}
-
-function buildScanErrorModalMarkupLegacy(errorMsg) {
-    return `
-        <div class="ai-modal-section">
-            <h3>오류 내용</h3>
-            <p class="ai-modal-footnote">${escapeHtml(errorMsg)}</p>
-        </div>
-        <div class="ai-modal-section">
-            <h3>이렇게 해보세요</h3>
-            <ul class="ai-modal-list">
-                <li>잠시 후 다시 <strong>찾기</strong> 버튼을 눌러보세요.</li>
-                <li>인터넷 연결 상태를 확인하세요.</li>
-                <li>장 시간 중(09:00~15:30)에는 데이터가 더 안정적으로 수신됩니다.</li>
-                <li>문제가 계속되면 YFINANCE_TIMEOUT_SECONDS 환경변수를 늘려보세요 (기본값: 8초).</li>
-            </ul>
-        </div>
-    `;
-}
-
-function buildNoCandidatesModalMarkupLegacy(data) {
-    const summary = data.scan_summary || [];
-    const minScore = data.min_score || 2;
-    const scanned = data.scanned || summary.length;
-
-    // 점수 분포
-    const scoreGroups = { 0: 0, 1: 0 };
-    summary.forEach(item => {
-        const s = item.score || 0;
-        scoreGroups[s] = (scoreGroups[s] || 0) + 1;
-    });
-
-    // 가장 높은 점수 종목들 (상위 8개)
-    const top = summary.slice(0, 8);
-
-    const scoreDistItems = Object.entries(scoreGroups)
-        .sort((a, b) => Number(b[0]) - Number(a[0]))
-        .map(([score, count]) => `<li><strong>${score}점</strong>: ${count}종목</li>`)
-        .join('');
-
-    // 시그널 집계: 어떤 신호가 가장 많이 발생했나
-    const signalCount = {};
-    summary.forEach(item => {
-        (item.reasons || []).forEach(r => {
-            signalCount[r] = (signalCount[r] || 0) + 1;
-        });
-    });
-    const topSignals = Object.entries(signalCount)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4)
-        .map(([r, cnt]) => `<li>${escapeHtml(strategyReasonLabel(r))} <span class="muted">(${cnt}종목)</span></li>`)
-        .join('');
-
-    const topRows = top.map(item => {
-        const scoreClass = item.score >= minScore ? 'buy' : (item.score > 0 ? 'warn' : 'sell');
-        const reasonText = (item.reasons || []).map(r => strategyReasonLabel(r)).join(', ') || '신호 없음';
-        const gap = minScore - item.score;
-        const gapText = gap > 0 ? `<span class="muted">(${gap}점 부족)</span>` : '<span class="pill pill-buy">통과</span>';
-        return `
-            <tr>
-                <td><span class="symbol-name">${escapeHtml(item.ticker)}</span></td>
-                <td>${pill(item.score, scoreClass)} ${gapText}</td>
-                <td>${formatNumber(item.rsi, 1)}</td>
-                <td>${formatNumber(item.macd_hist, 1)}</td>
-                <td><div class="reason-cell" title="${escapeHtml(reasonText)}">${escapeHtml(reasonText)}</div></td>
-            </tr>`;
-    }).join('');
-
-    const marketMood = summary.length === 0
-        ? '데이터를 수신하지 못했습니다.'
-        : summary.every(i => i.score === 0)
-            ? '분석한 모든 종목에서 매수 신호가 하나도 발생하지 않았습니다. 시장 전반이 관망 국면일 가능성이 높습니다.'
-            : `일부 종목에서 약한 신호(${Math.max(...summary.map(i=>i.score))}점)가 있으나 기준(${minScore}점)에 미치지 못합니다. 시장 모멘텀이 아직 충분히 형성되지 않은 상태입니다.`;
-
-    return `
-        <div class="ai-modal-section">
-            <h3>스캔 요약</h3>
-            <ul class="ai-modal-list">
-                <li>분석 종목 수: <strong>${scanned}종목</strong></li>
-                <li>매수 기준 점수: <strong>${minScore}점 이상</strong></li>
-                <li>매수 후보: <strong>0종목</strong></li>
-            </ul>
-        </div>
-        <div class="ai-modal-section">
-            <h3>시장 판단</h3>
-            <p class="ai-modal-footnote">${escapeHtml(marketMood)}</p>
-        </div>
-        ${topSignals ? `
-        <div class="ai-modal-section">
-            <h3>감지된 부분 신호 (기준 미달)</h3>
-            <ul class="ai-modal-list">${topSignals}</ul>
-        </div>` : ''}
-        <div class="ai-modal-section">
-            <h3>점수별 종목 분포</h3>
-            <ul class="ai-modal-list">${scoreDistItems || '<li>분석 데이터 없음</li>'}</ul>
-        </div>
-        ${topRows ? `
-        <div class="ai-modal-section">
-            <h3>상위 스코어 종목 상세</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead><tr><th>종목</th><th>점수</th><th>RSI</th><th>MACD</th><th>감지 신호</th></tr></thead>
-                    <tbody>${topRows}</tbody>
-                </table>
-            </div>
-        </div>` : ''}
-        <div class="ai-modal-section">
-            <h3>이렇게 해보세요</h3>
-            <ul class="ai-modal-list">
-                <li>잠시 후 다시 검색하거나, 장 시작 직후/마감 1시간 전에 시도해보세요.</li>
-                <li>최소 점수를 1점으로 낮추면 더 많은 후보를 볼 수 있습니다.</li>
-                <li>시장 전반이 하락 국면이라면 현금 비중을 유지하는 것이 유리합니다.</li>
-            </ul>
-        </div>
-    `;
 }
 
 function buildScanErrorModalMarkup(errorMsg) {
@@ -786,156 +437,12 @@ let periodicActiveTab = 'daily';
 let periodicDataCache = null;
 let latestConfig = null;
 
-function strategySettingGroupsLegacy(config) {
-    return [
-        {
-            id: 'entry',
-            title: '기본 매매',
-            description: '분할매수와 RSI 진입·청산 기준',
-            fields: [
-                { key: 'SPLIT_N', label: '분할 횟수', value: config.split_n, type: 'int', step: '1', min: '1', suffix: '회' },
-                { key: 'RSI_BUY', label: 'RSI 매수선', value: config.rsi_buy, type: 'int', step: '1', min: '0', max: '100' },
-                { key: 'RSI_SELL', label: 'RSI 매도선', value: config.rsi_sell, type: 'int', step: '1', min: '0', max: '100' },
-            ],
-        },
-        {
-            id: 'exit',
-            title: '손절·수익 보호',
-            description: '고정 손절 후 진입 이후 최고가 기준으로 수익을 보호합니다.',
-            fields: [
-                { key: 'STOP_LOSS_PCT', label: '고정 손절', value: config.stop_loss_pct, type: 'float', step: '0.1', suffix: '%' },
-                { key: 'TAKE_PROFIT', label: '목표 익절', value: config.take_profit, type: 'float', step: '0.1', suffix: '%' },
-                { key: 'TRAILING_STOP_ACTIVATION_PCT', label: '트레일링 시작 수익률', value: config.trailing_stop_activation_pct, type: 'float', step: '0.5', min: '0', suffix: '%' },
-                { key: 'TRAILING_STOP_PCT', label: '최고가 대비 청산 하락률', value: config.trailing_stop_pct, type: 'float', step: '0.5', min: '0.5', suffix: '%' },
-                { key: 'TRAILING_STOP_LOOKBACK', label: '호환 참고 기간', value: config.trailing_stop_lookback, type: 'int', step: '1', min: '2', suffix: '일' },
-            ],
-        },
-        {
-            id: 'candidate',
-            title: '후보 선별',
-            description: '거래대금 주도주와 1차 파동 눌림목 조건',
-            fields: [
-                { key: 'TRADE_VALUE_SURGE_RATIO', label: '거래대금 급등 배수', value: config.trade_value_surge_ratio, type: 'float', step: '0.1', min: '1', suffix: '배' },
-                { key: 'FIRST_WAVE_MIN_PCT', label: '1차 파동 최소 상승률', value: config.first_wave_min_pct, type: 'float', step: '0.5', min: '1', suffix: '%' },
-                { key: 'FIRST_WAVE_PULLBACK_MIN_PCT', label: '눌림목 최소 조정률', value: config.first_wave_pullback_min_pct, type: 'float', step: '0.5', min: '0', suffix: '%' },
-                { key: 'FIRST_WAVE_PULLBACK_MAX_PCT', label: '눌림목 최대 조정률', value: config.first_wave_pullback_max_pct, type: 'float', step: '0.5', min: '0', suffix: '%' },
-            ],
-        },
-        {
-            id: 'risk',
-            title: '자금·리스크',
-            description: '신규 주문 규모와 계좌 손실 한도',
-            fields: [
-                { key: 'TOTAL_CAPITAL', label: '운용 기준 자본', value: config.total_capital, type: 'float', step: '100000', min: '0', suffix: '원' },
-                { key: 'MAX_POSITIONS', label: '최대 보유종목', value: config.max_positions, type: 'int', step: '1', min: '1', suffix: '개' },
-                { key: 'MAX_SINGLE_WEIGHT', label: '종목당 최대비중', value: Number(config.max_single_weight || 0) * 100, type: 'float', step: '0.1', min: '0', max: '100', suffix: '%', percent: true },
-                { key: 'CASH_BUFFER', label: '현금 보유비중', value: Number(config.cash_buffer || 0) * 100, type: 'float', step: '0.1', min: '0', max: '100', suffix: '%', percent: true },
-                { key: 'MAX_DAILY_LOSS_PCT', label: '일 손실 제한', value: config.max_daily_loss_pct, type: 'float', step: '0.1', min: '0', suffix: '%' },
-            ],
-        },
-    ];
-}
-
 function strategySettingGroups(config) {
     return window.HanstockDashboardStrategySettingsSchema.groups(config);
 }
 
 function strategySettingFields(config) {
     return strategySettingGroups(config).flatMap((group) => group.fields);
-}
-
-function renderStrategySettingsFormLegacy(config) {
-    const groups = strategySettingGroups(config);
-    const readiness = config.technical_strategy_readiness || {};
-    const readinessPct = Math.max(0, Math.min(100, Number(readiness.current_pct || 0)));
-    const readinessRows = Array.isArray(readiness.items) ? readiness.items : [];
-    const completedCount = readinessRows.filter((item) => item.complete).length;
-    const readinessItems = (readiness.items || []).map((item) => (
-        `<div class="strategy-readiness-item ${item.complete ? 'is-complete' : 'is-pending'}">
-            <span aria-hidden="true">${item.complete ? '✓' : '!'}</span>
-            <strong>${escapeHtml(item.name)}</strong>
-            <small>${escapeHtml(String(item.current_pct ?? 0))}%</small>
-        </div>`
-    )).join('');
-    const monitor = readiness.condition_monitor || {};
-    const monitorMarkets = monitor.markets || {};
-    const marketOpen = monitor.market_open || {};
-    const monitorMarkup = [
-        ['KR', '한국장'],
-        ['US', '미국장'],
-    ].map(([market, label]) => {
-        const row = monitorMarkets[market] || {};
-        const isOpen = Boolean(marketOpen[market]);
-        const isFresh = Boolean(row.fresh);
-        return `<div class="strategy-monitor-item ${isFresh ? 'is-fresh' : (isOpen ? 'is-waiting' : 'is-closed')}">
-            <span>${escapeHtml(label)}</span>
-            <strong>${isOpen ? '장중' : '장외'} · ${escapeHtml(String(row.symbol_count || 0))}종목</strong>
-            <small>${isFresh ? '최근 조건검색 반영' : (isOpen ? '조건검색 대기' : '장 시작 후 갱신')}</small>
-        </div>`;
-    }).join('');
-    const renderField = (field) => `
-        <label class="strategy-setting-item">
-            <span class="label">${escapeHtml(field.label)}</span>
-            <div class="setting-input-row">
-                <input
-                    type="number"
-                    aria-label="${escapeHtml(field.label)}"
-                    name="${escapeHtml(field.key)}"
-                    value="${escapeHtml(field.value)}"
-                    step="${escapeHtml(field.step || '1')}"
-                    ${field.min !== undefined ? `min="${escapeHtml(field.min)}"` : ''}
-                    ${field.max !== undefined ? `max="${escapeHtml(field.max)}"` : ''}
-                    data-type="${escapeHtml(field.type)}"
-                    data-percent="${field.percent ? 'true' : 'false'}"
-                >
-                ${field.suffix ? `<span>${escapeHtml(field.suffix)}</span>` : ''}
-            </div>
-        </label>
-    `;
-    const groupMarkup = groups.map((group) => `
-        <section class="strategy-setting-group strategy-setting-group-${escapeHtml(group.id)}">
-            <div class="strategy-setting-group-header">
-                <h3>${escapeHtml(group.title)}</h3>
-                <p>${escapeHtml(group.description)}</p>
-            </div>
-            <div class="strategy-settings-grid">
-                ${group.fields.map(renderField).join('')}
-            </div>
-        </section>
-    `).join('');
-
-    return `
-        <div class="strategy-settings-shell">
-            <section class="strategy-readiness-card ${readiness.complete ? 'is-complete' : 'is-pending'}">
-                <div class="strategy-readiness-heading">
-                    <div>
-                        <span class="strategy-readiness-eyebrow">기술전략 적용 상태</span>
-                        <strong>${readiness.complete ? '현행화 완료' : '확인 필요'}</strong>
-                        <small>${completedCount}/${readinessRows.length || 0}개 항목 적용</small>
-                    </div>
-                    <div class="strategy-readiness-score">${escapeHtml(String(readinessPct))}%</div>
-                </div>
-                <div class="strategy-readiness-progress" role="progressbar" aria-label="기술전략 현행화율"
-                     aria-valuemin="0" aria-valuemax="100" aria-valuenow="${escapeHtml(String(readinessPct))}">
-                    <span style="width:${escapeHtml(String(readinessPct))}%"></span>
-                </div>
-                <div class="strategy-monitor-grid">${monitorMarkup}</div>
-                <details class="strategy-readiness-details">
-                    <summary>적용 항목 ${readinessRows.length || 0}개 상세 보기</summary>
-                    <div class="strategy-readiness-list">
-                        ${readinessItems || '<div class="strategy-readiness-item is-pending">현행화 상태를 확인 중입니다.</div>'}
-                    </div>
-                </details>
-            </section>
-            <form id="strategy-settings-form" class="strategy-settings-form">
-                <div class="strategy-setting-groups">${groupMarkup}</div>
-                <div class="strategy-settings-meta">
-                    <span class="time-muted">변경값은 저장 즉시 현재 서버 전략에 반영됩니다.</span>
-                    <button type="submit" id="btn-strategy-save">전략 설정 저장</button>
-                </div>
-            </form>
-        </div>
-    `;
 }
 
 function renderStrategySettingsForm(config) {
@@ -945,79 +452,12 @@ function renderStrategySettingsForm(config) {
     }, config);
 }
 
-function renderAiStrategySummaryLegacy(config) {
-    const ai = config.ai_analysis || {};
-    const enabled = Boolean(ai.enabled);
-    const available = Boolean(ai.model_available);
-    const modelStatus = enabled
-        ? (available ? '모델 적용 준비' : '룰 기반 대체')
-        : 'AI 꺼짐';
-    const modelDetail = enabled && available
-        ? `${ai.provider_label || 'OpenAI API'} / ${ai.model_type || '텍스트 모델'}`
-        : (enabled ? 'OPENAI_API_KEY 없음: Seven Split 룰 점수로 분석' : 'Seven Split 룰 점수만 사용');
-    const ruleWeight = Number(ai.rule_weight ?? 1) * 100;
-    const scoreWeight = Number(ai.score_weight ?? 0) * 100;
-    const accountText = ai.account || config.kiwoom_account || '-';
-    const flow = ai.auto_approve ? 'AI 제안 후 자동승인 설정 켜짐' : 'AI 제안 후 승인 대기';
-
-    setElementText('ai-summary-model', `${modelStatus} · ${ai.model_name || '-'}`);
-    setElementText('ai-summary-model-detail', modelDetail);
-    setElementText('ai-summary-account', accountText);
-    setElementText('ai-summary-weight', `룰 ${formatNumber(ruleWeight, 0)}% / AI ${formatNumber(scoreWeight, 0)}%`);
-    setElementText('ai-summary-flow', flow);
-
-    const flowEl = document.getElementById('ai-flow-list');
-    if (flowEl) {
-        const items = (ai.flow || []).map((item) => `<span>${escapeHtml(item)}</span>`).join('');
-        flowEl.innerHTML = items || '<span>현재 키움 계좌와 Seven Split 전략 기준으로 후보를 분석합니다.</span>';
-    }
-}
-
 function renderAiStrategySummary(config) {
     return window.HanstockDashboardAiStrategySummary.render({
         setText: setElementText,
         formatNumber,
         escapeHtml,
     }, config);
-}
-
-async function saveStrategySettingsLegacy(event) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    setButtonBusy('btn-strategy-save', true);
-    try {
-        const values = {};
-        const inputs = Array.from(form.querySelectorAll('input[name]'));
-        for (const input of inputs) {
-            const raw = String(input.value || '').trim();
-            if (!raw) {
-                throw new Error(`${input.name} 값이 비어 있습니다.`);
-            }
-            let numeric = Number(raw);
-            if (!Number.isFinite(numeric)) {
-                throw new Error(`${input.name} 값이 숫자가 아닙니다.`);
-            }
-            if (input.dataset.type === 'int') {
-                numeric = Math.trunc(numeric);
-            }
-            if (input.dataset.percent === 'true') {
-                numeric = numeric / 100;
-            }
-            values[input.name] = String(numeric);
-        }
-        const result = await postJson('/api/env', { values });
-        setStatus(`전략 설정을 저장했습니다. 반영 항목: ${result.updated.join(', ')}`, true);
-        try {
-            await renderConfig();
-        } catch (e) {
-            console.error("Failed to load config after save:", e);
-        }
-        await renderBalance();
-    } catch (err) {
-        setStatus(`전략 설정 저장 실패: ${err.message}`);
-    } finally {
-        setButtonBusy('btn-strategy-save', false);
-    }
 }
 
 async function saveStrategySettings(event) {
@@ -1030,55 +470,6 @@ async function saveStrategySettings(event) {
     }, event);
 }
 
-function renderPortfolioChartLegacy(labels, data, colors) {
-    if (typeof Chart === 'undefined') {
-        return;
-    }
-
-    const ctx = document.getElementById('portfolioChart').getContext('2d');
-    const total = data.reduce((sum, value) => sum + Number(value || 0), 0);
-    const legend = document.getElementById('portfolio-legend');
-    if (legend) {
-        legend.innerHTML = labels.map((label, index) => {
-            const ratio = total > 0 ? Number(data[index] || 0) / total * 100 : 0;
-            return `<div class="asset-allocation-legend-item" title="${escapeHtml(label)}">
-                <span class="asset-allocation-legend-swatch" style="background:${escapeHtml(colors[index] || '#64748b')}"></span>
-                <span class="asset-allocation-legend-name">${escapeHtml(label)}</span>
-                <span class="asset-allocation-legend-value">${formatNumber(ratio, 1)}%</span>
-            </div>`;
-        }).join('');
-    }
-    if (portfolioChartInstance) {
-        portfolioChartInstance.destroy();
-    }
-
-    Chart.defaults.color = '#94a3b8';
-    Chart.defaults.font.family = "'Noto Sans KR', 'Inter', sans-serif";
-
-    portfolioChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels,
-            datasets: [{
-                data,
-                backgroundColor: colors,
-                borderWidth: 0,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            cutout: '65%'
-        }
-    });
-}
-
 function renderPortfolioChart(labels, data, colors) {
     return window.HanstockDashboardPortfolioChart.render({
         getChart: () => portfolioChartInstance,
@@ -1088,55 +479,6 @@ function renderPortfolioChart(labels, data, colors) {
     }, labels, data, colors);
 }
 
-/* Legacy runtime status renderer retained below only as migration reference.
-async function renderRuntimeLegacy() {
-    const health = await fetchJson('/api/health');
-    document.getElementById('runtime-env').textContent = health.trading_env === 'real' ? '실전' : '모의';
-    document.getElementById('runtime-dry-run').innerHTML = health.dry_run ? pill('차단 ON', 'warn') : pill('차단 OFF', 'buy');
-    document.getElementById('runtime-order').innerHTML = health.order_submission_enabled ? pill('가능', 'buy') : pill('차단', 'warn');
-    document.getElementById('runtime-real').innerHTML = health.real_orders_enabled ? pill('실주문 가능', 'sell') : pill('실주문 차단', 'hold');
-
-    const dryRunButton = document.getElementById('btn-dry-run');
-    if (dryRunButton) {
-        dryRunButton.dataset.enabled = String(Boolean(health.dry_run));
-        dryRunButton.textContent = health.dry_run ? '끄기' : '켜기';
-    }
-
-    const autoApprovalEnabled = Boolean(health.auto_approval_enabled);
-    const autoApprovalEl = document.getElementById('runtime-auto-approval');
-    const autoApprovalButton = document.getElementById('btn-auto-approval');
-    if (autoApprovalEl) {
-        autoApprovalEl.innerHTML = autoApprovalEnabled ? pill('켜짐', 'buy') : pill('꺼짐', 'hold');
-    }
-    if (autoApprovalButton) {
-        autoApprovalButton.dataset.enabled = String(autoApprovalEnabled);
-        autoApprovalButton.textContent = autoApprovalEnabled ? '끄기' : '켜기';
-    }
-        
-    const tokensEl = document.getElementById('runtime-tokens');
-    if (tokensEl) {
-        const tokens = health.token_usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, api_calls: 0 };
-        const prompt = Number(tokens.prompt_tokens || 0).toLocaleString();
-        const completion = Number(tokens.completion_tokens || 0).toLocaleString();
-        const total = Number(tokens.total_tokens || 0).toLocaleString();
-        const calls = Number(tokens.api_calls || 0).toLocaleString();
-        tokensEl.innerHTML = `${total} tkn <span style="font-size: 0.72rem; font-weight: normal; color: rgba(255,255,255,0.45); margin-left: 4px;">(P:${prompt} C:${completion}, ${calls}회)</span>`;
-    }
-        
-    const btnSyncTrades = document.getElementById('btn-sync-trades');
-    if (btnSyncTrades) {
-        if (health.dry_run) {
-            btnSyncTrades.disabled = true;
-            btnSyncTrades.textContent = '동기화 불가 (모의 실행)';
-            btnSyncTrades.title = '모의 실행(DRY_RUN) 중에는 증권사 실계좌와 동기화할 수 없습니다.';
-        } else {
-            btnSyncTrades.disabled = false;
-            btnSyncTrades.textContent = '증권사 기록 동기화';
-            btnSyncTrades.title = '';
-        }
-    }
-}
-*/
 
 async function renderRuntime() {
     return window.HanstockDashboardRuntimeScreen.render({
@@ -1186,20 +528,6 @@ async function toggleAutoApproval() {
     }
 }
 
-/* Legacy configuration renderer retained below only as migration reference.
-async function renderConfigLegacy() {
-    const config = await fetchJson('/api/config');
-    latestConfig = config;
-    setElementText('val-account', config.kiwoom_account || '-');
-    renderAiStrategySummary(config);
-    const settingsEl = document.getElementById('settings-grid');
-    settingsEl.innerHTML = renderStrategySettingsForm(config);
-    const form = document.getElementById('strategy-settings-form');
-    if (form) {
-        form.addEventListener('submit', saveStrategySettings);
-    }
-}
-*/
 
 async function renderConfig() {
     return window.HanstockDashboardConfigScreen.render({
@@ -1212,34 +540,6 @@ async function renderConfig() {
     });
 }
 
-/* Legacy risk summary renderer retained below only as migration reference.
-function renderRiskLegacy(balance) {
-    const holdingValue = (balance.holdings || []).reduce((sum, holding) => {
-        return sum + Number(holding.value || (Number(holding.qty || 0) * Number(holding.price || 0)));
-    }, 0);
-    const reportedTotal = Number(balance.total_eval || 0);
-    const cash = Number(balance.cash || 0);
-    const exposure = Number(balance.stock_eval || holdingValue || 0);
-    const total = exposure > 0 && reportedTotal < Math.max(cash, exposure)
-        ? cash + exposure
-        : reportedTotal;
-    const cashRatio = typeof balance.cash_ratio === 'number'
-        ? balance.cash_ratio
-        : (total > 0 ? Math.min(1, Math.max(0, cash / total)) : 0);
-    const maxPosition = Math.max(0, ...balance.holdings.map((holding) => Number(holding.value || 0)));
-    const concentration = total > 0 ? Math.min(1, Math.max(0, maxPosition / total)) : 0;
-    const pnl = Number(balance.pnl || 0);
-    const capital = Number(latestConfig?.total_capital || total || 1);
-    const lossUsage = pnl < 0 && latestConfig?.max_daily_loss_pct
-        ? Math.min(999, Math.abs(pnl) / capital * 100 / latestConfig.max_daily_loss_pct * 100)
-        : 0;
-
-    setElementText('val-stock-eval', formatCurrency(exposure));
-    document.getElementById('risk-cash-ratio').textContent = `${formatNumber(cashRatio * 100, 1)}%`;
-    document.getElementById('risk-concentration').textContent = `${formatNumber(concentration * 100, 1)}%`;
-    document.getElementById('risk-loss-usage').textContent = lossUsage > 0 ? `${formatNumber(lossUsage, 1)}% 사용` : '정상';
-}
-*/
 
 function renderRisk(balance) {
     return window.HanstockDashboardRiskScreen.render(balance, {
@@ -1251,56 +551,6 @@ function renderRisk(balance) {
     });
 }
 
-/* Legacy holding summary renderer retained below only as migration reference.
-function renderHoldingAccountSummaryLegacy(balance, displayTotal, realizedPnl = 0) {
-    const summaryEl = document.getElementById('holding-account-summary');
-    if (!summaryEl) {
-        return;
-    }
-    const stockEval = Number(balance.stock_eval || 0);
-    const cash = Number(balance.cash || 0);
-    const orderableCash = Number(balance.orderable_cash ?? cash);
-    const pnl = Number(balance.pnl || 0);
-    const cashRatio = typeof balance.cash_ratio === 'number'
-        ? balance.cash_ratio
-        : (displayTotal > 0 ? cash / displayTotal : 0);
-    const stockRatio = typeof balance.stock_ratio === 'number'
-        ? balance.stock_ratio
-        : (displayTotal > 0 ? stockEval / displayTotal : 0);
-    const count = (balance.holdings || []).length;
-    const source = balance._cache?.stale
-        ? `최근 저장 계좌정보 ${balance._cache.cached_at || ''}`.trim()
-        : '키움 계좌정보';
-
-    summaryEl.innerHTML = `
-        <div>
-            <span>${escapeHtml(source)}</span>
-            <strong>${formatCurrency(displayTotal)}</strong>
-            <small>총 평가금액</small>
-        </div>
-        <div>
-            <span>주식 평가</span>
-            <strong>${formatCurrency(stockEval)}</strong>
-            <small>비중 ${formatNumber(stockRatio * 100, 1)}%</small>
-        </div>
-        <div>
-            <span>예수금</span>
-            <strong>${formatCurrency(cash)}</strong>
-            <small>비중 ${formatNumber(cashRatio * 100, 1)}% · 주문가능 ${formatCurrency(orderableCash)}</small>
-        </div>
-        <div>
-            <span>평가손익</span>
-            <strong class="${pnl >= 0 ? 'text-success' : 'text-danger'}">${formatCurrency(pnl)}</strong>
-            <small>실현손익 ${formatCurrency(realizedPnl)}</small>
-        </div>
-        <div>
-            <span>보유종목</span>
-            <strong>${formatNumber(count)}개</strong>
-            <small>목록 헤더 클릭 시 정렬</small>
-        </div>
-    `;
-}
-*/
 
 function renderHoldingAccountSummary(balance, displayTotal, realizedPnl = 0) {
     return window.HanstockDashboardHoldingSummaryScreen.render(balance, displayTotal, realizedPnl, {
@@ -1391,99 +641,6 @@ function holdingPnlStatus(holding) {
     return pnl < 0 ? 'loss' : (pnl > 0 ? 'profit' : 'flat');
 }
 
-/* Legacy holding strategy summary renderer retained below only as migration reference.
-function renderHoldingStrategySummaryLegacy(balance) {
-    const summaryRows = balance.strategy_summary || [];
-    const holdingSummary = balance.holding_summary || {};
-    const tbody = document.querySelector('#table-holding-strategies tbody');
-    const strategyFilter = document.getElementById('select-holding-strategy-filter');
-    const attributedStrategyCount = summaryRows.filter((item) => item.strategy_id !== 'unattributed').length;
-    const hasUnattributed = summaryRows.some((item) => item.strategy_id === 'unattributed');
-
-    setElementText(
-        'holding-strategy-count',
-        `${formatNumber(attributedStrategyCount)}개 전략${hasUnattributed ? ' · 미확인 포함' : ''}`
-    );
-    setElementText('holding-profit-count', formatNumber(holdingSummary.profit_count || 0));
-    setElementText('holding-loss-count', formatNumber(holdingSummary.loss_count || 0));
-    setElementText('holding-flat-count', formatNumber(holdingSummary.flat_count || 0));
-    setElementText(
-        'holding-attribution-coverage',
-        `${formatNumber(holdingSummary.attribution_coverage || 0, 1)}%`
-    );
-
-    if (tbody) {
-        tbody.innerHTML = '';
-        if (!summaryRows.length) {
-            setTableMessage('#table-holding-strategies tbody', 8, '전략별 귀속 정보가 없습니다');
-        } else {
-            summaryRows.forEach((item) => {
-                const pnl = Number(item.pnl || 0);
-                const pnlStatus = pnl < 0 ? 'loss' : (pnl > 0 ? 'profit' : 'flat');
-                const pnlStatusLabel = pnlStatus === 'loss' ? '손실' : (pnlStatus === 'profit' ? '수익' : '보합');
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>
-                        <div class="symbol-name">${escapeHtml(item.strategy_name || item.strategy_id)}</div>
-                        <div class="symbol-code">${escapeHtml(item.strategy_id)}</div>
-                    </td>
-                    <td>
-                        <strong>${formatNumber(item.holding_count || 0)}개</strong>
-                        <small class="time-muted">손실 ${formatNumber(item.loss_holding_count || 0)}개</small>
-                    </td>
-                    <td>${formatCurrency(item.evaluation_amount)}</td>
-                    <td>${formatNumber(item.allocation_ratio || 0, 1)}%</td>
-                    <td class="${pnl >= 0 ? 'text-success' : 'text-danger'}">${formatCurrency(pnl)}</td>
-                    <td class="${pnl >= 0 ? 'text-success' : 'text-danger'}">${formatPercent(item.return_rate)}</td>
-                    <td><span class="holding-pnl-badge is-${pnlStatus}">${pnlStatusLabel}</span></td>
-                    <td>
-                        <button type="button" class="button-danger compact-button strategy-sell-all"
-                            data-strategy-id="${escapeHtml(item.strategy_id)}"
-                            data-strategy-name="${escapeHtml(item.strategy_name || item.strategy_id)}"
-                            title="이 전략에 귀속된 모든 종목을 전량 매도">전량매도</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-            tbody.querySelectorAll('.strategy-sell-all').forEach((button) => {
-                button.addEventListener('click', () => sellAllStrategyAttribution(button), { once: true });
-            });
-        }
-    }
-
-    if (strategyFilter) {
-        const availableIds = new Set(summaryRows.map((item) => String(item.strategy_id || '')));
-        if (holdingStrategyFilter !== 'all' && !availableIds.has(holdingStrategyFilter)) {
-            holdingStrategyFilter = 'all';
-        }
-        strategyFilter.innerHTML = [
-            '<option value="all">전체 전략</option>',
-            ...summaryRows.map((item) => (
-                `<option value="${escapeHtml(item.strategy_id)}">${escapeHtml(item.strategy_name || item.strategy_id)}</option>`
-            )),
-        ].join('');
-        strategyFilter.value = holdingStrategyFilter;
-    }
-
-    const lossList = document.getElementById('holding-loss-list');
-    if (lossList) {
-        const losses = (balance.holdings || [])
-            .filter((holding) => holdingPnlStatus(holding) === 'loss')
-            .sort((a, b) => Number(a.pnl || 0) - Number(b.pnl || 0));
-        lossList.innerHTML = losses.length
-            ? `
-                <div class="holding-loss-list-title">손실 종목 우선 확인</div>
-                ${losses.slice(0, 5).map((holding) => `
-                    <div class="holding-loss-item">
-                        <span><strong>${escapeHtml(holding.name || holding.symbol)}</strong><small>${escapeHtml(holding.symbol)}</small></span>
-                        <span class="text-danger"><strong>${formatCurrency(holding.pnl)}</strong><small>${formatPercent(holding.rt)}</small></span>
-                    </div>
-                `).join('')}
-            `
-            : '<div class="holding-loss-empty">현재 손실 보유종목이 없습니다.</div>';
-    }
-}
-*/
 
 function renderHoldingStrategySummary(balance) {
     holdingStrategyFilter = window.HanstockDashboardHoldingStrategySummaryScreen.render(balance, holdingStrategyFilter, {
@@ -1499,101 +656,6 @@ function renderHoldingStrategySummary(balance) {
     });
 }
 
-/* Legacy holdings table renderer retained below only as migration reference.
-function renderHoldingRowsLegacy() {
-    const tbodyHoldings = document.querySelector('#table-holdings tbody');
-    if (!tbodyHoldings) {
-        return;
-    }
-    tbodyHoldings.innerHTML = '';
-    if (!holdingsCache.length) {
-        setTableMessage('#table-holdings tbody', 10, '보유 종목이 없습니다');
-        updateHoldingSortHeaders();
-        return;
-    }
-
-    const rows = sortedHoldings();
-    if (!rows.length) {
-        setTableMessage('#table-holdings tbody', 10, '선택한 조건에 해당하는 보유 종목이 없습니다');
-        updateHoldingSortHeaders();
-        return;
-    }
-
-    rows.forEach((holding) => {
-        const rtClass = Number(holding.rt || 0) >= 0 ? 'text-success' : 'text-danger';
-        const pnlStatus = holdingPnlStatus(holding);
-        const pnlStatusLabel = pnlStatus === 'loss' ? '손실' : (pnlStatus === 'profit' ? '수익' : '보합');
-        const strategyAllocations = holding.strategy_allocations || [];
-        const qty = Number(holding.qty || 0);
-        const sellableQty = Number(holding.sellable_qty ?? holding.qty ?? 0);
-        const sellPending = Boolean(holding.sell_pending);
-        const hanstockWeight = Number(holding.hanstock_weight || 0);
-        const maxSingleWeight = Number(latestConfig?.max_single_weight || 0);
-        const weightExceeded = maxSingleWeight > 0 && hanstockWeight > maxSingleWeight + 0.000001;
-        const canSell = sellableQty > 0 && !sellPending;
-        let qtyText = sellableQty !== qty
-            ? `${qty.toLocaleString()} <small class="time-muted">매도가능 ${sellableQty.toLocaleString()}</small>`
-            : qty.toLocaleString();
-        if (sellPending) {
-            qtyText += ' <small class="time-muted">매도 진행중</small>';
-        }
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>
-                <div class="symbol-name">${escapeHtml(holding.name)}</div>
-                <div class="symbol-code">${escapeHtml(holding.symbol)}</div>
-            </td>
-            <td>${qtyText}</td>
-            <td>${formatCurrency(holding.price)}</td>
-            <td>${formatCurrency(holding.value || Number(holding.qty || 0) * Number(holding.price || 0))}</td>
-            <td class="${weightExceeded ? 'text-danger' : ''}">
-                <strong>${formatNumber(hanstockWeight * 100, 2)}%</strong>
-                ${weightExceeded ? '<small class="time-muted">한도 초과</small>' : ''}
-            </td>
-            <td class="${rtClass}">${formatPercent(holding.rt)}</td>
-            <td class="${rtClass}">${formatCurrency(holding.pnl)}</td>
-            <td><span class="holding-pnl-badge is-${pnlStatus}">${pnlStatusLabel}</span></td>
-            <td><div class="holding-strategy-chips">${strategyAllocations.length
-                ? strategyAllocations.map((item) => `
-                    <span class="holding-strategy-chip">
-                        ${escapeHtml(item.strategy_name || item.strategy_id)}
-                        <small>${formatNumber(item.allocated_qty || 0)}주</small>
-                        <button type="button" class="button-ghost strategy-attribution-sell"
-                            data-symbol="${escapeHtml(holding.symbol)}"
-                            data-name="${escapeHtml(holding.name)}"
-                            data-strategy-id="${escapeHtml(item.strategy_id)}"
-                            data-strategy-name="${escapeHtml(item.strategy_name || item.strategy_id)}"
-                            data-qty="${Number(item.allocated_qty || 0)}"
-                            ${(Number(item.allocated_qty || 0) > 0 && sellableQty > 0 && !sellPending) ? '' : 'disabled'}
-                            title="이 종목의 전략 귀속수량만 매도">매도</button>
-                    </span>
-                `).join('')
-                : '<span class="time-muted">귀속 미확인</span>'}</div></td>
-            <td>
-                <button type="button" class="button-ghost queue-order"
-                    data-symbol="${escapeHtml(holding.symbol)}"
-                    data-name="${escapeHtml(holding.name)}"
-                    data-action="sell"
-                    data-qty="${sellableQty}"
-                    data-price="0"
-                    data-reason="dashboard sell current holding"
-                    data-source="dashboard_holding_sell"
-                    ${canSell ? '' : 'disabled'}
-                    title="${sellPending ? '기존 매도 주문 처리 중' : (canSell ? '매도가능수량 전량 매도' : '매도가능수량 없음')}"
-                    style="padding:3px 8px;font-size:0.75rem;">${sellPending ? '진행중' : '전량'}</button>
-            </td>
-        `;
-        tbodyHoldings.appendChild(tr);
-    });
-    tbodyHoldings.querySelectorAll('.queue-order').forEach((button) => {
-        button.addEventListener('click', () => createApprovalFromButton(button), { once: true });
-    });
-    tbodyHoldings.querySelectorAll('.strategy-attribution-sell').forEach((button) => {
-        button.addEventListener('click', () => sellHoldingStrategyAttribution(button), { once: true });
-    });
-    updateHoldingSortHeaders();
-}
-*/
 
 function renderHoldingRows() {
     return window.HanstockDashboardHoldingsScreen.render(sortedHoldings(), latestConfig, {
@@ -1801,65 +863,6 @@ function renderTotalPnlBreakdown({ principal, displayTotal, accountPnl, realized
     }
 }
 
-async function renderOptimizerLegacy() {
-    setButtonBusy('btn-optimizer', true);
-    setTableMessage('#table-optimizer tbody', 7, '포트폴리오 최적 비중을 계산하고 있습니다...');
-    try {
-        const data = await fetchJson('/api/portfolio-optimizer');
-        const tbody = document.querySelector('#table-optimizer tbody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        if (!data.positions.length) {
-            setTableMessage('#table-optimizer tbody', 7, '계산할 보유 종목이 없습니다');
-            return;
-        }
-
-        data.positions.forEach((row) => {
-            const action = String(row.rebalance_action || 'hold').toLowerCase();
-            const kind = action === 'buy' ? 'buy' : (action === 'sell' ? 'sell' : 'hold');
-            const reason = `포트폴리오 목표비중 ${formatNumber(row.target_weight * 100, 1)}%; 점수=${formatNumber(row.score, 1)}, 변동성=${formatNumber(row.volatility * 100, 1)}%`;
-            const queueButton = action === 'hold'
-                ? `<button type="button" class="button-ghost" disabled title="비중 유지 상태이므로 주문할 내역이 없습니다." style="opacity:0.3; cursor:not-allowed;">변경없음</button>`
-                : `<button type="button" class="button-ghost queue-order"
-                    data-symbol="${escapeHtml(row.symbol)}"
-                    data-name="${escapeHtml(row.name)}"
-                    data-action="${escapeHtml(action)}"
-                    data-qty="${Number(row.rebalance_qty || 0)}"
-                    data-price="${Number(row.price || 0)}"
-                    data-reason="${escapeHtml(reason)}"
-                    data-source="portfolio-optimizer">승인대기</button>`;
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>
-                    <div class="symbol-name">${escapeHtml(row.name)}</div>
-                    <div class="symbol-code">${escapeHtml(row.symbol)}</div>
-                </td>
-                <td>${pill(formatNumber(row.score, 1), Number(row.score || 0) >= 3 ? 'buy' : 'hold')}</td>
-                <td>${formatNumber(row.volatility * 100, 1)}%</td>
-                <td>${formatNumber(row.current_weight * 100, 1)}%</td>
-                <td>${formatNumber(row.target_weight * 100, 1)}%</td>
-                <td>${pill(toKorAction(action), kind)}</td>
-                <td>${queueButton}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-        bindQueueButtons();
-        const hasOrders = data.positions.some(row => String(row.rebalance_action || 'hold').toLowerCase() !== 'hold');
-        const batchBtn = document.getElementById('btn-optimizer-batch');
-        if (batchBtn) {
-            batchBtn.style.display = hasOrders ? 'inline-block' : 'none';
-        }
-    } catch (err) {
-        setTableMessage('#table-optimizer tbody', 7, err.message);
-        const batchBtn = document.getElementById('btn-optimizer-batch');
-        if (batchBtn) {
-            batchBtn.style.display = 'none';
-        }
-    } finally {
-        setButtonBusy('btn-optimizer', false);
-    }
-}
-
 async function renderOptimizer() {
     return window.HanstockDashboardOptimizerScreen.render({
         setButtonBusy,
@@ -1950,32 +953,6 @@ async function syncStrategiesToDropdown() {
     }
 }
 
-async function renderStrategyContextLegacy() {
-    try {
-        const data = await fetchJson(withActiveStrategy('/api/strategy-context'));
-        if (data.analysis_flow?.cycle) activeAnalysisCycle = data.analysis_flow.cycle;
-        const active = data.active_strategy || {};
-        const safety = data.safety || {};
-        const gate = active.approval_gate || {};
-        const operation = active.operation_status || {};
-        const applied = data.applied_strategies || [];
-        setElementText(
-            'strategy-context-name',
-            applied.length ? `적용 ${applied.length}개: ${applied.map((strategy) => strategy.name).join(', ')}` : (active.name || '-')
-        );
-        setElementText(
-            'strategy-context-detail',
-            `현재 보기: ${active.name || '-'} · ${active.model || '-'} · AI ${formatNumber(Number(active.ai_weight || 0) * 100, 0)}%`
-        );
-        setElementText('strategy-context-status', strategyStatusLabel(active.status));
-        setElementText('strategy-context-version', active.strategy_version ? `v${active.strategy_version}` : '-');
-        setElementText('strategy-context-safety', `${safety.trading_env || '-'} / ${safety.dry_run ? 'DRY_RUN' : 'LIVE'}`);
-        setElementText('strategy-context-approval', '모의계좌 거래로 성과 확인');
-    } catch (err) {
-        console.error('Failed to render strategy context:', err);
-    }
-}
-
 async function renderStrategyContext() {
     return window.HanstockDashboardStrategyContext.render({
         fetchJson,
@@ -2009,152 +986,6 @@ async function renderStrategyAudit(strategyId) {
     });
 }
 
-/* Legacy AI strategy table renderer retained below only as migration reference.
-async function renderAiStrategiesLegacy() {
-    const tbody = document.querySelector('#table-ai-strategies tbody');
-    if (!tbody) return;
-    try {
-        const data = await fetchJson('/api/ai-strategies');
-        tbody.innerHTML = '';
-        const strategies = data.strategies || [];
-        const selectedStrategies = strategies.filter((strategy) => strategy.selected);
-        const applySelectedButton = document.getElementById('btn-apply-selected-strategies');
-        if (applySelectedButton) {
-            const names = selectedStrategies.map((strategy) => strategyDisplayName(strategy));
-            applySelectedButton.textContent = names.length
-                ? '선택 전략 적용'
-                : '전략을 선택하세요';
-            applySelectedButton.title = names.join(', ');
-        }
-        if (!strategies.length) {
-            setTableMessage('#table-ai-strategies tbody', 6, '등록된 AI 전략이 없습니다.');
-            return;
-        }
-
-        strategies.forEach((strategy) => {
-            const tr = document.createElement('tr');
-            const model = strategy.model === 'none' ? 'Local Rule' : strategy.model;
-            const weight = Number(strategy.profile?.ai_weight ?? strategy.weight ?? 0);
-            const builtIn = ['gpt_5_mini_default', 'rule_only_default'].includes(strategy.id);
-            const operation = strategy.operation_status || {};
-            const autonomy = strategy.autonomy || {};
-            const operationSummary = strategyOperationLabel(operation);
-            tr.innerHTML = `
-                <td style="text-align:center;">
-                    <input type="checkbox" class="strategy-select-checkbox" data-id="${escapeHtml(strategy.id)}" ${strategy.selected ? 'checked' : ''}>
-                </td>
-                <td>
-                    <div class="symbol-name">${escapeHtml(strategyDisplayName(strategy))}</div>
-                    <div class="symbol-code">${escapeHtml(strategy.id)} · ${escapeHtml(String(strategy.profile_hash || '').slice(0, 8))}</div>
-                </td>
-                <td>
-                    ${pill(strategy.status_label || strategyStatusLabel(strategy.status), strategyStatusKind(strategy.status))}
-                    ${pill(operationSummary, strategyOperationKind(operation))}
-                    ${pill(autonomy.enabled ? '자율 ON' : '자율 OFF', autonomy.enabled ? 'buy' : 'hold')}
-                </td>
-                <td>${escapeHtml(model)}</td>
-                <td>${pill(`${formatNumber(weight * 100, 0)}%`, weight > 0 ? 'buy' : 'hold')}</td>
-                <td>
-                    <div class="button-row">
-                        <button type="button" class="button-ghost btn-quick-apply-strategy compact-button" data-id="${escapeHtml(strategy.id)}">적용</button>
-                        <button type="button" class="button-ghost btn-performance-strategy compact-button" data-id="${escapeHtml(strategy.id)}">성과</button>
-                        <button type="button" class="button-ghost btn-autonomy-run-strategy compact-button" data-id="${escapeHtml(strategy.id)}" ${autonomy.enabled && autonomy.applicable ? '' : 'disabled'}>자율 실행</button>
-                        <button type="button" class="button-ghost btn-evolve-strategy compact-button" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);" data-id="${escapeHtml(strategy.id)}">🌱 자가진화</button>
-                    </div>
-                </td>
-            `;
-            const actionRow = tr.querySelector('td:last-child .button-row');
-            if (actionRow && !builtIn) {
-                const deleteButton = document.createElement('button');
-                deleteButton.type = 'button';
-                deleteButton.className = 'button-danger btn-delete-strategy compact-button';
-                deleteButton.dataset.id = strategy.id;
-                deleteButton.textContent = '삭제';
-                actionRow.appendChild(deleteButton);
-            }
-            tbody.appendChild(tr);
-        });
-
-        tbody.querySelectorAll('.strategy-select-checkbox').forEach((input) => {
-            input.addEventListener('change', async () => {
-                const id = input.getAttribute('data-id');
-                await postJson(`/api/ai-strategies/${id}/select`, { selected: input.checked });
-                if (input.checked) localStorage.setItem('hanstock_ai_ranker', id);
-                await Promise.all([syncStrategiesToDropdown(), renderStrategyContext(), renderAiStrategies()]);
-                await renderStrategyAudit(id);
-                setStatus(`AI 전략 ${input.checked ? '선택' : '해제'}: ${id}`, true);
-            });
-        });
-
-        const bindStrategyAction = (selector, fn) => {
-            tbody.querySelectorAll(selector).forEach((button) => {
-                button.addEventListener('click', async () => {
-                    const id = button.getAttribute('data-id');
-                    setButtonBusy(button, true);
-                    try {
-                        await fn(id);
-                        await Promise.all([syncStrategiesToDropdown(), renderStrategyContext(), renderAiStrategies()]);
-                    } catch (err) {
-                        setStatus(`전략 작업 실패: ${err.message}`);
-                    } finally {
-                        setButtonBusy(button, false);
-                    }
-                });
-            });
-        };
-        bindStrategyAction('.btn-quick-apply-strategy', async (id) => {
-            await postJson(`/api/ai-strategies/${id}/select`, { selected: true });
-            const result = await postJson('/api/ai-strategies/apply-selected', {});
-            if (!(result.applied_strategy_ids || []).includes(id)) {
-                throw new Error('Strategy application failed');
-            }
-            localStorage.setItem('hanstock_ai_ranker', id);
-            await renderStrategyAudit(id);
-            setStatus('전략을 바로 적용했습니다.', true);
-        });
-        bindStrategyAction('.btn-performance-strategy', async (id) => {
-            await renderStrategyAudit(id);
-            setStatus('전략 성과와 이벤트를 불러왔습니다.', true);
-        });
-        bindStrategyAction('.btn-autonomy-run-strategy', async (id) => {
-            const result = await postJson(`/api/ai-strategies/${encodeURIComponent(id)}/autonomy/run`, {
-                market: 'KR'
-            });
-            const autonomy = result.autonomy || {};
-            const orderCount = (autonomy.managed_orders || []).length;
-            const approvalCount = (autonomy.approvals || []).length;
-            await renderStrategyAudit(id);
-            setStatus(`자율전략 실행 완료 · 관리주문 ${orderCount}건 · 승인대기 ${approvalCount}건`, Boolean(result.ok));
-        });
-        bindStrategyAction('.btn-evolve-strategy', async (id) => {
-            const result = await postJson(`/api/ai-strategies/${id}/evolve`, {});
-            const params = result.result?.params || {};
-            const metrics = result.result?.metrics || {};
-            setStatus(`🌱 자가진화 완료! 새 버전 파라미터 적용 - AI 비중: ${Math.round(params.ai_weight * 100)}%, 백테스트 수익률: ${metrics.total_return_pct}%`, true);
-        });
-        bindStrategyAction('.btn-review-strategy', async (id) => {
-            const result = await postJson(`/api/ai-strategies/${id}/performance/review?days=30`, {});
-            setElementText('strategy-audit-review', result.new_status || '-');
-            setElementText('strategy-audit-warning', (result.warnings || []).join(', ') || '문제 없음');
-            await renderStrategyAudit(id);
-            setStatus(`전략 재검토 완료: ${result.previous_status} -> ${result.new_status}`, true);
-        });
-        bindStrategyAction('.btn-retire-strategy', async (id) => {
-            await postJson(`/api/ai-strategies/${id}/retire`, {});
-            setStatus('전략을 폐기 상태로 전환했습니다.', true);
-        });
-        bindStrategyAction('.btn-delete-strategy', async (id) => {
-            if (!window.confirm('이 AI 전략을 삭제하시겠습니까?')) return;
-            await deleteJson(`/api/ai-strategies/${id}`);
-            setStatus('전략을 삭제했습니다.', true);
-        });
-        await renderStrategyAudit(activeStrategyAuditId || strategies.find((strategy) => strategy.selected)?.id || strategies[0]?.id);
-    } catch (err) {
-        setTableMessage('#table-ai-strategies tbody', 6, err.message);
-    }
-}
-
-*/
 
 async function patchStrategyJson(id, payload) {
     const response = await fetch(`/api/ai-strategies/${encodeURIComponent(id)}`, {
@@ -2484,81 +1315,6 @@ async function renderAiStrategies() {
     }
 }
 
-function renderWatchlistSummaryLegacy(data) {
-    const summary = data.summary || {};
-    const policy = data.policy || {};
-    watchlistPolicy = policy;
-
-    const values = {
-        'watchlist-total-count': summary.total_count || 0,
-        'watchlist-eligible-count': summary.eligible_count || 0,
-        'watchlist-ineligible-count': summary.ineligible_count || 0,
-        'watchlist-unknown-count': summary.unknown_count || 0,
-        'watchlist-sector-count': summary.sector_count || 0,
-    };
-    Object.entries(values).forEach(([id, value]) => {
-        const element = document.getElementById(id);
-        if (element) element.textContent = formatNumber(value);
-    });
-
-    const state = document.getElementById('watchlist-policy-state');
-    if (state) {
-        state.textContent = policy.enabled === false
-            ? '정책 사용 안 함'
-            : `최소 ${formatNumber(policy.min_price || 0)}원`;
-        state.classList.toggle('is-disabled', policy.enabled === false);
-    }
-
-    const sectors = summary.sectors || [];
-    const sectorSummary = document.getElementById('watchlist-sector-summary');
-    if (sectorSummary) {
-        const visibleSectors = sectors.slice(0, 8);
-        const remainingSectorCount = Math.max(0, sectors.length - visibleSectors.length);
-        sectorSummary.innerHTML = sectors.length
-            ? visibleSectors.map((row) => `
-                <span class="watchlist-sector-chip">
-                    ${escapeHtml(row.sector)}
-                    <strong>${formatNumber(row.count)}개</strong>
-                    <span>${Number(row.ratio || 0).toFixed(1)}%</span>
-                </span>
-            `).join('') + (
-                remainingSectorCount
-                    ? `<span class="watchlist-sector-chip">그 외 <strong>${remainingSectorCount}개 섹터</strong></span>`
-                    : ''
-            )
-            : '<span class="watchlist-empty-copy">등록된 종목의 섹터 정보가 없습니다.</span>';
-    }
-
-    const sectorFilter = document.getElementById('select-watchlist-sector-filter');
-    if (sectorFilter) {
-        const selected = sectorFilter.value;
-        sectorFilter.innerHTML = '<option value="all">전체 섹터</option>';
-        sectors.forEach((row) => {
-            const option = document.createElement('option');
-            option.value = row.sector;
-            option.textContent = `${row.sector} (${row.count})`;
-            sectorFilter.appendChild(option);
-        });
-        sectorFilter.value = Array.from(sectorFilter.options).some((option) => option.value === selected)
-            ? selected
-            : 'all';
-    }
-
-    const enabledInput = document.getElementById('chk-watchlist-policy-enabled');
-    const minPriceInput = document.getElementById('num-watchlist-min-price');
-    const minMarketCapInput = document.getElementById('num-watchlist-min-market-cap');
-    const fallbackInput = document.getElementById('chk-watchlist-mid-large-fallback');
-    if (enabledInput) enabledInput.checked = policy.enabled !== false;
-    if (minPriceInput) minPriceInput.value = Number(policy.min_price || 0);
-    if (minMarketCapInput) {
-        minMarketCapInput.value = Number(policy.min_market_cap || 0) / 100000000;
-    }
-    if (fallbackInput) {
-        fallbackInput.checked = policy.require_mid_large_when_market_cap_unknown !== false;
-    }
-}
-
-// 데이터 정렬 처리 유틸리티
 function renderWatchlistSummary(data) {
     watchlistPolicy = window.HanstockDashboardWatchlistSummaryScreen.render({
         formatNumber,
@@ -2801,85 +1557,6 @@ async function renderWatchlist() {
     }
 }
 
-async function renderSignalsLegacy() {
-    const request = captureStrategyRequest();
-    setButtonBusy('btn-signals', true);
-    setTableMessage('#table-signals tbody', 7, '보유 종목을 진단하고 있습니다...');
-    try {
-        const strategyData = await fetchJson('/api/ai-strategies');
-        const appliedStrategies = (strategyData.strategies || []).filter(
-            (strategy) => strategy.selected && strategy.status === 'approved' && !strategy.independent_schedule
-        );
-        let data;
-        if (appliedStrategies.length > 1) {
-            const responses = await Promise.all(appliedStrategies.map(async (strategy) => {
-                const response = await fetchJson(`/api/signals?strategy_id=${encodeURIComponent(strategy.id)}`);
-                return (response.signals || []).map((signal) => ({
-                    ...signal,
-                    strategy_name: strategy.display_name || strategy.name || strategy.id,
-                }));
-            }));
-            data = { signals: responses.flat() };
-        } else {
-            data = await fetchJson(await commonAnalysisPath('/api/signals'));
-            const strategy = appliedStrategies[0];
-            if (strategy) {
-                data.signals = (data.signals || []).map((signal) => ({
-                    ...signal,
-                    strategy_name: strategy.display_name || strategy.name || strategy.id,
-                }));
-            }
-        }
-        if (!isCurrentStrategyRequest(request)) return;
-        captureAnalysisCycle(data);
-        const tbody = document.querySelector('#table-signals tbody');
-        tbody.innerHTML = '';
-        if (!data.signals.length) {
-            setTableMessage('#table-signals tbody', 7, '보유 종목이 없습니다');
-            return;
-        }
-
-        data.signals.forEach((row) => {
-            const action = String(row.action || 'hold').toLowerCase();
-            const kind = action === 'buy' ? 'buy' : (action === 'sell' ? 'sell' : 'hold');
-            const queueButton = action === 'hold'
-                ? `<button type="button" class="button-ghost" disabled title="관망 신호이므로 주문할 내역이 없습니다." style="opacity:0.3; cursor:not-allowed;">보유(관망)</button>`
-                : `<button type="button" class="button-ghost queue-order"
-                    data-symbol="${escapeHtml(row.symbol)}"
-                    data-name="${escapeHtml(row.name)}"
-                    data-action="${escapeHtml(action)}"
-                    data-qty="${Number(row.signal_qty || 0)}"
-                    data-price="${Number(row.signal_price || 0)}"
-                    data-reason="${escapeHtml(row.reason)}"
-                    data-source="signal">승인대기</button>`;
-            const reason = translateReason(row.reason);
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>
-                    <div class="symbol-name">${escapeHtml(row.name)}</div>
-                    <div class="symbol-code">${escapeHtml(row.symbol)}</div>
-                </td>
-                <td>${pill(toKorAction(action), kind)}</td>
-                <td>${pill(formatNumber(row.strategy_score), Number(row.strategy_score || 0) >= 5 ? 'buy' : 'hold')}</td>
-                <td>${Number(row.signal_qty || 0).toLocaleString()}</td>
-                <td>${formatNumber(row.rsi, 1)} / ${formatNumber(row.rsi2, 1)}</td>
-                <td>${formatNumber(row.macd_hist, 2)}</td>
-                <td>
-                    <div class="time-muted">${escapeHtml(row.strategy_name || row.strategy_id || '')}</div>
-                    <div class="reason-cell" title="${escapeHtml(reason)}">${escapeHtml(reason)}</div>
-                    ${queueButton}
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-        bindQueueButtons();
-    } catch (err) {
-        setTableMessage('#table-signals tbody', 7, err.message);
-    } finally {
-        setButtonBusy('btn-signals', false);
-    }
-}
-
 async function renderSignals() {
     return window.HanstockDashboardSignalsScreen.render({
         captureStrategyRequest,
@@ -2897,92 +1574,6 @@ async function renderSignals() {
         translateReason,
         bindQueueButtons,
     });
-}
-
-function strategyAnalysisChecksLegacy(row) {
-    const risk = row.strategy_risk || {};
-    const params = risk.effective_parameters || {};
-    const value = (label, passed, detail = '') => ({ label, passed: Boolean(passed), detail });
-    if (String(row.strategy_id || '').includes('heikin_ashi')) {
-        const atrMin = Number(params.atr_pct_min ?? 0.5);
-        const atrMax = Number(params.atr_pct_max ?? 5);
-        const adxMin = Number(params.adx_min ?? 20);
-        return [
-            value('Alpha HA 진입 형태', risk.long_setup || risk.short_setup, `${risk.prev_alpha_color || '-'} → ${risk.alpha_color || '-'}`),
-            value('EMA200 추세 방향', risk.direction && risk.direction !== 'flat', `방향 ${risk.direction || '-'}`),
-            value(`ADX ≥ ${adxMin}`, Number(risk.adx) >= adxMin, `ADX ${formatNumber(risk.adx, 1)}`),
-            value(`ATR ${atrMin}~${atrMax}%`, Number(risk.atr_pct) >= atrMin && Number(risk.atr_pct) <= atrMax, `ATR ${formatNumber(risk.atr_pct, 2)}%`),
-        ];
-    }
-    if (String(row.strategy_id || '').includes('rsi_limit')) {
-        return [
-            value('EMA200 추세', risk.trend_ok, `현재 ${formatCurrency(row.current_price)} · EMA ${formatCurrency(risk.ema200)}`),
-            value(`RSI 과매도 ≤ ${Number(params.oversold_threshold ?? 30)}`, risk.oversold_seen, `RSI ${formatNumber(risk.rsi, 1)}`),
-            value('RSI 반등 확인', risk.rsi_recovered, `${formatNumber(risk.previous_rsi, 1)} → ${formatNumber(risk.rsi, 1)}`),
-            value('직전 고가 돌파', risk.price_confirmed, `기준 ${formatCurrency(risk.previous_high)}`),
-            value('거래량 확인', risk.volume_confirmed, `20일 대비 ${formatNumber(row.feature_payload?.volume_ratio_20d, 2)}배`),
-            value('손절 위험 허용', risk.risk_acceptable, `손절폭 ${formatNumber(risk.stop_distance_pct, 2)}%`),
-            value('재진입 제한 해제', risk.reentry_reset_ok, ''),
-        ];
-    }
-    return (row.reasons || []).map((reason) => value(strategyReasonLabel(reason), row.passed));
-}
-
-function strategyAnalysisChecklistMarkupLegacy(row) {
-    return strategyAnalysisChecks(row).map((check) => `
-        <li class="${check.passed ? 'is-pass' : 'is-fail'}">
-            <span aria-hidden="true">${check.passed ? '✓' : '✕'}</span>
-            <strong>${escapeHtml(check.label)}</strong>
-            ${check.detail ? `<small>${escapeHtml(check.detail)}</small>` : ''}
-        </li>
-    `).join('');
-}
-
-function strategyAnalysisEvaluationLegacy(row) {
-    const checks = strategyAnalysisChecks(row);
-    const passedChecks = checks.filter((check) => check.passed).length;
-    const checklistScore = checks.length ? Math.round((passedChecks / checks.length) * 100) : 0;
-    const strategyScore = Number(row.score || 0);
-    const minScore = Number(row.min_score || 0);
-    const tradePossible = Boolean(row.passed) && strategyScore >= minScore && checklistScore === 100;
-    return {
-        checks,
-        checklistScore,
-        failedCount: checks.length - passedChecks,
-        tradePossible,
-        verdict: tradePossible ? '매매 가능' : (checklistScore >= 60 ? '관찰' : '제외'),
-    };
-}
-
-function sortStrategyAnalysisRowsLegacy(rows, sortKey) {
-    return [...rows].sort((left, right) => {
-        const a = strategyAnalysisEvaluation(left);
-        const b = strategyAnalysisEvaluation(right);
-        if (sortKey === 'score_asc') return a.checklistScore - b.checklistScore;
-        if (sortKey === 'failed_desc') return b.failedCount - a.failedCount;
-        if (sortKey === 'name') return String(left.name || left.ticker || '').localeCompare(String(right.name || right.ticker || ''), 'ko');
-        if (sortKey === 'verdict') return Number(b.tradePossible) - Number(a.tradePossible) || b.checklistScore - a.checklistScore;
-        return b.checklistScore - a.checklistScore || Number(right.score || 0) - Number(left.score || 0);
-    });
-}
-
-function strategyExcludedRowsMarkupLegacy(rows) {
-    if (!rows.length) return '<tr><td colspan="8" class="table-message">분석 세부내역이 없습니다.</td></tr>';
-    return rows.map((row) => {
-        const evaluation = strategyAnalysisEvaluation(row);
-        const failed = evaluation.checks.filter((check) => !check.passed);
-        const reasons = (row.reasons || []).map(strategyReasonLabel).join(' · ') || '진입 기준 미충족';
-        return `<tr>
-            <td><span class="symbol-name">${escapeHtml(row.name || row.ticker)}</span><span class="symbol-code">${escapeHtml(row.ticker || '')}</span></td>
-            <td>${formatNumber(row.score, 2)} / ${formatNumber(row.min_score, 2)}</td>
-            <td><strong>${evaluation.checklistScore}점</strong> / 100점</td>
-            <td>${pill(evaluation.verdict, evaluation.tradePossible ? 'buy' : (evaluation.verdict === '관찰' ? 'warn' : 'sell'))}</td>
-            <td><ul class="strategy-analysis-checklist">${strategyAnalysisChecklistMarkup(row)}</ul></td>
-            <td><div class="reason-detail">${escapeHtml(reasons)}</div></td>
-            <td>${failed.length.toLocaleString()}개</td>
-            <td>${strategyManualBuyButton(row, evaluation.verdict)}</td>
-        </tr>`;
-    }).join('');
 }
 
 function strategyAnalysisDeps() {
@@ -3080,151 +1671,6 @@ async function createStrategyLookupManualBuy(button) {
     }
 }
 
-function renderStrategyPreviewCardsLegacy(results, strategies = []) {
-    const container = document.getElementById('strategy-preview-results');
-    const legacyTable = document.querySelector('.panel-candidates .candidate-legacy-table');
-    if (!container) return;
-    strategyPreviewResultsCache = results;
-    strategyPreviewCatalogCache = strategies;
-    const strategyMap = new Map(strategies.map((strategy) => [String(strategy.id), strategy]));
-    container.hidden = false;
-    if (legacyTable) legacyTable.hidden = true;
-    const allAnalyzedRows = results.flatMap((result) => result.data?.scan_summary || []);
-    const totalTradePossible = allAnalyzedRows.filter((row) => strategyAnalysisEvaluation(row).tradePossible).length;
-    const totalPassed = allAnalyzedRows.filter((row) => row.passed).length;
-    const totalExcluded = allAnalyzedRows.length - totalPassed;
-    const totalScanned = results.reduce((sum, result) => sum + Number(result.data?.scanned || 0), 0);
-    const totalCandidates = results.reduce((sum, result) => sum + Number(result.data?.candidates?.length || 0), 0);
-    const detailSummary = results.length ? `<section class="strategy-lookup-detail-summary">
-        <div><span>선택 실행 전략</span><strong>${results.length.toLocaleString()}개</strong></div>
-        <div><span>전체 분석</span><strong>${totalScanned.toLocaleString()}종목</strong></div>
-        <div><span>전략 통과</span><strong>${totalPassed.toLocaleString()}종목</strong></div>
-        <div><span>제외</span><strong>${totalExcluded.toLocaleString()}종목</strong></div>
-        <div><span>매매 가능</span><strong>${totalTradePossible.toLocaleString()}종목</strong></div>
-        <div><span>후보 목록</span><strong>${totalCandidates.toLocaleString()}종목</strong></div>
-    </section>` : '';
-    container.innerHTML = detailSummary + results.map((result) => {
-        const strategy = strategyMap.get(String(result.strategyId)) ||
-            aiStrategyCatalog.find((item) => String(item.id) === String(result.strategyId)) ||
-            { id: result.strategyId, name: result.strategyId };
-        const data = result.data || {};
-        const candidates = data.candidates || [];
-        const analyzedRows = (data.scan_summary || []).map((row) => ({
-            ...row,
-            strategy_id: row.strategy_id || result.strategyId,
-            strategy_version: row.strategy_version || strategy.strategy_version || null,
-            profile_hash: row.profile_hash || strategy.profile_hash || '',
-        }));
-        const passedRows = analyzedRows.filter((row) => row.passed);
-        const excludedRows = analyzedRows.filter((row) => !row.passed);
-        const sortKey = strategyAnalysisSortState.get(String(result.strategyId)) || 'score_desc';
-        const sortedAnalysisRows = sortStrategyAnalysisRows(analyzedRows, sortKey);
-        const error = result.error || data.scan_error;
-        const cache = data._cache || {};
-        const diagnostics = data.diagnostics || {};
-        const isUpdating = Boolean(result.updating);
-        const cachedAt = cache.cached_at ? String(cache.cached_at).replace('T', ' ').slice(0, 19) : '';
-        const rows = candidates.length
-            ? candidates.slice(0, 10).map((row) => {
-                const reasons = (row.reasons || []).map(strategyReasonLabel).join(' · ') || '-';
-                return `<tr>
-                    <td><span class="symbol-name">${escapeHtml(row.name || row.ticker)}</span><span class="symbol-code">${escapeHtml(row.ticker || '')}</span></td>
-                    <td>${pill(formatNumber(row.score, 2), Number(row.score) >= 3 ? 'buy' : 'warn')}</td>
-                    <td>${formatCurrency(row.current_price)}</td>
-                    <td>${Number(row.planned_qty || 0).toLocaleString()}</td>
-                    <td>${formatCurrency(row.estimated_cost)}</td>
-                    <td>${pill(row.order_plan_status || (Number(row.planned_qty || 0) > 0 ? '매수계획 가능' : '매수계획 미생성'), Number(row.planned_qty || 0) > 0 ? 'buy' : 'warn')}</td>
-                    <td><div class="reason-detail">${escapeHtml(reasons)}</div></td>
-                    <td>${strategyManualBuyButton({
-                        ...row,
-                        strategy_id: row.strategy_id || result.strategyId,
-                        strategy_version: row.strategy_version || strategy.strategy_version || null,
-                        profile_hash: row.profile_hash || strategy.profile_hash || '',
-                    }, Number(row.planned_qty || 0) > 0 ? '매수계획 가능' : '매수계획 미생성')}</td>
-                </tr>`;
-            }).join('')
-            : `<tr><td colspan="7" class="table-message">${
-                isUpdating && cache.missing
-                    ? '이전 결과가 없어 분석하고 있습니다...'
-                    : error
-                    ? `조회 실패 — ${escapeHtml(String(error))}`
-                    : `${Number(data.scanned || 0).toLocaleString()}종목 분석, 기준 충족 후보 없음`
-            }</td></tr>`;
-        return `<article class="strategy-preview-card">
-            <header>
-                <div>
-                    <h3>${escapeHtml(strategyDisplayName(strategy))}</h3>
-                    <small>${escapeHtml(String(strategy.id || result.strategyId))}</small>
-                </div>
-                <div class="strategy-preview-metrics">
-                    <span>분석 <strong>${Number(data.scanned || 0).toLocaleString()}</strong></span>
-                    <span>후보 <strong>${candidates.length.toLocaleString()}</strong></span>
-                    ${isUpdating
-                        ? `<span class="is-complete">업데이트 중</span>${cachedAt ? `<span>이전 결과 · ${escapeHtml(cachedAt)}</span>` : ''}`
-                        : (error ? '<span class="is-error">오류</span>' : `<span class="is-complete">최신 결과</span>${cachedAt ? `<span>${escapeHtml(cachedAt)}</span>` : ''}`)}
-                </div>
-            </header>
-            <div class="table-responsive">
-                <table>
-                    <thead><tr><th>종목</th><th>점수</th><th>현재가</th><th>예상수량</th><th>예상금액</th><th>매수계획</th><th>선정 근거</th><th>수동 처리</th></tr></thead>
-                    <tbody>${rows}</tbody>
-                </table>
-            </div>
-            <section class="strategy-trade-diagnostics">
-                <div class="strategy-trade-diagnostics-title">
-                    <strong>매매 생성·미생성 원인 진단</strong>
-                    <span>${escapeHtml(diagnostics.primary_cause || (isUpdating ? '분석이 진행 중입니다.' : '저장된 진단 정보가 없습니다. 다시 조회하면 진단이 생성됩니다.'))}</span>
-                </div>
-                <div class="strategy-trade-diagnostic-flow">
-                    <div><span>① 전체 분석</span><strong>${Number(diagnostics.scanned_count ?? data.scanned ?? 0).toLocaleString()}</strong></div>
-                    <div><span>② 전략 통과</span><strong>${Number(diagnostics.strategy_passed_count ?? passedRows.length).toLocaleString()}</strong></div>
-                    <div><span>③ 후보 선정</span><strong>${Number(diagnostics.candidate_count ?? candidates.length).toLocaleString()}</strong></div>
-                    <div><span>④ 매수계획 가능</span><strong>${Number(diagnostics.order_ready_count || 0).toLocaleString()}</strong></div>
-                    <div><span>⑤ 계획 차단</span><strong>${Number(diagnostics.order_blocked_count || 0).toLocaleString()}</strong></div>
-                </div>
-                <div class="strategy-trade-diagnostic-context">
-                    <span>주문가능금액 <strong>${formatCurrency(diagnostics.buying_cash)}</strong></span>
-                    <span>보유 <strong>${Number(diagnostics.held_count || 0).toLocaleString()}종목</strong></span>
-                    <span>매도 잠금 <strong>${Number(diagnostics.locked_holding_count || 0).toLocaleString()}종목</strong></span>
-                    <span>일손실 중단 <strong>${diagnostics.daily_loss_halt ? '작동' : '아님'}</strong></span>
-                    ${diagnostics.scan_error ? `<span class="is-error">데이터 오류: ${escapeHtml(diagnostics.scan_error)}</span>` : ''}
-                    ${Object.entries(diagnostics.skip_reasons || {}).map(([reason, count]) => `<span>차단: ${escapeHtml(strategyReasonLabel(reason))} <strong>${Number(count).toLocaleString()}건</strong></span>`).join('')}
-                </div>
-            </section>
-            <details class="strategy-analysis-details">
-                <summary>분석 세부내역 · 통과 ${passedRows.length.toLocaleString()}종목 · 제외 ${excludedRows.length.toLocaleString()}종목</summary>
-                <div class="strategy-analysis-toolbar">
-                    <p class="section-help">체크 충족률을 100점으로 환산합니다. 100점이면서 기존 전략 점수 기준까지 통과해야 ‘매매 가능’입니다.</p>
-                    <label>정렬
-                        <select class="strategy-analysis-sort" data-strategy-id="${escapeHtml(String(result.strategyId))}">
-                            <option value="score_desc" ${sortKey === 'score_desc' ? 'selected' : ''}>체크점수 높은순</option>
-                            <option value="score_asc" ${sortKey === 'score_asc' ? 'selected' : ''}>체크점수 낮은순</option>
-                            <option value="failed_desc" ${sortKey === 'failed_desc' ? 'selected' : ''}>미충족 많은순</option>
-                            <option value="verdict" ${sortKey === 'verdict' ? 'selected' : ''}>매매 가능 우선</option>
-                            <option value="name" ${sortKey === 'name' ? 'selected' : ''}>종목명순</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="table-responsive strategy-analysis-table-wrap">
-                    <table class="strategy-analysis-table">
-                        <thead><tr><th>종목</th><th>전략점수/기준</th><th>체크점수</th><th>판정</th><th>체크 항목</th><th>판정 사유</th><th>미충족</th><th>수동 처리</th></tr></thead>
-                        <tbody>${strategyExcludedRowsMarkup(sortedAnalysisRows)}</tbody>
-                    </table>
-                </div>
-            </details>
-        </article>`;
-    }).join('');
-    container.querySelectorAll('.strategy-analysis-sort').forEach((select) => {
-        select.addEventListener('change', () => {
-            strategyAnalysisSortState.set(String(select.dataset.strategyId), select.value);
-            renderStrategyPreviewCards(strategyPreviewResultsCache, strategyPreviewCatalogCache);
-        });
-    });
-    container.querySelectorAll('.strategy-manual-buy').forEach((button) => {
-        button.addEventListener('click', () => createStrategyLookupManualBuy(button));
-    });
-}
-
 function renderStrategyPreviewCards(results, strategies = []) {
     return window.HanstockDashboardStrategyPreviewScreen.render({
         setCache: (nextResults, nextCatalog) => {
@@ -3261,44 +1707,6 @@ async function openStrategyLookupRun(runId) {
     setStatus(`분석 이력 ${strategyLookupRunTime(envelope.results?.[0]?.captured_at)}을 표시합니다.`, true);
 }
 
-async function renderStrategyLookupHistoryLegacy() {
-    const container = document.getElementById('strategy-lookup-history');
-    if (!container) return;
-    try {
-        const envelope = await fetchJson('/api/strategy-lookup/runs?limit=50', 30000);
-        const runs = envelope.runs || [];
-        container.innerHTML = `<div class="strategy-lookup-history-header">
-            <div><strong>분석 실행 이력</strong><small>조회할 때마다 한 줄씩 누적되며, 행을 누르면 아래에 세부목록이 표시됩니다.</small></div>
-            <span class="strategy-lookup-total">전체 <strong>${Number(envelope.total_count || 0).toLocaleString()}</strong>건</span>
-        </div>${
-            runs.length ? `<div class="table-responsive strategy-lookup-run-list"><table>
-                <thead><tr><th>번호</th><th>실행 시각</th><th>전략</th><th>전체 분석</th><th>매매 후보</th><th>세부목록</th></tr></thead>
-                <tbody>${runs.map((run, index) => `<tr class="strategy-lookup-run" data-run-id="${escapeHtml(run.run_id)}" tabindex="0">
-                    <td>${Number(envelope.total_count || runs.length) - index}</td>
-                    <td><strong>${escapeHtml(strategyLookupRunTime(run.captured_at))}</strong></td>
-                    <td>${Number(run.strategy_count || 0).toLocaleString()}개</td>
-                    <td>${Number(run.scanned || 0).toLocaleString()}종목</td>
-                    <td>${Number(run.candidate_count || 0).toLocaleString()}종목</td>
-                    <td><button type="button" class="button-ghost">보기</button></td>
-                </tr>`).join('')}</tbody>
-            </table></div>` : '<p class="section-help">아직 저장된 분석 실행이 없습니다.</p>'
-        }`;
-        container.querySelectorAll('.strategy-lookup-run').forEach((row) => {
-            const open = async () => {
-                container.querySelectorAll('.strategy-lookup-run').forEach((item) => item.classList.remove('is-active'));
-                row.classList.add('is-active');
-                await openStrategyLookupRun(row.dataset.runId);
-            };
-            row.addEventListener('click', open);
-            row.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter' || event.key === ' ') open();
-            });
-        });
-    } catch (error) {
-        container.innerHTML = `<p class="section-help">분석 실행 목록을 불러오지 못했습니다: ${escapeHtml(error.message)}</p>`;
-    }
-}
-
 async function renderStrategyLookupHistory() {
     return window.HanstockDashboardStrategyLookupHistory.render({
         fetchJson,
@@ -3306,40 +1714,6 @@ async function renderStrategyLookupHistory() {
         runTime: strategyLookupRunTime,
         openRun: openStrategyLookupRun,
     });
-}
-
-async function renderCachedStrategyPreviewsLegacy(strategyIds, strategies = [], options = {}) {
-    const updating = options.updating !== false;
-    const finalError = options.error || null;
-    const optimizer = document.getElementById('select-portfolio-optimizer')?.value || 'score_tilted_inverse_vol';
-    const results = await Promise.all(strategyIds.map(async (strategyId) => {
-        try {
-            const params = new URLSearchParams({
-                strategy_id: strategyId,
-                min_score: '2',
-                optimizer,
-                refresh: 'false',
-                cache_only: 'true',
-            });
-            const data = await fetchJson(`/api/candidates?${params.toString()}`, 30000);
-            return { strategyId, data, updating, error: finalError };
-        } catch (error) {
-            return {
-                strategyId,
-                data: { candidates: [], scanned: 0, _cache: { missing: true } },
-                error: error.message,
-                updating,
-            };
-        }
-    }));
-    renderStrategyPreviewCards(results, strategies);
-}
-
-function finishStrategyPreviewUpdatingStateLegacy() {
-    document.querySelectorAll('.strategy-preview-card .strategy-preview-metrics .is-complete')
-        .forEach((status) => {
-            status.textContent = '업데이트 완료';
-        });
 }
 
 async function renderCachedStrategyPreviews(strategyIds, strategies = [], options = {}) {
@@ -3868,7 +2242,7 @@ async function refreshMarketRegimeData() {
     const error = document.getElementById('market-regime-error');
     setButtonBusy(button, true);
     if (button) button.textContent = '수집 중...';
-    if (status) status.textContent = 'Kiwoom 데이터를 다시 수집하고 있습니다...';
+    if (status) status.textContent = 'Namuh 데이터를 다시 수집하고 있습니다...';
     if (error) error.hidden = true;
     try {
         const result = await postJson('/api/market-regime/refresh', {});
@@ -4128,47 +2502,6 @@ function reconciliationReasonLabel(reason) {
     return value || '-';
 }
 
-/* Legacy reconciliation renderer retained below only as migration reference.
-async function renderReconciliationIssuesLegacy() {
-    const tbody = document.querySelector('#table-reconciliation-issues tbody');
-    if (!tbody) return;
-    try {
-        const data = await fetchJson('/api/reconciliation/issues?status=open&limit=500');
-        const rows = Array.isArray(data.items) ? data.items : [];
-        reconciliationIssueCount = rows.length;
-        const summary = document.getElementById('reconciliation-summary');
-        const applyButton = document.getElementById('btn-apply-broker-balance');
-        if (summary) {
-            summary.textContent = rows.length
-                ? `미해결 ${rows.length}건 · 증권사 실제 잔고와 일치시켜야 READY 전환이 가능합니다.`
-                : '미해결 잔고 불일치가 없습니다. 주문 안전 상태를 다시 확인하세요.';
-            summary.classList.toggle('status-fail', rows.length > 0);
-            summary.classList.toggle('status-ok', rows.length === 0);
-        }
-        if (applyButton) applyButton.disabled = rows.length === 0;
-        if (!rows.length) {
-            setTableMessage('#table-reconciliation-issues tbody', 7, '잔고 불일치가 없습니다.');
-            return;
-        }
-        tbody.innerHTML = rows.map((row) => {
-            const difference = Number(row.difference_qty || 0);
-            return `
-                <tr>
-                    <td>#${escapeHtml(row.id || '-')}</td>
-                    <td><div class="symbol-name">${escapeHtml(row.symbol || '-')}</div></td>
-                    <td>${Number(row.broker_qty || 0).toLocaleString()}주</td>
-                    <td>${Number(row.internal_qty || 0).toLocaleString()}주</td>
-                    <td class="${difference === 0 ? '' : 'text-danger'}">${difference > 0 ? '+' : ''}${difference.toLocaleString()}주</td>
-                    <td><div class="reason-cell" title="${escapeHtml(row.reason || '')}">${escapeHtml(reconciliationReasonLabel(row.reason))}</div></td>
-                    <td>${escapeHtml(formatOrderCheckedAt(row.created_at))}</td>
-                </tr>`;
-        }).join('');
-    } catch (err) {
-        reconciliationIssueCount = 0;
-        setTableMessage('#table-reconciliation-issues tbody', 7, err.message);
-    }
-}
-*/
 
 async function renderReconciliationIssues() {
     reconciliationIssueCount = await window.HanstockDashboardReconciliationScreen.render({
@@ -4195,7 +2528,7 @@ async function applyBrokerBalanceReconciliation(options = {}) {
     try {
         const result = await postJson('/api/reconciliation/issues/apply-broker-balance', {
             confirmation: 'APPLY_BROKER_BALANCE',
-            reason: 'operator confirmed live Kiwoom balance alignment',
+            reason: 'operator confirmed live Namuh balance alignment',
         });
         const ready = result.health?.new_risk_allowed === true;
         setStatus(
@@ -4307,64 +2640,6 @@ async function waitForCanceledOrder(orderId, symbolName, attempts = 20) {
     return latest;
 }
 
-/* Legacy open-order renderer retained below only as migration reference.
-async function renderOpenOrdersLegacy() {
-    const tbody = document.querySelector('#table-open-orders tbody');
-    if (!tbody) return;
-    try {
-        const statusQuery = encodeURIComponent(ACTIVE_ORDER_STATUSES.join(','));
-        const data = await fetchJson(`/api/orders?status=${statusQuery}&limit=100`);
-        const rows = Array.isArray(data.items) ? data.items : [];
-        const summary = document.getElementById('open-order-summary');
-        const buyCount = rows.filter((row) => row.side === 'buy').length;
-        const sellCount = rows.filter((row) => row.side === 'sell').length;
-        if (summary) {
-            summary.textContent = `미체결 ${rows.length}건 · 매수 ${buyCount}건 · 매도 ${sellCount}건 · 취소 진행 중과 증권사 확인 필요 주문을 포함합니다.`;
-        }
-        if (!rows.length) {
-            setTableMessage('#table-open-orders tbody', 10, '현재 미체결 주문이 없습니다.');
-            return;
-        }
-        tbody.innerHTML = rows.map((row) => {
-            const requestedQty = Number(row.requested_qty || 0);
-            const filledQty = Number(row.filled_qty || 0);
-            const remainingQty = Math.max(0, requestedQty - filledQty);
-            const status = String(row.status || '');
-            const cancellable = ['submitted', 'open', 'partial'].includes(status)
-                && Boolean(row.broker_order_id) && remainingQty > 0;
-            const resolvableUnknown = status === 'broker_unknown'
-                && !row.broker_order_id && remainingQty > 0;
-            const side = row.side === 'buy' ? '매수' : '매도';
-            const sideKind = row.side === 'buy' ? 'buy' : 'sell';
-            return `
-                <tr>
-                    <td>#${escapeHtml(row.id || '-')}</td>
-                    <td>${escapeHtml(strategyDisplayName(row.strategy_id || 'unattributed'))}</td>
-                    <td>${pill(side, sideKind)}</td>
-                    <td><div class="symbol-name">${escapeHtml(row.name || row.symbol || '-')}</div><div class="symbol-code">${escapeHtml(row.symbol || '-')}</div></td>
-                    <td><div>${requestedQty.toLocaleString()} / ${filledQty.toLocaleString()} / ${remainingQty.toLocaleString()}</div><small class="time-muted">요청 / 체결 / 잔량</small></td>
-                    <td>${Number(row.order_price || 0) > 0 ? formatCurrency(row.order_price) : '시장가'}</td>
-                    <td>${pill(orderStatusLabel(status), status === 'partial' ? 'warn' : 'hold')}</td>
-                    <td>${escapeHtml(row.broker_order_id || '-')}</td>
-                    <td>${escapeHtml(formatOrderCheckedAt(row.last_synced_at))}</td>
-                    <td>${cancellable
-                        ? `<button type="button" class="button-danger compact-button cancel-open-order" data-id="${escapeHtml(row.id)}" data-symbol="${escapeHtml(row.symbol || '')}" data-name="${escapeHtml(row.name || row.symbol || '')}" data-side="${escapeHtml(row.side || '')}">주문 취소</button>`
-                        : resolvableUnknown
-                            ? `<button type="button" class="button-danger compact-button resolve-unknown-order" data-id="${escapeHtml(row.id)}" data-symbol="${escapeHtml(row.symbol || '')}" data-name="${escapeHtml(row.name || row.symbol || '')}">미확인 종결</button>`
-                            : '<span class="time-muted">현행화 필요</span>'}</td>
-                </tr>`;
-        }).join('');
-        tbody.querySelectorAll('.cancel-open-order').forEach((button) => {
-            button.addEventListener('click', () => cancelOpenOrder(button));
-        });
-        tbody.querySelectorAll('.resolve-unknown-order').forEach((button) => {
-            button.addEventListener('click', () => resolveUnknownOpenOrder(button));
-        });
-    } catch (err) {
-        setTableMessage('#table-open-orders tbody', 10, err.message);
-    }
-}
-*/
 
 async function renderOpenOrders() {
     return window.HanstockDashboardOpenOrdersScreen.render({
@@ -4751,143 +3026,6 @@ async function startBrokerHoldingsSync() {
     }
 }
 
-/* Legacy trade synchronization renderer retained below only as migration reference.
-function renderTradeSyncResultLegacy(result) {
-    const container = document.getElementById('trade-sync-last-result');
-    if (!container || !result || result.available === false) return;
-
-    const added = Number(result.synced_count || 0);
-    const removed = Number(result.removed_mismatch_count || 0);
-    const imported = Number(result.history_imported_count || 0);
-    const updated = Number(result.history_updated_count || 0);
-    const summary = document.getElementById('trade-sync-result-summary');
-    const time = document.getElementById('trade-sync-result-time');
-    const error = document.getElementById('trade-sync-result-error');
-    const details = document.getElementById('trade-sync-result-details');
-    const detailTitle = document.getElementById('trade-sync-detail-title');
-    const count = document.getElementById('trade-sync-result-count');
-    const tbody = document.querySelector('#table-trade-sync-items tbody');
-    const runsTbody = document.querySelector('#table-trade-sync-runs tbody');
-    container.hidden = false;
-    container.style.display = 'grid';
-    updateTradeSyncButton(result);
-    if (summary) {
-        summary.textContent = `추가 ${added}건 · 불일치 정리 ${removed}건 · 체결 추가 ${imported}건 · 상태 갱신 ${updated}건`;
-    }
-    if (time) {
-        const completedAt = result.completed_at ? new Date(result.completed_at) : null;
-        time.textContent = completedAt && !Number.isNaN(completedAt.getTime())
-            ? `완료 시각: ${completedAt.toLocaleString('ko-KR')}`
-            : '';
-    }
-    const errors = [result.error, result.history_error, result.order_status_error].filter(Boolean);
-    if (error) {
-        error.hidden = errors.length === 0;
-        error.textContent = errors.length ? `오류: ${errors.join(' / ')}` : '';
-    }
-
-    const renderSyncItems = (run) => {
-        const items = Array.isArray(run.sync_items) ? run.sync_items : [];
-        if (details) details.hidden = false;
-        if (detailTitle) {
-            const completedAt = run.completed_at ? new Date(run.completed_at) : null;
-            const label = completedAt && !Number.isNaN(completedAt.getTime())
-                ? completedAt.toLocaleString('ko-KR')
-                : '선택한 동기화';
-            detailTitle.textContent = `${label} 전체 항목`;
-        }
-        const itemCount = Number(run.sync_item_count ?? items.length);
-        if (count) count.textContent = `(${itemCount.toLocaleString()}건)`;
-        if (!tbody) return;
-        const typeLabels = {
-            history: '체결 내역',
-            order_status: '주문 상태',
-            balance: '잔고 보정',
-            cleanup: '불일치 정리'
-        };
-        const resultLabels = {
-            imported: '신규 추가',
-            updated: '상태 갱신',
-            skipped: '기존 항목',
-            reconciled: '잔고 보정',
-            removed: '삭제',
-            checked: '확인'
-        };
-        tbody.innerHTML = items.length ? items.map((item) => {
-            const action = String(item.action || '').toLowerCase();
-            const actionLabel = action === 'buy' ? '매수' : action === 'sell' ? '매도' : '-';
-            return `
-                <tr>
-                    <td>${escapeHtml(typeLabels[item.sync_type] || item.sync_type || '-')}</td>
-                    <td>${escapeHtml(resultLabels[item.sync_result] || item.sync_result || '-')}</td>
-                    <td>${escapeHtml(item.ts || '-')}</td>
-                    <td>
-                        <strong>${escapeHtml(item.name || item.symbol || '-')}</strong>
-                        ${item.symbol ? `<div class="time-muted">${escapeHtml(item.symbol)}</div>` : ''}
-                    </td>
-                    <td>${escapeHtml(actionLabel)}</td>
-                    <td>${Number(item.qty || 0).toLocaleString()}</td>
-                    <td>${Number(item.price || 0) > 0 ? formatCurrency(item.price) : '-'}</td>
-                    <td>${escapeHtml(item.broker_order_id || '-')}</td>
-                    <td>${escapeHtml(orderStatusLabel(item.order_status) || '-')}</td>
-                    <td><div class="reason-cell" title="${escapeHtml(item.message || '')}">${escapeHtml(item.message || '-')}</div></td>
-                </tr>
-            `;
-        }).join('') : '<tr><td colspan="10">이 실행에 저장된 상세 동기화 항목이 없습니다.</td></tr>';
-    };
-
-    const runs = Array.isArray(result.runs) && result.runs.length ? result.runs : [result];
-    if (runsTbody) {
-        runsTbody.innerHTML = runs.map((run, index) => {
-            const completedAt = run.completed_at ? new Date(run.completed_at) : null;
-            const completedLabel = completedAt && !Number.isNaN(completedAt.getTime())
-                ? completedAt.toLocaleString('ko-KR')
-                : '-';
-            const itemCount = Number(
-                run.sync_item_count ?? (Array.isArray(run.sync_items) ? run.sync_items.length : 0)
-            );
-            const changed = Number(run.history_imported_count || 0) + Number(run.history_updated_count || 0);
-            const runStatus = run.status === 'running'
-                ? '<span class="text-warning">진행 중</span>'
-                : (run.status === 'failed' || run.ok === false)
-                    ? '<span class="text-danger">실패</span>'
-                    : '<span class="text-success">완료</span>';
-            return `
-                <tr>
-                    <td><button type="button" class="trade-sync-run-button" data-run-index="${index}">${escapeHtml(completedLabel)}</button></td>
-                    <td>${itemCount.toLocaleString()}건</td>
-                    <td>${changed.toLocaleString()}건</td>
-                    <td>${Number(run.balance_synced_count || 0).toLocaleString()}건</td>
-                    <td>${Number(run.removed_mismatch_count || 0).toLocaleString()}건</td>
-                    <td>${runStatus}${run.error ? `<div class="time-muted" title="${escapeHtml(run.error)}">${escapeHtml(run.error)}</div>` : ''}</td>
-                </tr>
-            `;
-        }).join('');
-        runsTbody.querySelectorAll('.trade-sync-run-button').forEach((button) => {
-            button.addEventListener('click', async () => {
-                const run = runs[Number(button.dataset.runIndex || 0)];
-                if (!run) return;
-                button.disabled = true;
-                try {
-                    const detail = await fetchJson(
-                        `/api/trades/sync/runs/${encodeURIComponent(run.run_id)}`,
-                        30000
-                    );
-                    renderSyncItems(detail);
-                    if (details) details.open = true;
-                    details?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                } catch (error) {
-                    setStatus(`동기화 상세 조회 실패: ${error.message}`);
-                } finally {
-                    button.disabled = false;
-                }
-            });
-        });
-    }
-
-    renderSyncItems(runs[0] || result);
-}
-*/
 
 function renderTradeSyncResult(result) {
     return window.HanstockDashboardTradeSyncScreen.render(result, {
@@ -6325,54 +4463,6 @@ window.addEventListener('load', () => {
 
 const AI_SCHEDULE_ID = 'ai_stock_default_v1';
 
-function scheduleHmToInputLegacy(value, fallback) {
-    const clean = String(value || fallback).replace(':', '').padStart(4, '0');
-    return `${clean.slice(0, 2)}:${clean.slice(2, 4)}`;
-}
-
-async function loadAiScheduleSettingsLegacy() {
-    const response = await fetchJson(`/api/strategy/${AI_SCHEDULE_ID}/schedule`);
-    const schedule = response.schedule || {};
-    const enabled = document.getElementById('ai-schedule-enabled');
-    const interval = document.getElementById('ai-schedule-interval');
-    const start = document.getElementById('ai-schedule-start');
-    const end = document.getElementById('ai-schedule-end');
-    const mode = document.getElementById('ai-schedule-mode');
-    const autoApprove = document.getElementById('ai-schedule-auto-approve');
-    if (enabled) enabled.checked = Boolean(schedule.enabled);
-    if (interval) interval.value = Number(schedule.interval_minutes || 15);
-    if (start) start.value = scheduleHmToInput(schedule.start_hm, '0900');
-    if (end) end.value = scheduleHmToInput(schedule.end_hm, '1530');
-    if (mode) mode.value = schedule.mode || 'analysis_only';
-    if (autoApprove) autoApprove.checked = Boolean(schedule.auto_approve);
-    return schedule;
-}
-
-async function saveAiScheduleSettingsLegacy() {
-    const status = document.getElementById('ai-schedule-save-status');
-    const payload = {
-        enabled: Boolean(document.getElementById('ai-schedule-enabled')?.checked),
-        interval_minutes: Number(document.getElementById('ai-schedule-interval')?.value || 15),
-        start_hm: String(document.getElementById('ai-schedule-start')?.value || '09:00').replace(':', ''),
-        end_hm: String(document.getElementById('ai-schedule-end')?.value || '15:30').replace(':', ''),
-        weekdays: '1-5',
-        mode: document.getElementById('ai-schedule-mode')?.value || 'analysis_only',
-        auto_approve: Boolean(document.getElementById('ai-schedule-auto-approve')?.checked),
-    };
-    if (payload.enabled) {
-        const strategies = await fetchJson('/api/ai-strategies');
-        const applied = (strategies.strategies || []).filter(
-            (item) => item.selected && item.status === 'approved' && !item.independent_schedule
-        );
-        if (!applied.length) {
-            throw new Error('먼저 AI전략 탭에서 승인된 전략을 적용해 주세요.');
-        }
-    }
-    await postJson(`/api/strategy/${AI_SCHEDULE_ID}/schedule`, payload);
-    if (status) status.textContent = '저장됨';
-    await renderScheduleInfo();
-}
-
 async function loadAiScheduleSettings() {
     return window.HanstockDashboardAiScheduleSettings.load({ fetchJson, scheduleId: AI_SCHEDULE_ID });
 }
@@ -6594,48 +4684,6 @@ async function renderScheduleInfo() {
     }
 }
 
-async function renderSchedulerStrategyChecklistLegacy(schedules = []) {
-    const container = document.getElementById('scheduler-strategy-checklist');
-    if (!container) return;
-    const scheduled = new Set(schedules.filter((row) => row.enabled).map((row) => String(row.strategy_id)));
-    const activeStrategyId = getActiveStrategyId();
-    // The common scheduler must reflect persisted schedule registrations,
-    // not the independently editable AI-strategy catalog. Narrative momentum
-    // owns a dedicated schedule tab and is therefore omitted here.
-    const strategies = schedules
-        .filter((row) => row.strategy_id)
-        .map((row) => ({
-            id: String(row.strategy_id),
-            name: row.display_name || row.strategy_name || String(row.strategy_id),
-            selected: Boolean(row.enabled),
-            lastStatus: row.last_status || 'never_run',
-            lastResultAt: row.last_result_at || row.last_run_at || null,
-            lastErrors: Array.isArray(row.last_errors) ? row.last_errors : [],
-        }));
-    container.innerHTML = strategies.map((strategy) => {
-        const checked = scheduled.has(String(strategy.id))
-            || String(strategy.id) === activeStrategyId
-            || (!activeStrategyId && strategy.selected);
-        const statusLabel = ['success', 'completed'].includes(strategy.lastStatus)
-            ? '최근 성공'
-            : strategy.lastStatus === 'failed' ? '최근 실패'
-            : strategy.lastStatus === 'blocked' ? '실행 차단'
-            : strategy.lastStatus === 'partial' ? '부분 실패'
-            : '실행 기록 없음';
-        const errorText = strategy.lastErrors.map((item) => {
-            const target = [item.symbol, item.action ? toKorAction(item.action) : ''].filter(Boolean).join(' ');
-            return `${target ? `${target}: ` : ''}${item.message || '알 수 없는 오류'}`;
-        }).join('\n');
-        const statusClass = ['failed', 'partial', 'blocked'].includes(strategy.lastStatus) ? 'is-error' : 'time-muted';
-        return `<label class="scheduler-strategy-option">
-            <input type="checkbox" class="scheduler-strategy-checkbox" value="${escapeHtml(strategy.id)}" ${checked ? 'checked' : ''}>
-            <span>${escapeHtml(strategyDisplayName(strategy))}
-                <small class="${statusClass}" style="display:block;margin-top:3px;white-space:pre-wrap;">${escapeHtml(statusLabel)} · ${escapeHtml(formatKstTime(strategy.lastResultAt))}${errorText ? `\n${escapeHtml(errorText)}` : ''}</small>
-            </span>
-        </label>`;
-    }).join('') || '<span class="time-muted">실행 가능한 전략이 없습니다.</span>';
-}
-
 async function renderSchedulerStrategyChecklist(schedules = []) {
     return window.HanstockDashboardSchedulerStrategyChecklist.render({
         getActiveStrategyId,
@@ -6650,25 +4698,11 @@ function getScheduledStrategyIds() {
     return window.HanstockDashboardSchedulerStrategyChecklist.selectedIds();
 }
 
-function getScheduledStrategyIdsLegacy() {
-    return Array.from(document.querySelectorAll('.scheduler-strategy-checkbox:checked'))
-        .map((input) => String(input.value || '').trim())
-        .filter(Boolean);
-}
 
 window.toggleRoundCollapse = function(round) {
     return window.HanstockDashboardSchedulerCollapse.toggle(round, window._expandedRounds);
 };
 
-function disableTriggerButtonsLegacy(disabled) {
-    const ids = [
-        'btn-run-daily-auto', 'btn-run-analysis-only', 'btn-run-execute'
-    ];
-    ids.forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) btn.disabled = disabled;
-    });
-}
 
 function toKorDecision(dec) {
     return window.HanstockDashboardSchedulerFormatters.decision(dec);
@@ -6678,37 +4712,8 @@ function toKorPlanCategory(category) {
     return window.HanstockDashboardSchedulerFormatters.planCategory(category);
 }
 
-function schedulerApprovalStatusLegacy(status) {
-    const normalized = String(status || '').toLowerCase();
-    const labels = {
-        executed: { label: '주문접수', kind: 'buy' },
-        rejected: { label: '거절', kind: 'warn' },
-        failed: { label: '실패', kind: 'sell' },
-        broker_unknown: { label: '브로커 확인 필요', kind: 'warn' },
-        expired: { label: '만료', kind: 'hold' },
-        pending: { label: '승인대기', kind: 'hold' },
-    };
-    return labels[normalized] || { label: status || '상태 미확인', kind: 'hold' };
-}
 
-function schedulerPlanQuantityTextLegacy(row) {
-    const quantity = Number(row.qty ?? row.signal_qty ?? 0);
-    if (quantity > 0) return formatNumber(quantity);
-    const holdingQuantity = Number(row.holding_qty ?? 0);
-    if (row.action === 'hold' && holdingQuantity > 0) return `보유 ${formatNumber(holdingQuantity)} 주`;
-    if (row.action === 'hold') return '보유 없음';
-    return '수량 미산정';
-}
 
-function schedulerPlanPriceTextLegacy(row) {
-    const price = Number(row.price ?? row.signal_price ?? 0);
-    if (price > 0) return `${formatNumber(price)} 원`;
-    if (row.action === 'sell' && Number(row.qty ?? row.signal_qty ?? 0) > 0) return '시장가';
-    const currentPrice = Number(row.current_price ?? 0);
-    if (row.action === 'hold' && currentPrice > 0) return `현재가 ${formatNumber(currentPrice)} 원`;
-    if (row.action === 'hold') return '현재가 확인 불가';
-    return '가격 미산정';
-}
 
 function schedulerApprovalStatus(status) {
     return window.HanstockDashboardSchedulerFormatters.approvalStatus(status);
@@ -6726,103 +4731,7 @@ function formatKstTime(isoStr) {
     return window.HanstockDashboardSchedulerFormatters.kstTime(isoStr);
 }
 
-async function triggerScheduleLegacy(mode) {
-    const btnId = mode === 'daily_auto' ? 'btn-run-daily-auto' : (mode === 'analysis_only' ? 'btn-run-analysis-only' : 'btn-run-execute');
-    const btn = document.getElementById(btnId);
-    if (!btn) return;
-    
-    setButtonBusy(btn, true);
-    disableTriggerButtons(true);
-    
-    // Show running panel
-    const runningPanel = document.getElementById('scheduler-running-panel');
-    if (runningPanel) runningPanel.style.display = 'block';
-    
-    const logBox = document.getElementById('scheduler-running-log');
-    if (logBox) {
-        logBox.textContent = `[${new Date().toLocaleTimeString()}] ${mode} 스케쥴러 구동을 시작합니다. 키움 API 호출 및 포트폴리오 분석으로 약 15~40초가 소요됩니다...\n`;
-    }
-    
-    try {
-        const strategyIds = getScheduledStrategyIds();
-        const strategyId = getActiveStrategyId();
-        const res = await postJson('/api/scheduler/run', {
-            mode: mode,
-            strategy_id: strategyIds.length ? null : (strategyId || null),
-            strategy_ids: strategyIds,
-            allowed_categories: ['position', 'candidate', 'ai_rebalance'],
-        });
-        if (res.status === 'started') {
-            if (logBox) {
-                logBox.textContent += `[${new Date().toLocaleTimeString()}] 스케쥴러 백그라운드 태스크가 성공적으로 등록되었습니다. 실시간 기동 중입니다.\n`;
-            }
-            startSchedulerPolling(mode);
-        } else {
-            throw new Error(res.detail || '기동 요청 거절됨');
-        }
-    } catch (err) {
-        if (logBox) {
-            logBox.textContent += `[에러] 기동 실패: ${err.message}\n`;
-        }
-        setStatus(`스케쥴 즉시실행 실패: ${err.message}`);
-        disableTriggerButtons(false);
-    } finally {
-        setButtonBusy(btn, false);
-    }
-}
 
-function startSchedulerPollingLegacy(mode) {
-    if (schedulerPollInterval) return; // Already polling
-    
-    disableTriggerButtons(true);
-    const runningPanel = document.getElementById('scheduler-running-panel');
-    if (runningPanel) runningPanel.style.display = 'block';
-    
-    const logBox = document.getElementById('scheduler-running-log');
-    
-    let attempts = 0;
-    schedulerPollInterval = setInterval(async () => {
-        attempts++;
-        try {
-            const strategyId = getActiveStrategyId();
-            const query = strategyId ? `?strategy_id=${encodeURIComponent(strategyId)}` : '';
-            const data = await fetchJson(`/api/scheduler/status${query}`);
-            const runState = data.run_state;
-            
-            if (!runState.is_running) {
-                clearInterval(schedulerPollInterval);
-                schedulerPollInterval = null;
-                
-                if (logBox) {
-                    logBox.textContent += `[${new Date().toLocaleTimeString()}] 스케쥴러 실행이 완료되었습니다!\n`;
-                    if (runState.error) {
-                        logBox.textContent += `[오류] ${runState.error}\n`;
-                        setStatus(`스케쥴러 실행 오류: ${runState.error}`);
-                    } else {
-                        logBox.textContent += `[성공] 실행이 정상 완료되었습니다.\n`;
-                        setStatus('스케쥴러 구동이 성공적으로 완료되었습니다.', true);
-                    }
-                }
-                
-                // Force refresh all UI elements across different sections
-                await renderScheduleInfo();
-                if (typeof refreshOverview === 'function') refreshOverview();
-                if (typeof renderSignals === 'function') renderSignals();
-                if (typeof renderApprovals === 'function') renderApprovals();
-                if (typeof renderWatchlist === 'function') renderWatchlist();
-            } else {
-                if (logBox) {
-                    if (logBox.textContent.indexOf("스케쥴러 실행 중...") === -1 || attempts % 3 === 0) {
-                        logBox.textContent = `[${new Date().toLocaleTimeString()}] ${runState.mode || mode} 모드로 스케쥴러 실행 중...\n(시작 시간: ${formatKstTime(runState.started_at)})\n`;
-                        logBox.textContent += `[${new Date().toLocaleTimeString()}] 실행 중... (통신 및 분석 진행 중)\n`;
-                    }
-                }
-            }
-        } catch (e) {
-            console.error("Failed to fetch scheduler status", e);
-        }
-    }, 3000);
-}
 
 function disableTriggerButtons(disabled) {
     return window.HanstockDashboardSchedulerActions.disableButtons(disabled);

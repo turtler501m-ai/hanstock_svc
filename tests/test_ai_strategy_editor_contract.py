@@ -31,14 +31,15 @@ class AiStrategyEditorContractTests(unittest.TestCase):
     def test_strategy_selection_supports_category_manual_schedule_apply_and_delete(self):
         html = (ROOT / "web/templates/index.html").read_text(encoding="utf-8")
         script = (ROOT / "web/static/js/app.js").read_text(encoding="utf-8")
+        strategy_table = (ROOT / "web/static/js/dashboard-ai-strategy-table.js").read_text(encoding="utf-8")
 
         self.assertIn("<th>전략 유형</th>", html)
         self.assertIn("<th>스케줄 적용</th>", html)
         self.assertIn('id="strategy-selection-summary"', html)
         self.assertIn("function chooseAiStrategyCategory(category)", script)
-        self.assertIn("class=\"strategy-select-checkbox\"", script)
+        self.assertIn("class=\"strategy-select-checkbox\"", strategy_table)
         self.assertIn("'/api/ai-strategies/selection'", script)
-        self.assertIn("btn-delete-strategy", script)
+        self.assertIn("btn-delete-strategy", strategy_table)
         self.assertIn("await deleteJson(`/api/ai-strategies/", script)
         self.assertNotIn('name="selected" type="checkbox"', html)
 
