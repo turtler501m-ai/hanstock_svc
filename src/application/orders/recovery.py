@@ -1,0 +1,279 @@
+"""Fail-closed startup recovery state for order submission."""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+from src.application.orders.health import build_order_health
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def set_runtime_state(connect, state: str, *, reason: str = "", details=None) -> dict:
+    if state not in {"recovering", "reduce_only", "ready"}:
+        raise ValueError(f"invalid order runtime state: {state}")
+    payload = json.dumps(details or {}, ensure_ascii=False)
+    updated_at = _now()
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO order_runtime_state(singleton_id,state,reason,details_json,updated_at)
+               VALUES(1,?,?,?,?)
+               ON CONFLICT(singleton_id) DO UPDATE SET
+                 state=excluded.state, reason=excluded.reason,
+                 details_json=excluded.details_json, updated_at=excluded.updated_at""",
+            (state, reason, payload, updated_at),
+        )
+    return {"state": state, "reason": reason, "details": details or {}, "updated_at": updated_at}
+
+
+def get_runtime_state(connect) -> dict:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT state,reason,details_json,updated_at FROM order_runtime_state WHERE singleton_id=1"
+        ).fetchone()
+    if row is None:
+        return {"state": "recovering", "reason": "startup recovery has not completed", "details": {}, "updated_at": None}
+    try:
+        details = json.loads(row[2] or "{}")
+    except (TypeError, ValueError):
+        details = {}
+    return {"state": row[0], "reason": row[1], "details": details, "updated_at": row[3]}
+
+
+def close_expired_legacy_day_orders(connect, *, now: datetime | None = None) -> int:
+    """Close domestic legacy DAY orders whose KRX order date has ended.
+
+    Imported partial fills remain intact; only the impossible remainder is
+    released. Current-session orders and outcome-unknown rows are untouched.
+    """
+    kst = timezone(timedelta(hours=9))
+    current = now or datetime.now(kst)
+    cutoff = current.astimezone(kst).strftime("%Y-%m-%d")
+    with connect() as conn:
+        try:
+            cursor = conn.execute(
+                """UPDATE trades
+                   SET order_status='canceled',
+                       response_msg=CASE
+                         WHEN COALESCE(response_msg,'')='' THEN
+                           'Startup recovery: prior-session DAY order expired'
+                         ELSE response_msg || '; startup recovery: prior-session DAY order expired'
+                       END
+                   WHERE order_status IN ('submitted','open','partial')
+                     AND substr(COALESCE(ts,''),1,10) <> ''
+                     AND substr(ts,1,10) < ?""",
+                (cutoff,),
+            )
+        except Exception as exc:
+            if "no such table" in str(exc).lower():
+                return 0
+            raise
+    return int(cursor.rowcount or 0)
+
+
+def close_expired_unified_day_orders(connect, *, now: datetime | None = None) -> int:
+    """Close non-ambiguous unified DAY orders from completed sessions."""
+    kst = timezone(timedelta(hours=9))
+    current = now or datetime.now(kst)
+    cutoff = current.astimezone(kst).strftime("%Y-%m-%d")
+    updated_at = current.astimezone(timezone.utc).isoformat(timespec="seconds")
+    with connect() as conn:
+        domestic_rows = conn.execute(
+            """SELECT id,status FROM orders
+               WHERE time_in_force='DAY'
+                 AND market<>'US'
+                 AND broker_order_date<>'' AND broker_order_date<?
+                 AND status IN ('submitted','open','partial','cancel_pending')""",
+            (cutoff,),
+        ).fetchall()
+        eastern_now = current.astimezone(ZoneInfo("America/New_York"))
+        us_cutoff = eastern_now.date()
+        expire_current_us_day = eastern_now.time() >= time(16, 15)
+        us_rows = conn.execute(
+            """SELECT id,status,created_at FROM orders
+               WHERE time_in_force='DAY' AND market='US'
+                 AND status IN ('submitted','open','partial','cancel_pending')"""
+        ).fetchall()
+        rows = list(domestic_rows)
+        for order_id, status, created_at in us_rows:
+            try:
+                created = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
+                if created.tzinfo is None:
+                    created = created.replace(tzinfo=timezone.utc)
+                order_day = created.astimezone(ZoneInfo("America/New_York")).date()
+            except (TypeError, ValueError):
+                continue
+            if order_day < us_cutoff or (expire_current_us_day and order_day == us_cutoff):
+                rows.append((order_id, status))
+        for order_id, previous_status in rows:
+            conn.execute(
+                """UPDATE orders SET status='canceled',completed_at=COALESCE(completed_at,?),
+                   updated_at=?,version=version+1 WHERE id=? AND status=?""",
+                (updated_at, updated_at, order_id, previous_status),
+            )
+            conn.execute(
+                """INSERT INTO order_events
+                   (order_id,event_type,from_status,to_status,actor,reason,payload_json,created_at)
+                   VALUES(?,'expired_day_order',?,'canceled','startup_recovery',
+                          'prior-session DAY order remainder expired','{}',?)""",
+                (order_id, previous_status, updated_at),
+            )
+    return len(rows)
+
+
+def sync_terminal_approval_orders(connect, *, approval_id: int | None = None) -> int:
+    """Close approval-pending ledger rows after their approval became terminal."""
+    updated_at = _now()
+    params: tuple[object, ...] = ()
+    approval_filter = ""
+    if approval_id is not None:
+        approval_filter = " AND o.approval_id=?"
+        params = (int(approval_id),)
+    with connect() as conn:
+        conn.row_factory = __import__("sqlite3").Row
+        try:
+            rows = conn.execute(
+                """SELECT o.id,o.status,a.status AS approval_status,
+                          COALESCE(a.response_msg,'') AS response_msg
+                   FROM orders o JOIN approvals a ON a.id=o.approval_id
+                   WHERE o.status='approval_pending'
+                     AND a.status IN ('rejected','expired')""" + approval_filter,
+                params,
+            ).fetchall()
+        except Exception as exc:
+            # The unified ledger can be initialized before the optional legacy
+            # approvals projection (for example in a clean worker or test DB).
+            # There is nothing to synchronize until that compatibility table
+            # exists, and startup recovery must remain safe and idempotent.
+            message = str(exc).lower()
+            if "no such table" in message or "does not exist" in message:
+                return 0
+            raise
+        for row in rows:
+            target = "expired" if row["approval_status"] == "expired" else "rejected"
+            reason = row["response_msg"] or f"linked approval {row['approval_status']}"
+            conn.execute(
+                """UPDATE orders SET status=?,completed_at=COALESCE(completed_at,?),
+                   updated_at=?,version=version+1 WHERE id=? AND status='approval_pending'""",
+                (target, updated_at, updated_at, int(row["id"])),
+            )
+            conn.execute(
+                """INSERT INTO order_events
+                   (order_id,event_type,from_status,to_status,actor,reason,payload_json,created_at)
+                   VALUES(?,'approval_terminal_sync','approval_pending',?,'approval_sync',?,'{}',?)""",
+                (int(row["id"]), target, reason, updated_at),
+            )
+    return len(rows)
+
+
+def reconcile_unknown_orders_from_legacy_fills(connect) -> int:
+    """Recover unlinked active unified orders from a unique legacy outcome.
+
+    The legacy history synchronizer can learn the broker order number after the
+    strategy router has already persisted an outcome-unknown unified order.
+    Exact side/symbol/quantity and a five-minute timestamp window make the link
+    conservative; ambiguous matches remain blocked for operator review.
+    """
+    from src.application.orders.repository import OrderLedgerRepository
+
+    with connect() as conn:
+        conn.row_factory = __import__("sqlite3").Row
+        try:
+            if not conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='trades'"
+            ).fetchone():
+                return 0
+            unknown = [dict(row) for row in conn.execute(
+                """SELECT * FROM orders
+                   WHERE status IN ('broker_unknown','submitted','open','partial')
+                   AND COALESCE(broker_order_id,'')='' ORDER BY id"""
+            ).fetchall()]
+        except Exception as exc:
+            if "no such table" in str(exc).lower():
+                return 0
+            raise
+    repository = OrderLedgerRepository(connect)
+    recovered = 0
+    for order in unknown:
+        with connect() as conn:
+            conn.row_factory = __import__("sqlite3").Row
+            matches = conn.execute(
+                """SELECT * FROM trades t
+                   WHERE t.symbol=? AND lower(t.action)=? AND CAST(t.qty AS INTEGER)=?
+                     AND t.order_status IN ('filled','reconciled','canceled')
+                     AND (t.order_status='canceled'
+                          OR CAST(COALESCE(t.filled_qty,0) AS INTEGER)=?)
+                     AND COALESCE(t.broker_order_id,'')<>''
+                     AND abs((julianday(replace(t.ts,'T',' ')) -
+                              (julianday(?) + 0.375)) * 86400) <= 300
+                   ORDER BY t.id""",
+                (
+                    order["symbol"], str(order["side"]).lower(),
+                    int(order["requested_qty"]), int(order["requested_qty"]),
+                    order["created_at"],
+                ),
+            ).fetchall()
+        if len(matches) != 1:
+            continue
+        trade = dict(matches[0])
+        broker_order_id = str(trade["broker_order_id"])
+        broker_order_date = str(trade["ts"])[:10]
+        linked = repository.get_by_broker_order_id(
+            broker_order_id, broker_order_date=broker_order_date,
+            account_key=str(order["account_key"]), market=str(order["market"]),
+        )
+        target = linked or order
+        target_status = str(target["status"])
+        terminal_status = (
+            "canceled" if str(trade["order_status"]).lower() == "canceled" else "filled"
+        )
+        if target_status == "submitted" and terminal_status == "filled":
+            target = repository.transition(
+                int(target["id"]), "submitted", "open",
+                actor="startup_recovery", reason="verified legacy broker history linked",
+            )
+        elif target_status == "broker_unknown" and not linked:
+            repository.bind_broker_result(
+                int(target["id"]), broker_order_id,
+                broker_order_date=broker_order_date,
+                message="Recovered from verified legacy broker history",
+            )
+        repository.reconcile_snapshot(
+            int(target["id"]), status=terminal_status,
+            cumulative_filled_qty=int(trade["filled_qty"]),
+            average_fill_price=float(trade["filled_price"] or trade["price"] or 0),
+            broker_order_id=broker_order_id, broker_order_date=broker_order_date,
+            raw={"legacy_trade_id": int(trade["id"]), "startup_recovery": True},
+        )
+        if (linked and int(linked["id"]) != int(order["id"])
+                and str(order["status"]) == "broker_unknown"):
+            repository.transition(
+                int(order["id"]), "broker_unknown", "rejected",
+                actor="startup_recovery",
+                reason=f"duplicate representation merged into order {linked['id']}",
+            )
+        recovered += 1
+    return recovered
+
+
+def run_startup_recovery(connect) -> dict:
+    """Assess persisted invariants without making a broker network call."""
+    set_runtime_state(connect, "recovering", reason="checking persisted order invariants")
+    expired_legacy_count = close_expired_legacy_day_orders(connect)
+    expired_unified_count = close_expired_unified_day_orders(connect)
+    terminal_approval_count = sync_terminal_approval_orders(connect)
+    recovered_unknown_count = reconcile_unknown_orders_from_legacy_fills(connect)
+    health = build_order_health(connect, include_runtime=False)
+    state = "reduce_only" if health["blockers"] else "ready"
+    reason = "startup blockers require reconciliation" if health["blockers"] else "persisted order invariants are healthy"
+    return set_runtime_state(connect, state, reason=reason, details={
+        "blockers": health["blockers"], "warnings": health["warnings"],
+        "expired_legacy_day_orders": expired_legacy_count,
+        "expired_unified_day_orders": expired_unified_count,
+        "terminal_approval_orders": terminal_approval_count,
+        "recovered_unknown_orders": recovered_unknown_count,
+    })

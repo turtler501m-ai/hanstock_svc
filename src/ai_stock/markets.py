@@ -1,0 +1,67 @@
+# -*- coding: utf-8 -*-
+"""Domestic AI strategy market metadata and validation helpers."""
+from __future__ import annotations
+
+from typing import Any
+
+from src.ai_stock.constants import (
+    MARKET_ALL,
+    MARKET_KR,
+    QUERY_MARKETS,
+    STORABLE_MARKETS,
+)
+
+MARKET_META: dict[str, dict[str, Any]] = {
+    MARKET_KR: {
+        "code": MARKET_KR,
+        "label": "AI한스톡",
+        "country": "한국",
+        "provider": "KIWOOM",
+        "currency": "KRW",
+        "indices": ["KOSPI", "KOSDAQ"],
+        "symbol_kind": "numeric6",
+        "trading_hours": "09:00-15:30 KST",
+    },
+}
+
+
+class MarketError(ValueError):
+    """잘못된 시장 코드."""
+
+
+def normalize_market(value: Any, *, default: str | None = None) -> str:
+    """시장 코드를 대문자로 정규화. 허용되지 않으면 default 또는 예외."""
+    raw = str(value or "").strip().upper()
+    if raw in QUERY_MARKETS:
+        return raw
+    if default is not None:
+        return default
+    raise MarketError(f"market must be one of {QUERY_MARKETS}, got {value!r}")
+
+
+def require_storable_market(value: Any) -> str:
+    """Only the domestic KR market can be persisted by this service."""
+    market = normalize_market(value)
+    if market not in STORABLE_MARKETS:
+        raise MarketError(f"storable market must be one of {STORABLE_MARKETS}, got {market}")
+    return market
+
+
+def is_all(value: Any) -> bool:
+    return normalize_market(value, default=MARKET_ALL) == MARKET_ALL
+
+
+def markets_for_query(value: Any) -> tuple[str, ...]:
+    """Map aggregate queries to this service's domestic market."""
+    market = normalize_market(value, default=MARKET_ALL)
+    if market == MARKET_ALL:
+        return STORABLE_MARKETS
+    return (market,)
+
+
+def currency_of(value: Any) -> str:
+    return MARKET_META[require_storable_market(value)]["currency"]
+
+
+def meta_of(value: Any) -> dict[str, Any]:
+    return dict(MARKET_META[require_storable_market(value)])

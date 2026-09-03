@@ -1,0 +1,743 @@
+import unittest
+from unittest.mock import Mock, patch
+
+from src.trader import (
+    KOSPI_UNIVERSE,
+    WATCHLIST,
+    build_orders,
+    build_scan_universe,
+    calc_bollinger,
+    calc_macd,
+    calc_rsi,
+    calc_sma,
+    calc_strategy_profile,
+    find_candidates,
+    generate_ai_weight_plan,
+    generate_portfolio_optimizer_plan,
+    generate_signal,
+    _attach_holding_snapshots,
+)
+
+
+class TraderCoreTests(unittest.TestCase):
+    def test_holding_snapshot_keeps_order_fields_and_adds_account_values(self):
+        plan = [{"symbol": "005930", "action": "hold", "qty": 0, "price": 0}]
+        stocks = [{
+            "pdno": "005930",
+            "hldg_qty": "7",
+            "prpr": "71000",
+            "evlu_amt": "497000",
+        }]
+
+        result = _attach_holding_snapshots(plan, stocks)
+
+        self.assertEqual(result[0]["qty"], 0)
+        self.assertEqual(result[0]["price"], 0)
+        self.assertEqual(result[0]["holding_qty"], 7)
+        self.assertEqual(result[0]["current_price"], 71000)
+
+    def test_holding_snapshot_fetches_quote_when_balance_price_is_missing(self):
+        plan = [{"symbol": "005930", "action": "hold", "qty": 0, "price": 0}]
+        stocks = [{"pdno": "005930", "hldg_qty": "7", "prpr": "0", "evlu_amt": "0"}]
+        market_data_api = Mock()
+        market_data_api.get_quote.return_value = {"current": 71500}
+
+        result = _attach_holding_snapshots(plan, stocks, market_data_api)
+
+        self.assertEqual(result[0]["holding_qty"], 7)
+        self.assertEqual(result[0]["current_price"], 71500)
+        market_data_api.get_quote.assert_called_once_with("005930")
+
+    def test_indicators_handle_short_price_history(self):
+        self.assertEqual(calc_rsi([1, 2, 3]), 50.0)
+        self.assertEqual(calc_sma([1, 2, 3], 5), 3)
+        self.assertEqual(calc_bollinger([1, 2, 3], 20), (3, 3, 3))
+
+    def test_build_orders_respects_cash_budget(self):
+        orders = build_orders(
+            [{"ticker": "005930", "score": 2, "reasons": ["test"]}],
+            lambda _symbol: {"ask1": 70000, "current": 70000},
+            held_count=0,
+            cash=1_000_000,
+        )
+        self.assertEqual(len(orders), 1)
+        self.assertLessEqual(orders[0]["estimated_cost"], 1_000_000)
+
+    def test_build_orders_scales_single_candidate_by_absolute_score(self):
+        with patch("src.strategy.seven_split.config.total_capital", 100_000_000), \
+                patch("src.strategy.seven_split.config.max_single_weight", 0.10), \
+                patch("src.strategy.seven_split.config.cash_buffer", 0.20):
+            low = build_orders(
+                [{"ticker": "005930", "score": 2, "volatility": 0.03, "reasons": []}],
+                lambda _symbol: {"ask1": 10_000, "current": 10_000},
+                held_count=0,
+                cash=100_000_000,
+            )[0]
+            high = build_orders(
+                [{"ticker": "000660", "score": 5, "volatility": 0.03, "reasons": []}],
+                lambda _symbol: {"ask1": 10_000, "current": 10_000},
+                held_count=0,
+                cash=100_000_000,
+            )[0]
+
+        self.assertEqual(low["target_weight"], 0.025)
+        self.assertEqual(high["target_weight"], 0.10)
+        self.assertGreater(high["quantity"], low["quantity"] * 3)
+
+    def test_build_orders_returns_empty_when_cash_budget_is_zero(self):
+        orders = build_orders(
+            [{"ticker": "005930", "score": 2, "reasons": ["test"]}],
+            lambda _symbol: {"ask1": 70000, "current": 70000},
+            held_count=0,
+            cash=0,
+        )
+
+        self.assertEqual(orders, [])
+
+    def test_strategy_risk_budget_fields_are_dashboard_editable(self):
+        from src.dashboard.settings_schema import ENV_FIELD_MAP, STRATEGY_ENV_BINDINGS
+
+        for key in (
+            "RSI_RISK_PER_TRADE_PCT",
+            "RSI_MAX_TOTAL_OPEN_RISK_PCT",
+            "ALPHA_HA_RISK_PER_TRADE_PCT",
+            "ALPHA_HA_MAX_TOTAL_OPEN_RISK_PCT",
+        ):
+            self.assertIn(key, ENV_FIELD_MAP)
+            self.assertIn(key, STRATEGY_ENV_BINDINGS)
+
+    def test_rsi_order_quantity_uses_configured_initial_risk(self):
+        candidate = {
+            "ticker": "005930", "score": 5, "volatility": 0.02, "reasons": [],
+            "strategy_id": "rsi_limit_strategy",
+            "strategy_risk": {"stop": 95.0},
+        }
+        with patch("src.strategy.seven_split.config.total_capital", 1_000_000), \
+                patch("src.strategy.seven_split.config.max_single_weight", 1.0), \
+                patch("src.strategy.seven_split.config.cash_buffer", 0.0), \
+                patch("src.strategy.seven_split.config.rsi_risk_per_trade_pct", 1.0), \
+                patch("src.strategy.seven_split.config.rsi_max_total_open_risk_pct", 2.0):
+            orders = build_orders(
+                [candidate], lambda _symbol: {"ask1": 100, "current": 100},
+                held_count=0, cash=1_000_000,
+            )
+        self.assertEqual(orders[0]["quantity"], 2000)
+        self.assertEqual(orders[0]["risk_budget"], 10_000)
+        self.assertEqual(orders[0]["initial_r"], 5)
+
+    def test_heikin_order_records_rejection_when_entry_premium_exceeds_limit(self):
+        candidate = {
+            "ticker": "000810",
+            "score": 3.75,
+            "volatility": 0.0453,
+            "current_price": 648_000,
+            "reasons": ["alpha reversal"],
+            "strategy_id": "heikin_ashi_scalping_strategy",
+            "strategy_risk": {"stop": 601_000},
+        }
+        with patch("src.strategy.seven_split.config.total_capital", 100_000_000), \
+                patch("src.strategy.seven_split.config.max_single_weight", 0.10), \
+                patch("src.strategy.seven_split.config.cash_buffer", 0.10), \
+                patch("src.strategy.seven_split.config.alpha_ha_risk_per_trade_pct", 10.0), \
+                patch("src.strategy.seven_split.config.alpha_ha_max_total_open_risk_pct", 50.0), \
+                patch("src.strategy.seven_split.strategy_open_risk", return_value=0):
+            orders = build_orders(
+                [candidate],
+                lambda _symbol: {"ask1": 683_000, "current": 648_000},
+                held_count=0,
+                cash=34_132_826,
+            )
+
+        self.assertEqual(orders, [])
+        rejection = candidate["order_rejection"]
+        self.assertEqual(rejection["code"], "entry_price_premium_exceeded")
+        self.assertAlmostEqual(rejection["entry_premium_pct"], 5.4012, places=4)
+        self.assertEqual(rejection["max_entry_premium_pct"], 2.0)
+
+    def test_heikin_order_uses_effective_stop_distance_setting(self):
+        candidate = {
+            "ticker": "000810",
+            "score": 3.75,
+            "volatility": 0.0453,
+            "reasons": [],
+            "current_price": 683_000,
+            "strategy_id": "heikin_ashi_scalping_strategy",
+            "strategy_risk": {
+                "stop": 601_000,
+                "effective_parameters": {
+                    "max_stop_distance_pct": 13.0,
+                    "max_entry_premium_pct": 2.0,
+                },
+            },
+        }
+        with patch("src.strategy.seven_split.config.total_capital", 100_000_000), \
+                patch("src.strategy.seven_split.config.max_single_weight", 0.10), \
+                patch("src.strategy.seven_split.config.cash_buffer", 0.10), \
+                patch("src.strategy.seven_split.config.alpha_ha_risk_per_trade_pct", 10.0), \
+                patch("src.strategy.seven_split.config.alpha_ha_max_total_open_risk_pct", 50.0), \
+                patch("src.strategy.seven_split.strategy_open_risk", return_value=0):
+            orders = build_orders(
+                [candidate],
+                lambda _symbol: {"ask1": 683_000, "current": 683_000},
+                held_count=0,
+                cash=34_132_826,
+            )
+
+        self.assertGreater(orders[0]["quantity"], 0)
+        self.assertNotIn("order_rejection", candidate)
+
+    def test_build_orders_excludes_configured_symbols(self):
+        with patch("src.strategy.seven_split.config.hanstock_excluded_symbols", "252670"):
+            orders = build_orders(
+                [
+                    {"ticker": "252670", "score": 5, "reasons": ["blocked"]},
+                    {"ticker": "005930", "score": 2, "reasons": ["ok"]},
+                ],
+                lambda _symbol: {"ask1": 70000, "current": 70000},
+                held_count=0,
+                cash=1_000_000,
+            )
+
+        self.assertEqual([order["ticker"] for order in orders], ["005930"])
+
+    def test_generate_signal_stop_loss_sells_all(self):
+        signal = generate_signal(
+            {"prpr": "10000", "hldg_qty": "7", "evlu_pfls_rt": "-20"},
+            [],
+        )
+        self.assertEqual(signal["action"], "sell")
+        self.assertEqual(signal["qty"], 7)
+        self.assertEqual(signal["price"], 0)
+
+    def test_generate_signal_stop_loss_uses_configured_ten_percent_floor(self):
+        with patch("src.strategy.seven_split.config.stop_loss_pct", -10.0):
+            signal = generate_signal(
+                {"prpr": "10000", "hldg_qty": "7", "evlu_pfls_rt": "-9.96"},
+                [],
+            )
+
+        self.assertEqual(signal["action"], "sell")
+        self.assertEqual(signal["qty"], 7)
+        self.assertEqual(signal["reason"], "stop loss -10.0%")
+
+    def test_generate_signal_trailing_stop_sells_all_after_peak_drawdown(self):
+        daily = [
+            {
+                "stck_clpr": "110",
+                "stck_hgpr": str(high),
+                "acml_vol": "1000",
+            }
+            for high in [110, 112, 115, 120, 125] + [110] * 15
+        ]
+        with (
+            patch("src.strategy.seven_split.config.trailing_stop_activation_pct", 10.0),
+            patch("src.strategy.seven_split.config.trailing_stop_pct", 8.0),
+            patch("src.strategy.seven_split.config.trailing_stop_lookback", 20),
+            patch(
+                "src.strategy.seven_split.update_position_peak",
+                return_value={"peak_price": 125.0},
+            ),
+        ):
+            signal = generate_signal(
+                {"prpr": "110", "hldg_qty": "7", "evlu_pfls_rt": "10"},
+                daily,
+            )
+
+        self.assertEqual(signal["action"], "sell")
+        self.assertEqual(signal["qty"], 7)
+        self.assertEqual(signal["price"], 0)
+        self.assertIn("trailing stop", signal["reason"])
+
+    def test_strategy_profile_exposes_composite_indicators(self):
+        prices = [float(i) for i in range(1, 140)]
+        highs = [p + 1 for p in prices]
+        lows = [max(0.1, p - 1) for p in prices]
+        volumes = [100.0] * 119 + [200.0] * 20
+        profile = calc_strategy_profile(prices, highs, volumes, lows=lows)
+        self.assertIn("macd_hist", profile)
+        self.assertIn("rsi2", profile)
+        self.assertIn("return_60d", profile)
+        self.assertIn("return_120d", profile)
+        self.assertIn("atr_pct", profile)
+        self.assertGreaterEqual(profile["score"], 0)
+
+    def test_strategy_profile_rewards_persistent_momentum_and_penalizes_blowoff(self):
+        steady = [100.0 + i * 0.5 for i in range(150)]
+        blowoff = steady[:-20] + [steady[-21] * (1 + i * 0.02) for i in range(1, 21)]
+
+        steady_profile = calc_strategy_profile(
+            steady,
+            [p + 1 for p in steady],
+            [1000.0] * len(steady),
+            lows=[p - 1 for p in steady],
+        )
+        blowoff_profile = calc_strategy_profile(
+            blowoff,
+            [p + 1 for p in blowoff],
+            [1000.0] * len(blowoff),
+            lows=[p - 1 for p in blowoff],
+        )
+
+        self.assertGreater(steady_profile["return_60d"], 0)
+        self.assertIn("60d momentum", " ".join(steady_profile["reasons"]))
+        self.assertIn("short-term overextension", " ".join(blowoff_profile["reasons"]))
+
+    def test_generate_signal_uses_atr_protective_stop_before_full_fixed_stop(self):
+        daily = [
+            {
+                "stck_clpr": "100",
+                "stck_oprc": "100",
+                "stck_hgpr": "101",
+                "stck_lwpr": "99",
+                "acml_vol": "1000",
+            }
+            for _ in range(40)
+        ]
+        with (
+            patch("src.strategy.seven_split.config.stop_loss_pct", -10.0),
+            patch("src.strategy.seven_split.trailing_stop_signal", return_value={"triggered": False}),
+            patch("src.strategy.seven_split.update_position_peak", return_value={"peak_price": 100.0}),
+        ):
+            signal = generate_signal(
+                {"prpr": "94", "hldg_qty": "7", "evlu_pfls_rt": "-6"},
+                daily,
+            )
+
+        self.assertEqual(signal["action"], "sell")
+        self.assertEqual(signal["qty"], 7)
+        self.assertIn("ATR protective stop", signal["reason"])
+
+    def test_generate_signal_holds_strong_winner_for_trailing_stop(self):
+        prices = [100.0 + i * 0.5 for i in range(150)]
+        daily = [
+            {
+                "stck_clpr": str(price),
+                "stck_oprc": str(price - 0.2),
+                "stck_hgpr": str(price + 1),
+                "stck_lwpr": str(price - 1),
+                "acml_vol": "1000",
+            }
+            for price in reversed(prices)
+        ]
+        with (
+            patch("src.strategy.seven_split.config.take_profit", 30.0),
+            patch("src.strategy.seven_split.config.rsi_sell", 70),
+            patch("src.strategy.seven_split.trailing_stop_signal", return_value={"triggered": False}),
+            patch("src.strategy.seven_split.update_position_peak", return_value={"peak_price": prices[-1]}),
+        ):
+            signal = generate_signal(
+                {"prpr": str(prices[-1]), "hldg_qty": "7", "evlu_pfls_rt": "35"},
+                daily,
+            )
+
+        self.assertEqual(signal["action"], "hold")
+        self.assertIn("trend winner held", signal["reason"])
+
+    def test_macd_handles_short_history(self):
+        macd = calc_macd([1, 2, 3])
+        self.assertFalse(macd["bull_cross"])
+        self.assertEqual(macd["hist"], 0.0)
+
+    def test_ai_weight_plan_returns_rebalance_rows(self):
+        prices = [float(i) for i in range(100, 220)]
+        plan = generate_ai_weight_plan(
+            [{
+                "symbol": "005930",
+                "name": "Samsung",
+                "qty": 1,
+                "price": 200000,
+                "value": 200000,
+                "prices": prices,
+                "highs": [p + 1 for p in prices],
+                "volumes": [100.0] * len(prices),
+            }],
+            total_eval=1_000_000,
+        )
+        self.assertEqual(len(plan["positions"]), 1)
+        self.assertIn("target_weight", plan["positions"][0])
+
+    def test_ai_weight_plan_fallback_is_deterministic(self):
+        prices = [float(i) for i in range(100, 220)]
+        holdings = [
+            {
+                "symbol": "005930",
+                "name": "Samsung",
+                "qty": 1,
+                "price": 200000,
+                "value": 200000,
+                "prices": prices,
+                "highs": [p + 1 for p in prices],
+                "volumes": [100.0] * len(prices),
+            },
+            {
+                "symbol": "000660",
+                "name": "SK Hynix",
+                "qty": 1,
+                "price": 100000,
+                "value": 100000,
+                "prices": prices,
+                "highs": [p + 1 for p in prices],
+                "volumes": [100.0] * len(prices),
+            },
+        ]
+
+        first = generate_ai_weight_plan(holdings, total_eval=1_000_000)
+        second = generate_ai_weight_plan(holdings, total_eval=1_000_000)
+
+        self.assertEqual(
+            [position["target_weight"] for position in first["positions"]],
+            [position["target_weight"] for position in second["positions"]],
+        )
+
+    def test_portfolio_optimizer_plan_returns_method(self):
+        prices = [float(i) for i in range(100, 220)]
+        plan = generate_portfolio_optimizer_plan(
+            [{
+                "symbol": "005930",
+                "name": "Samsung",
+                "qty": 1,
+                "price": 200000,
+                "value": 200000,
+                "prices": prices,
+                "highs": [p + 1 for p in prices],
+                "volumes": [100.0] * len(prices),
+            }],
+            total_eval=1_000_000,
+        )
+        self.assertEqual(plan["method"], "score_tilted_inverse_vol")
+        self.assertEqual(len(plan["positions"]), 1)
+
+    def test_ai_rebalance_rows_include_only_executable_positions(self):
+        from unittest.mock import patch
+        from src import trader
+
+        class _FakeAPI:
+            def get_daily(self, _symbol, n=120):
+                return [
+                    {"stck_clpr": "100", "stck_hgpr": "101", "acml_vol": "1000"},
+                    {"stck_clpr": "110", "stck_hgpr": "111", "acml_vol": "1100"},
+                ]
+
+        balance = {
+            "output1": [
+                {
+                    "pdno": "005930",
+                    "prdt_name": "Samsung",
+                    "hldg_qty": "10",
+                    "prpr": "70000",
+                    "evlu_amt": "700000",
+                }
+            ]
+        }
+        ai_plan = {
+            "ai_active": False,
+            "positions": [
+                {
+                    "symbol": "005930",
+                    "name": "Samsung",
+                    "price": 70000,
+                    "rebalance_action": "sell",
+                    "rebalance_qty": 2,
+                    "current_weight": 0.7,
+                    "target_weight": 0.5,
+                    "target_value": 500000,
+                    "delta_value": -200000,
+                    "score": 3,
+                    "reasons": ["risk trim"],
+                },
+                {"symbol": "000660", "rebalance_action": "hold", "rebalance_qty": 0},
+            ],
+        }
+
+        with patch.object(trader, "generate_ai_weight_plan", return_value=ai_plan), \
+                patch(
+                    "src.db.repository.reconstruct_strategy_positions",
+                    return_value=[{"symbol": "005930", "qty": 10}],
+                ):
+            rows = trader.build_ai_rebalance_rows(_FakeAPI(), balance, 1_000_000)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["category"], "ai_rebalance")
+        self.assertEqual(rows[0]["strategy_id"], "ai_rebalance")
+        self.assertEqual(rows[0]["action"], "sell")
+        self.assertEqual(rows[0]["qty"], 2)
+
+    def test_ai_rebalance_rows_exclude_configured_symbols(self):
+        from src import trader
+
+        class _FakeAPI:
+            def get_daily(self, _symbol, n=120):
+                return []
+
+        balance = {
+            "output1": [{
+                "pdno": "252670",
+                "hldg_qty": "10",
+                "prpr": "100",
+                "evlu_amt": "1000",
+            }]
+        }
+        ai_plan = {
+            "ai_active": False,
+            "positions": [{
+                "symbol": "252670",
+                "name": "Blocked",
+                "price": 100,
+                "rebalance_action": "sell",
+                "rebalance_qty": 1,
+            }],
+        }
+
+        with patch.object(trader, "generate_ai_weight_plan", return_value=ai_plan), \
+                patch("src.strategy.seven_split.config.hanstock_excluded_symbols", "252670"):
+            rows = trader.build_ai_rebalance_rows(_FakeAPI(), balance, 1_000_000)
+
+        self.assertEqual(rows, [])
+
+    def test_runtime_plan_can_include_ai_rebalance_rows(self):
+        from unittest.mock import patch
+        from src import trader
+
+        class _FakeAPI:
+            def get_daily(self, _symbol, n=60):
+                return []
+
+            def fetch_volume_rank(self, top_n=50):
+                return []
+
+            def get_quote(self, _symbol):
+                return {"current": 0, "ask1": 0, "bid1": 0}
+
+        balance = {
+            "output1": [
+                {
+                    "pdno": "005930",
+                    "prdt_name": "Samsung",
+                    "hldg_qty": "10",
+                    "prpr": "70000",
+                    "evlu_amt": "700000",
+                }
+            ],
+            "output2": [{"dnca_tot_amt": "100000", "tot_evlu_amt": "1000000", "evlu_pfls_smtl_amt": "0"}],
+        }
+        api = _FakeAPI()
+        with patch.object(
+            trader,
+            "generate_signal",
+            return_value={"action": "hold", "qty": 0, "price": 0, "reason": "", "indicators": {}},
+        ), patch.object(
+            trader,
+            "find_candidates",
+            return_value={"candidates": [], "scan_summary": [], "scanned": 0, "min_score": 2, "scan_error": None},
+        ), patch.object(
+            trader,
+            "build_ai_rebalance_rows",
+            return_value=[{"symbol": "005930", "action": "sell", "qty": 1, "category": "ai_rebalance"}],
+        ) as ai_rows:
+            plan = trader.build_runtime_plan(api, balance, include_ai_rebalance=True)
+
+        ai_rows.assert_called_once_with(api, balance, 1_000_000)
+        self.assertEqual(plan["ai_rebalance_rows"][0]["category"], "ai_rebalance")
+
+    def test_runtime_plan_uses_configured_capital_instead_of_full_account(self):
+        from src import trader
+
+        class _FakeAPI:
+            def get_daily(self, _symbol, n=60):
+                return []
+
+            def fetch_volume_rank(self, top_n=50):
+                return []
+
+            def get_quote(self, _symbol):
+                return {"current": 0, "ask1": 0, "bid1": 0}
+
+        balance = {
+            "output1": [{
+                "pdno": "005930",
+                "hldg_qty": "100",
+                "prpr": "500000",
+                "evlu_amt": "50000000",
+            }],
+            "output2": [{
+                "dnca_tot_amt": "450000000",
+                "scts_evlu_amt": "50000000",
+                "tot_evlu_amt": "500000000",
+                "evlu_pfls_smtl_amt": "0",
+            }],
+        }
+
+        api = _FakeAPI()
+        with patch.object(trader.config, "total_capital", 100_000_000), \
+                patch.object(trader, "CASH_BUFFER", 0.20), \
+                patch.object(trader, "generate_signal", return_value={
+                    "action": "hold", "qty": 0, "price": 0, "reason": "", "indicators": {},
+                }), \
+                patch.object(trader, "find_candidates", return_value={
+                    "candidates": [], "scan_summary": [], "scanned": 0,
+                    "min_score": 2, "scan_error": None,
+                }), \
+                patch.object(trader, "build_ai_rebalance_rows", return_value=[]) as ai_rows:
+            plan = trader.build_runtime_plan(
+                api,
+                balance,
+                include_ai_rebalance=True,
+            )
+
+        ai_rows.assert_called_once_with(api, balance, 100_000_000)
+        self.assertEqual(plan["operating_capital"], 100_000_000)
+        self.assertEqual(plan["buying_cash"], 30_000_000)
+        self.assertEqual(plan["remaining_cash"], 30_000_000)
+
+    def test_kospi_universe_has_no_duplicates(self):
+        self.assertEqual(len(KOSPI_UNIVERSE), len(set(KOSPI_UNIVERSE)))
+
+    def test_selected_independent_strategies_inherit_shared_watchlist(self):
+        from src.strategy.seven_split import sync_selected_strategy_universes
+
+        strategies = [
+            {
+                "id": "plunge_bounce_strategy",
+                "selected": True,
+                "status": "approved",
+            },
+            {"id": "draft_strategy", "selected": True, "status": "draft"},
+        ]
+        with patch(
+            "src.db.repository.load_ai_strategies", return_value=strategies
+        ), patch(
+            "src.db.repository.load_strategy_universe_symbols", return_value=["005930"]
+        ), patch(
+            "src.db.repository.add_strategy_universe_symbol"
+        ) as add_symbol:
+            result = sync_selected_strategy_universes({
+                "symbols": ["005930", "000660"],
+                "names": {"000660": "SK Hynix"},
+            })
+
+        self.assertEqual(result, {"plunge_bounce_strategy": 1})
+        add_symbol.assert_called_once_with(
+            "plunge_bounce_strategy", "000660", "SK Hynix"
+        )
+
+    def test_build_scan_universe_always_includes_watchlist(self):
+        """거래량 API가 빈 결과를 돌려줘도 WATCHLIST는 항상 포함된다."""
+        class _FakeAPI:
+            def fetch_volume_rank(self, top_n=50):
+                return []  # API 실패 시뮬레이션
+
+        universe = build_scan_universe(_FakeAPI(), held_symbols=set())
+        for code in WATCHLIST:
+            self.assertIn(code, universe)
+
+    def test_build_scan_universe_excludes_held(self):
+        held = {"005930", "000660"}
+
+        class _FakeAPI:
+            def fetch_volume_rank(self, top_n=50):
+                return []
+
+        universe = build_scan_universe(_FakeAPI(), held_symbols=held)
+        for code in held:
+            self.assertNotIn(code, universe)
+
+    def test_build_scan_universe_excludes_configured_symbols(self):
+        class _FakeAPI:
+            def fetch_volume_rank(self, top_n=50):
+                return ["252670", "005930"]
+
+        with patch("src.strategy.seven_split.config.hanstock_excluded_symbols", "252670,252710"):
+            universe = build_scan_universe(_FakeAPI(), held_symbols=set())
+
+        self.assertNotIn("252670", universe)
+        self.assertNotIn("252710", universe)
+        self.assertIn("005930", universe)
+
+    def test_isolated_strategy_without_universe_does_not_use_shared_scan_universe(self):
+        from src import trader
+
+        class _FakeAPI:
+            def get_quote(self, _symbol):
+                return {"current": 0, "ask1": 0, "bid1": 0}
+
+        balance = {
+            "output1": [],
+            "output2": [{"dnca_tot_amt": "100000", "tot_evlu_amt": "100000", "evlu_pfls_smtl_amt": "0"}],
+        }
+
+        with patch("src.db.repository.load_strategy_universe_symbols", return_value=[]), \
+                patch.object(trader, "build_scan_universe") as shared_universe, \
+                patch.object(trader, "find_candidates") as find_candidates_mock:
+            plan = trader.build_runtime_plan(
+                _FakeAPI(),
+                balance,
+                force_strategy_id="plunge_bounce_strategy",
+            )
+
+        shared_universe.assert_not_called()
+        find_candidates_mock.assert_not_called()
+        self.assertEqual(plan["candidate_plan_rows"], [])
+        self.assertEqual(plan["candidate_scan"]["scanned"], 0)
+        self.assertIn("dedicated universe", plan["candidate_scan"]["scan_error"])
+
+    def test_isolated_strategy_does_not_build_whole_account_position_rows(self):
+        from src import trader
+
+        class _FakeAPI:
+            def get_daily(self, _symbol, n=60):
+                return []
+
+            def get_quote(self, _symbol):
+                return {"current": 0, "ask1": 0, "bid1": 0}
+
+        balance = {
+            "output1": [{
+                "pdno": "078930",
+                "prdt_name": "GS",
+                "hldg_qty": "6369",
+                "prpr": "71300",
+                "evlu_amt": "454109700",
+                "evlu_pfls_rt": "2.0",
+            }],
+            "output2": [{
+                "dnca_tot_amt": "10000000",
+                "scts_evlu_amt": "454109700",
+                "tot_evlu_amt": "464109700",
+                "evlu_pfls_smtl_amt": "0",
+            }],
+        }
+
+        with patch("src.db.repository.load_strategy_universe_symbols", return_value=[]), \
+                patch.object(trader, "generate_signal") as signal_mock:
+            plan = trader.build_runtime_plan(
+                _FakeAPI(),
+                balance,
+                force_strategy_id="plunge_bounce_strategy",
+            )
+
+        signal_mock.assert_not_called()
+        self.assertEqual(plan["position_plan_rows"], [])
+        self.assertTrue(all(row.get("category") != "position" for row in plan["plan"]))
+
+    def test_build_scan_universe_uses_volume_rank_when_available(self):
+        extra = ["000020", "000030", "000040"]
+
+        class _FakeAPI:
+            def fetch_volume_rank(self, top_n=50):
+                return extra
+
+        universe = build_scan_universe(_FakeAPI(), held_symbols=set())
+        for code in extra:
+            self.assertIn(code, universe)
+
+    def test_find_candidates_returns_dict_structure(self):
+        """find_candidates는 candidates, scan_summary, scanned, min_score 키를 가진 dict를 반환한다."""
+        result = find_candidates(held_symbols=set(), universe=[], min_score=2)
+        self.assertIsInstance(result, dict)
+        self.assertIn("candidates", result)
+        self.assertIn("scan_summary", result)
+        self.assertIn("scanned", result)
+        self.assertIn("min_score", result)
+        self.assertEqual(result["candidates"], [])
+        self.assertEqual(result["scanned"], 0)
+        self.assertEqual(result["min_score"], 2)

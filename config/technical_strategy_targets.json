@@ -1,0 +1,43 @@
+{
+  "name": "기술적 지표·조건검색 자동매매 현행화",
+  "target_pct": 100,
+  "items": [
+    {
+      "id": "trade_value_surge",
+      "name": "거래대금 급등 정량 필터",
+      "target_pct": 100,
+      "module": "src.strategy.technical_signals",
+      "objects": ["trade_value_surge"],
+      "paths": ["src/strategy/technical_signals.py", "tests/test_technical_signals.py"]
+    },
+    {
+      "id": "first_wave_pullback",
+      "name": "1차 파동 이후 눌림목 판정",
+      "target_pct": 100,
+      "module": "src.strategy.technical_signals",
+      "objects": ["first_wave_pullback"],
+      "paths": ["src/strategy/technical_signals.py", "tests/test_technical_signals.py"]
+    },
+    {
+      "id": "persistent_peak",
+      "name": "진입 이후 최고가 영속 추적",
+      "target_pct": 100,
+      "module": "src.strategy.position_tracker",
+      "objects": ["update_position_peak", "clear_missing_positions"],
+      "paths": ["src/strategy/position_tracker.py", "tests/test_technical_signals.py"]
+    },
+    {
+      "id": "settings_and_status",
+      "name": "국내시장 설정·상태·운영 문서",
+      "target_pct": 100,
+      "module": "src.strategy.technical_readiness",
+      "objects": ["build_technical_strategy_readiness"],
+      "paths": [
+        "src/dashboard/routes/settings.py",
+        "web/static/js/app.js",
+        ".env.example",
+        "README.md"
+      ]
+    }
+  ]
+}

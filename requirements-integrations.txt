@@ -1,0 +1,3 @@
+# Local process monitoring only. US-stock, Telegram and Bybit dependencies are
+# deliberately excluded from this domestic service.
+psutil>=5.9.0,<8
