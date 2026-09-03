@@ -544,6 +544,277 @@ h1 .highlight {
     .market-regime-simple-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* Hanstock control-center refresh.
+   Keep the existing DOM/API contract while giving the dashboard a calmer,
+   status-first information hierarchy. */
+:root {
+    --space-black: #07101d;
+    --space-dark: #0b1626;
+    --space-navy: #101d31;
+    --glass-bg: rgba(15, 27, 45, 0.96);
+    --glass-bg-hover: #172943;
+    --glass-border: rgba(148, 163, 184, 0.18);
+    --glass-shadow: 0 14px 30px rgba(2, 6, 23, 0.24);
+    --text-color: #f8fafc;
+    --text-muted: #9fb0c5;
+}
+
+body.namuh-dashboard {
+    --glass-bg: #101d31;
+    --card-bg: #101d31;
+    --card-border: rgba(148, 163, 184, 0.18);
+    background: #07101d;
+    padding: 1.25rem;
+}
+
+.dashboard-container {
+    max-width: 1540px;
+}
+
+.app-header,
+.app-header.top-header,
+.app-header.dashboard-header {
+    min-height: 68px;
+    margin-bottom: 1.25rem;
+    padding: 0.7rem 0;
+    background: #0b1626;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: 0 8px 20px rgba(2, 6, 23, 0.2);
+}
+
+body.namuh-dashboard .app-header {
+    background: #0b1626;
+    border-bottom-color: rgba(249, 115, 22, 0.38);
+    box-shadow: 0 8px 20px rgba(2, 6, 23, 0.24);
+}
+
+.app-header h1 {
+    font-size: 1.65rem;
+    letter-spacing: -0.03em;
+}
+
+.app-header .eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+}
+
+.dashboard-tabs {
+    position: fixed;
+    top: 6.65rem;
+    bottom: 1.25rem;
+    left: max(1.25rem, calc((100vw - 1540px) / 2));
+    z-index: 40;
+    display: flex;
+    width: 166px;
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    padding: 0.55rem;
+    overflow-y: auto;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 14px;
+    background: #0b1626;
+    box-shadow: 0 14px 30px rgba(2, 6, 23, 0.22);
+}
+
+.dashboard-tab {
+    position: relative;
+    min-height: 42px;
+    justify-content: flex-start;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    color: #9fb0c5;
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-align: left;
+}
+
+.dashboard-tab:hover {
+    color: #f8fafc;
+    background: rgba(148, 163, 184, 0.1);
+}
+
+.dashboard-tab.active {
+    color: #fed7aa;
+    background: rgba(249, 115, 22, 0.16);
+    border-color: rgba(249, 115, 22, 0.4);
+    box-shadow: none;
+}
+
+.dashboard-tab.active::before {
+    width: 3px;
+    height: 18px;
+    margin-right: 0.55rem;
+    border-radius: 999px;
+    background: #f97316;
+    content: '';
+}
+
+main {
+    margin-left: 190px;
+}
+
+.status-banner {
+    border-radius: 10px;
+    box-shadow: none;
+}
+
+.card.glass,
+.card,
+.panel-runtime,
+.dashboard-section > section {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 14px;
+    background: #101d31;
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.16);
+    backdrop-filter: none;
+}
+
+.card.glass:hover {
+    border-color: rgba(249, 115, 22, 0.34);
+    background: #13243b;
+    transform: none;
+}
+
+.summary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.summary-grid .card {
+    min-height: 112px;
+    padding: 1rem 1.1rem;
+}
+
+.summary-grid .card h3,
+.risk-card .label,
+.runtime-grid .label {
+    color: #9fb0c5;
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.summary-grid .value {
+    margin-top: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: clamp(1.15rem, 2vw, 1.65rem);
+    letter-spacing: -0.04em;
+}
+
+.risk-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-top: 0.8rem;
+}
+
+.risk-card {
+    min-height: 82px;
+    padding: 0.85rem 1rem;
+}
+
+.risk-card strong {
+    display: block;
+    margin-top: 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 1.05rem;
+}
+
+.panel-header h2,
+.card > h2,
+.card > h3 {
+    letter-spacing: -0.025em;
+}
+
+.dashboard-two-column {
+    gap: 0.8rem;
+}
+
+button.button-primary,
+.button-primary {
+    background: #f97316;
+    border-color: #f97316;
+    box-shadow: none;
+}
+
+button.button-primary:hover,
+.button-primary:hover {
+    background: #ea580c;
+    border-color: #ea580c;
+}
+
+@media (max-width: 980px) and (min-width: 761px) {
+    .dashboard-tabs {
+        width: 142px;
+    }
+    main {
+        margin-left: 164px;
+    }
+    .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .risk-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    body.namuh-dashboard {
+        padding: 0.8rem 0.8rem calc(4.8rem + var(--app-safe-bottom));
+    }
+    .app-header,
+    .app-header.top-header,
+    .app-header.dashboard-header {
+        min-height: 62px;
+        margin-bottom: 0.8rem;
+    }
+    .app-header h1 {
+        font-size: 1.25rem;
+    }
+    main {
+        margin-left: 0;
+    }
+    .dashboard-tabs {
+        top: auto;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: calc(4.2rem + var(--app-safe-bottom));
+        flex-direction: row;
+        align-items: stretch;
+        gap: 0.15rem;
+        padding: 0.35rem 0.45rem var(--app-safe-bottom);
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-width: 1px 0 0;
+        border-radius: 14px 14px 0 0;
+    }
+    .dashboard-tab {
+        min-width: 78px;
+        min-height: 42px;
+        justify-content: center;
+        padding: 0.4rem 0.35rem;
+        font-size: 0.72rem;
+        text-align: center;
+    }
+    .dashboard-tab.active::before {
+        display: none;
+    }
+    .summary-grid,
+    .risk-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .summary-grid .card {
+        min-height: 94px;
+        padding: 0.8rem;
+    }
+    .summary-grid .value {
+        font-size: 1.05rem;
+    }
+}
+
 /* 2026 dashboard refresh: calm terminal hierarchy and responsive density. */
 :root {
     --surface-0: #080d16;
