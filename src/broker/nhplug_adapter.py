@@ -37,18 +37,25 @@ class NHPlugBrokerAdapter:
             "aet_bse": "2", "qut_dit_cd": "UNT"})
         summary = _out(page) if isinstance(_out(page), Mapping) else {}
         rows = _rows(getattr(page, "data", page), "Output_1")
-        holdings = tuple(self._holding(row) for row in rows if _int(row.get("itg_bnc_qty")))
+        holdings = tuple(
+            self._holding(row)
+            for row in rows
+            if _int(row.get("itg_bnc_qty") or row.get("ny_stl_qty") or row.get("rsdl_qty"))
+        )
         stock_value = sum(x.market_value for x in holdings)
-        total = _num(summary.get("tot_eal_amt") or summary.get("tot_aet_amt"))
+        total = _num(summary.get("tot_aet_amt") or summary.get("tot_eal_amt"))
         cash = _num(summary.get("dca") or summary.get("orr_pbl_amt"))
-        return AccountBalance(holdings, cash, _num(summary.get("orr_pbl_amt")), total or cash + stock_value,
+        orderable_cash = _num(summary.get("orr_pbl_amt1") or summary.get("orr_pbl_amt"))
+        return AccountBalance(holdings, cash, orderable_cash, total or cash + stock_value,
                               stock_value, _num(summary.get("tot_eal_pls")), raw=dict(getattr(page, "data", page)))
 
     @staticmethod
     def _holding(row: Mapping[str, Any]) -> Holding:
-        qty = _int(row.get("itg_bnc_qty")); price = _num(row.get("now_pr"))
+        qty = _int(row.get("itg_bnc_qty") or row.get("ny_stl_qty") or row.get("rsdl_qty"))
+        sellable_qty = _int(row.get("itg_bnc_qty") or row.get("ny_stl_qty") or row.get("rsdl_qty"))
+        price = _num(row.get("now_pr"))
         value = _num(row.get("eal_amt")) or qty * price
-        return Holding(str(row.get("iem_cd") or ""), str(row.get("iem_nm") or ""), qty, qty,
+        return Holding(str(row.get("iem_cd") or ""), str(row.get("iem_nm") or ""), qty, sellable_qty,
                        _num(row.get("phs_pr")), price, value, _num(row.get("eal_pls_amt")),
                        _num(row.get("pft_rt")), raw=row)
 

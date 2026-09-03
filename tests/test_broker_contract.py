@@ -86,6 +86,29 @@ class BrokerContractTests(unittest.TestCase):
         quote = NHPlugBrokerAdapter(client).fetch_quote("005930")
         self.assertEqual(quote.current_price, 71000)
 
+    def test_namuh_balance_contract_uses_settlement_quantity_and_total_assets(self):
+        client = Mock()
+        client.account = "demo"
+        client.post.return_value = type("Page", (), {"data": {
+            "Output_0": {
+                "dca": 500000000,
+                "tot_aet_amt": 499936330,
+                "tot_eal_amt": 18664150,
+                "tot_eal_pls": -26850,
+                "orr_pbl_amt1": 453384370,
+            },
+            "Output_1": [{
+                "iem_nm": "테스트", "iem_cd": "005930", "itg_bnc_qty": 0,
+                "ny_stl_qty": 10, "rsdl_qty": 10, "phs_pr": 70000,
+                "now_pr": 71000, "eal_amt": 710000, "eal_pls_amt": 10000,
+            }],
+        }})()
+        balance = NHPlugBrokerAdapter(client).fetch_balance()
+        self.assertEqual(balance.total_equity, 499936330)
+        self.assertEqual(balance.stock_value, 710000)
+        self.assertEqual(balance.holdings[0].quantity, 10)
+        self.assertEqual(balance.orderable_cash, 453384370)
+
 
 if __name__ == "__main__":
     unittest.main()
