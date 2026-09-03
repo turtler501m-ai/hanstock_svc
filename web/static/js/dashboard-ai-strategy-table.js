@@ -10,11 +10,11 @@
             const pendingChange = checked !== Boolean(strategy.selected);
             const builtIn = ['gpt_5_mini_default', 'rule_only_default'].includes(strategy.id);
             let scheduleLabel = strategy.independent_schedule
-                ? (strategy.selected ? 'Independent schedule on' : 'Independent schedule off')
-                : (strategy.selected ? 'Applied' : 'Not applied');
+                ? (strategy.selected ? '독립 스케줄 사용' : '독립 스케줄 미사용')
+                : (strategy.selected ? '적용됨' : '미적용');
             let scheduleKind = strategy.selected ? 'buy' : 'hold';
             if (pendingChange) {
-                scheduleLabel = checked ? 'Apply pending' : 'Disable pending';
+                scheduleLabel = checked ? '적용 예정' : '해제 예정';
                 scheduleKind = 'hold';
             }
             const tr = document.createElement('tr');
@@ -25,18 +25,18 @@
                 <td class="strategy-check-column">
                     <input type="checkbox" class="strategy-select-checkbox" data-id="${deps.escapeHtml(strategy.id)}"
                         ${checked ? 'checked' : ''} ${selectable ? '' : 'disabled'}
-                        title="${selectable ? '怨듭슜 ?ㅼ?以??곸슜 ????좏깮' : '?뱀씤 ?꾨즺 ?꾨왂留??ъ슜?????덉뒿?덈떎.'}">
+                        title="${selectable ? '공용 스케줄에 적용할 전략 선택' : '승인 완료된 전략만 사용할 수 있습니다.'}">
                 </td>
                 <td><div class="symbol-name">${deps.escapeHtml(deps.strategyDisplayName(strategy))}</div>
-                    <div class="symbol-code">${deps.escapeHtml(strategy.id)} 쨌 v${deps.escapeHtml(strategy.strategy_version || 1)}</div></td>
+                    <div class="symbol-code">${deps.escapeHtml(strategy.id)} · v${deps.escapeHtml(strategy.strategy_version || 1)}</div></td>
                 <td><span class="strategy-category-badge is-${deps.escapeHtml(deps.strategyScheduleCategory(strategy))}">${deps.escapeHtml(deps.strategyScheduleCategoryLabel(strategy))}</span></td>
-                <td>${deps.pill(scheduleLabel, scheduleKind)} ${pendingChange ? '<small class="strategy-pending-note">?곸슜 踰꾪듉 ?꾩슂</small>' : ''}</td>
+                <td>${deps.pill(scheduleLabel, scheduleKind)} ${pendingChange ? '<small class="strategy-pending-note">적용 버튼 필요</small>' : ''}</td>
                 <td><div class="strategy-core-criteria"><span>AI ${deps.formatNumber(Number(profile.ai_weight ?? strategy.weight ?? 0) * 100, 0)}%</span>
-                    <span>醫낅ぉ ?꾪뿕 ${deps.formatNumber(risk.max_risk_per_trade_pct ?? 0.5, 1)}%</span></div>
+                    <span>종목 위험 ${deps.formatNumber(risk.max_risk_per_trade_pct ?? 0.5, 1)}%</span></div>
                     <small class="time-muted">${deps.escapeHtml(strategy.status_label || deps.strategyStatusLabel(strategy.status))}</small></td>
                 <td class="strategy-manage-column"><div class="button-row strategy-row-actions">
-                    <button type="button" class="button-ghost compact-button btn-open-strategy-detail" data-id="${deps.escapeHtml(strategy.id)}">?곸꽭</button>
-                    ${builtIn ? '<span class="strategy-built-in-label">湲곕낯 ?꾨왂</span>' : `<button type="button" class="button-danger compact-button btn-delete-strategy" data-id="${deps.escapeHtml(strategy.id)}">??젣</button>`}
+                    <button type="button" class="button-ghost compact-button btn-open-strategy-detail" data-id="${deps.escapeHtml(strategy.id)}">상세 보기</button>
+                    ${builtIn ? '<span class="strategy-built-in-label">기본 전략</span>' : `<button type="button" class="button-danger compact-button btn-delete-strategy" data-id="${deps.escapeHtml(strategy.id)}">삭제</button>`}
                 </div></td>`;
             tr.addEventListener('click', (event) => {
                 if (event.target.closest('input, button')) return;
