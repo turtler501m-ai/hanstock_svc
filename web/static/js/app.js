@@ -357,14 +357,14 @@ function buildAiModalMarkup(payload) {
     `;
 }
 
-const setTableMessage = (selector, colspan, message) => {
+const legacySetTableMessage = (selector, colspan, message) => {
     const tbody = document.querySelector(selector);
     if (tbody) {
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">${escapeHtml(message)}</td></tr>`;
     }
 };
 
-const setStatus = (message, ok = false) => {
+const legacySetStatus = (message, ok = false) => {
     const banner = document.getElementById('status-banner');
     if (banner) {
         banner.hidden = false;
@@ -373,20 +373,25 @@ const setStatus = (message, ok = false) => {
     }
 };
 
-const setButtonBusy = (id, busy) => {
+const legacySetButtonBusy = (id, busy) => {
     const button = typeof id === 'string' ? document.getElementById(id) : id;
     if (button) {
         button.disabled = busy;
     }
 };
 
-const setElementText = (id, value) => {
+const legacySetElementText = (id, value) => {
     const element = document.getElementById(id);
     if (element) {
         element.textContent = value;
     }
     return element;
 };
+
+const setTableMessage = window.HanstockDashboardUi?.setTableMessage || legacySetTableMessage;
+const setStatus = window.HanstockDashboardUi?.setStatus || legacySetStatus;
+const setButtonBusy = window.HanstockDashboardUi?.setButtonBusy || legacySetButtonBusy;
+const setElementText = window.HanstockDashboardUi?.setElementText || legacySetElementText;
 
 async function legacyFetchJson(url, timeoutMs = 60000) {
     const controller = new AbortController();
@@ -447,9 +452,11 @@ const fetchJson = window.HanstockDashboardApi?.fetchJson || legacyFetchJson;
 const postJson = window.HanstockDashboardApi?.postJson || legacyPostJson;
 const deleteJson = window.HanstockDashboardApi?.deleteJson || legacyDeleteJson;
 
-function pill(value, kind = 'hold') {
+function legacyPill(value, kind = 'hold') {
     return `<span class="pill pill-${kind}">${escapeHtml(value)}</span>`;
 }
+
+const pill = window.HanstockDashboardUi?.pill || legacyPill;
 
 function setAiModalOpen(open) {
     const modal = document.getElementById('aiModal');
