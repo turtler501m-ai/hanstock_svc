@@ -4083,7 +4083,8 @@ async function waitForCanceledOrder(orderId, symbolName, attempts = 20) {
     return latest;
 }
 
-async function renderOpenOrders() {
+/* Legacy open-order renderer retained below only as migration reference.
+async function renderOpenOrdersLegacy() {
     const tbody = document.querySelector('#table-open-orders tbody');
     if (!tbody) return;
     try {
@@ -4138,6 +4139,36 @@ async function renderOpenOrders() {
     } catch (err) {
         setTableMessage('#table-open-orders tbody', 10, err.message);
     }
+}
+*/
+
+async function renderOpenOrders() {
+    return window.HanstockDashboardOpenOrdersScreen.render({
+        fetchJson,
+        setTableMessage,
+        escapeHtml,
+        formatCurrency,
+        formatCheckedAt: formatOrderCheckedAt,
+        strategyDisplayName,
+        orderStatusLabel,
+        pill,
+        cancelOpenOrder,
+        resolveUnknownOpenOrder,
+        activeStatuses: ACTIVE_ORDER_STATUSES,
+        labels: {
+            orders: '\ubbf8\uccb4\uacb0 \uc8fc\ubb38',
+            buy: '\ub9e4\uc218',
+            sell: '\ub9e4\ub3c4',
+            empty: '\ud604\uc7ac \ubbf8\uccb4\uacb0 \uc8fc\ubb38\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.',
+            requested: '\uc694\uccad',
+            filled: '\uccb4\uacb0',
+            remaining: '\uc794\ub7c9',
+            marketPrice: '\uc2dc\uc7a5\uac00',
+            cancel: '\uc8fc\ubb38 \ucde8\uc18c',
+            resolve: '\ubbf8\ud655\uc778 \uc885\ub8cc',
+            noAction: '\uc870\uce58 \ud544\uc694 \uc5c6\uc74c',
+        },
+    });
 }
 
 async function renderApprovals() {

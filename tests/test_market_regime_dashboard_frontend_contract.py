@@ -23,6 +23,9 @@ CANDIDATE_HISTORY_SCREEN_JS = (
 RECONCILIATION_SCREEN_JS = (
     ROOT / "web" / "static" / "js" / "dashboard-reconciliation-screen.js"
 ).read_text(encoding="utf-8")
+OPEN_ORDERS_SCREEN_JS = (
+    ROOT / "web" / "static" / "js" / "dashboard-open-orders-screen.js"
+).read_text(encoding="utf-8")
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 
 
@@ -70,6 +73,13 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardReconciliationScreen", RECONCILIATION_SCREEN_JS)
         self.assertIn("HanstockDashboardReconciliationScreen.render", APP_JS)
+
+    def test_open_orders_screen_isolated_from_app(self):
+        module_tag = '<script src="/static/js/dashboard-open-orders-screen.js?v=1"></script>'
+        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
+        self.assertIn("HanstockDashboardOpenOrdersScreen", OPEN_ORDERS_SCREEN_JS)
+        self.assertIn("HanstockDashboardOpenOrdersScreen.render", APP_JS)
 
     def test_dashboard_exposes_daily_market_regime_panel(self):
         required_markup = (
