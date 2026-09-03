@@ -3208,7 +3208,7 @@ async function openStrategyLookupRun(runId) {
     setStatus(`분석 이력 ${strategyLookupRunTime(envelope.results?.[0]?.captured_at)}을 표시합니다.`, true);
 }
 
-async function renderStrategyLookupHistory() {
+async function renderStrategyLookupHistoryLegacy() {
     const container = document.getElementById('strategy-lookup-history');
     if (!container) return;
     try {
@@ -3244,6 +3244,15 @@ async function renderStrategyLookupHistory() {
     } catch (error) {
         container.innerHTML = `<p class="section-help">분석 실행 목록을 불러오지 못했습니다: ${escapeHtml(error.message)}</p>`;
     }
+}
+
+async function renderStrategyLookupHistory() {
+    return window.HanstockDashboardStrategyLookupHistory.render({
+        fetchJson,
+        escapeHtml,
+        runTime: strategyLookupRunTime,
+        openRun: openStrategyLookupRun,
+    });
 }
 
 async function renderCachedStrategyPreviews(strategyIds, strategies = [], options = {}) {
