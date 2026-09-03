@@ -9,13 +9,13 @@ User=ubuntu
 WorkingDirectory=/home/ubuntu/hanstock_svc
 ExecStartPre=/usr/bin/mkdir -p /home/ubuntu/hanstock_svc/logs
 ExecStart=/home/ubuntu/hanstock_svc/.venv/bin/uvicorn src.dashboard:app --host 127.0.0.1 --port 8011 --log-level error
-StandardOutput=append:/home/ubuntu/hanstock_svc/logs/dashboard.log
-StandardError=append:/home/ubuntu/hanstock_svc/logs/dashboard.err.log
+StandardOutput=null
+StandardError=null
 Restart=always
 RestartSec=5
 Environment=PATH=/home/ubuntu/hanstock_svc/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 EnvironmentFile=/home/ubuntu/hanstock_svc/.env
-Environment=HANSTOCK_CONSOLE_LOG_SCOPE=dashboard
+Environment=HANSTOCK_FILE_ONLY_LOGGING=1
 
 [Install]
 WantedBy=multi-user.target
