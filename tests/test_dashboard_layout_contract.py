@@ -17,7 +17,7 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("left: auto", STYLE)
         self.assertNotIn("margin-left: 190px", STYLE)
         self.assertNotIn("margin-left: 164px", STYLE)
-        self.assertIn('href="/static/css/style.css?v=51"', TEMPLATE)
+        self.assertIn('href="/static/css/style.css?v=52"', TEMPLATE)
 
     def test_ai_strategy_workspace_uses_shared_layout_classes(self):
         self.assertIn('class="ai-strategy-header-actions"', TEMPLATE)
@@ -27,6 +27,8 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("min-width: 760px", STYLE)
         self.assertIn("box-shadow: inset 3px 0 #f97316", STYLE)
         self.assertIn("background: rgba(249, 115, 22, 0.14)", STYLE)
+        self.assertIn('class="warning-note trade-sync-last-result"', TEMPLATE)
+        self.assertIn(".performance-cashflow-form", STYLE)
 
     def test_mobile_navigation_remains_bottom_navigation(self):
         self.assertIn("@media (max-width: 768px)", STYLE)

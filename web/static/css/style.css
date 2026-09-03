@@ -5768,6 +5768,65 @@ th,
     accent-color: #f97316;
 }
 
+.trade-sync-last-result {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0 0 1rem;
+}
+
+.performance-cashflow-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 1rem 0 1.25rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 10px;
+    background: rgba(7, 16, 29, 0.28);
+}
+
+.performance-cashflow-form input,
+.performance-cashflow-form select {
+    min-height: 36px;
+}
+
+.performance-cashflow-form input[type="text"] {
+    flex: 1 1 220px;
+    min-width: 180px;
+}
+
+.performance-cashflow-form label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.performance-cashflow-form button {
+    min-height: 36px;
+}
+
+@media (max-width: 760px) {
+    .performance-cashflow-form > input,
+    .performance-cashflow-form > select,
+    .performance-cashflow-form > button {
+        flex: 1 1 calc(50% - 0.3rem);
+        min-width: 0;
+    }
+
+    .performance-cashflow-form input[type="text"] {
+        flex-basis: 100%;
+        width: 100%;
+    }
+
+    .performance-cashflow-form label {
+        flex: 1 1 100%;
+    }
+}
+
 .ai-strategy-table th,
 .strategy-events-table th {
     white-space: nowrap;
