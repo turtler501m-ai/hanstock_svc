@@ -19,7 +19,7 @@ let aiStrategyDraftSelection = null;
 let aiStrategySelectionDirty = false;
 let aiStrategyCategoryFilter = '';
 
-const formatCurrency = (value) => {
+const legacyFormatCurrency = (value) => {
     return new Intl.NumberFormat('ko-KR', {
         style: 'currency',
         currency: 'KRW',
@@ -27,18 +27,18 @@ const formatCurrency = (value) => {
     }).format(Number(value || 0));
 };
 
-const formatPercent = (value) => {
+const legacyFormatPercent = (value) => {
     const numeric = Number(value || 0);
     const sign = numeric > 0 ? '+' : '';
     return `${sign}${numeric.toFixed(2)}%`;
 };
 
-const formatNumber = (value, digits = 0) => {
+const legacyFormatNumber = (value, digits = 0) => {
     const numeric = Number(value || 0);
     return numeric.toLocaleString(undefined, { maximumFractionDigits: digits });
 };
 
-const escapeHtml = (value) => {
+const legacyEscapeHtml = (value) => {
     return String(value ?? '')
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
@@ -46,6 +46,13 @@ const escapeHtml = (value) => {
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
 };
+
+// Presentation primitives are owned by dashboard-formatters.js. The local
+// implementations remain as a rollout fallback for stale cached pages.
+const formatCurrency = window.HanstockDashboardFormatters?.formatCurrency || legacyFormatCurrency;
+const formatPercent = window.HanstockDashboardFormatters?.formatPercent || legacyFormatPercent;
+const formatNumber = window.HanstockDashboardFormatters?.formatNumber || legacyFormatNumber;
+const escapeHtml = window.HanstockDashboardFormatters?.escapeHtml || legacyEscapeHtml;
 
 const ACTION_LABELS = {
     buy: '매수',
