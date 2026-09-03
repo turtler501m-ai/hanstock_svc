@@ -761,22 +761,12 @@ def _approval_result_message(item: dict, trade: dict | None) -> str:
 
 
 def _approval_retry_eligible(item: dict, trade: dict | None) -> bool:
-    if str(item.get("action") or "").lower() != "sell":
-        return False
-    created_at = str(item.get("created_at") or "").strip()
-    if created_at:
-        today = trader.datetime.now(trader.KST).strftime("%Y-%m-%d")
-        if created_at[:10] != today:
-            return False
-    if str(item.get("status") or "") == "pending":
-        return False
-    trade_status = str((trade or {}).get("order_status") or "").lower()
-    approval_status = str(item.get("status") or "").lower()
-    if trade_status in {
-        "failed", "submitted", "accepted", "open", "partial", "partially_filled"
-    }:
-        return True
-    return approval_status == "failed"
+    from src.dashboard.services.approval_policy import is_retry_eligible
+    return is_retry_eligible(
+        item,
+        trade,
+        today=lambda: trader.datetime.now(trader.KST).strftime("%Y-%m-%d"),
+    )
 
 
 def _current_sellable_qty(symbol: str) -> int:
