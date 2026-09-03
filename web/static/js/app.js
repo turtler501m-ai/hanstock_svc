@@ -1798,128 +1798,19 @@ const summarizeCounts = STRATEGY_AUDIT_MODULE.summarizeCounts;
 const eventPayloadSummary = STRATEGY_AUDIT_MODULE.eventPayloadSummary;
 
 async function renderStrategyAudit(strategyId) {
-    const id = strategyId || activeStrategyAuditId || document.getElementById('select-ai-ranker')?.value || '';
-    if (!id) return;
-    activeStrategyAuditId = id;
-    try {
-        const [performance, events] = await Promise.all([
-            fetchJson(`/api/ai-strategies/${encodeURIComponent(id)}/performance?days=30`, 30000),
-            fetchJson(`/api/ai-strategies/${encodeURIComponent(id)}/events?limit=20`, 30000),
-        ]);
-        setElementText('strategy-audit-title', `${id} 최근 운영 상태`);
-        setElementText('strategy-audit-candidates', formatNumber(performance.candidate_count || 0));
-        setElementText(
-            'strategy-audit-score',
-            `${performance.avg_final_score ?? '-'} / ${performance.avg_rule_score ?? '-'} / ${performance.avg_ml_score ?? '-'}`
-        );
-        setElementText('strategy-audit-status', summarizeCounts(performance.ai_model_status_counts));
-        setElementText('strategy-audit-optimizer', summarizeCounts(performance.optimizer_counts));
-        const trades = performance.trade_summary || {};
-        setElementText(
-            'strategy-audit-review',
-            `${performance.avg_return_5d ?? '-'}% / ${performance.win_rate_5d ?? '-'}%`
-        );
-        setElementText(
-            'strategy-audit-warning',
-            `5d return/win, fill ${trades.fill_rate ?? '-'}% (${trades.filled_count || 0}/${trades.order_count || 0})`
-        );
-
-        // Draw strategy backtest chart
-        const strategy = (strategiesRes.strategies || []).find(s => s.id === id);
-        let backtestData = null;
-        if (strategy && strategy.last_validation_result) {
-            try {
-                const valResult = typeof strategy.last_validation_result === 'string'
-                    ? JSON.parse(strategy.last_validation_result)
-                    : strategy.last_validation_result;
-                backtestData = valResult.checks?.backtest;
-            } catch (err) {
-                console.warn('Failed to parse last_validation_result:', err);
-            }
-        }
-
-        const container = document.getElementById('strategy-backtest-chart-container');
-        if (container) {
-            if (backtestData && backtestData.equity_curve && backtestData.equity_curve.length > 0) {
-                container.style.display = 'block';
-                const ctx = document.getElementById('chart-strategy-backtest').getContext('2d');
-                
-                if (window.strategyBacktestChart) {
-                    window.strategyBacktestChart.destroy();
-                }
-                
-                const labels = backtestData.dates || backtestData.equity_curve.map((_, i) => `Day ${i}`);
-                const dataPoints = backtestData.equity_curve;
-                
-                window.strategyBacktestChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: '누적 자산 가치',
-                            data: dataPoints,
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.1,
-                            pointRadius: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false,
-                                callbacks: {
-                                    label: function(context) {
-                                        return '자산: ' + Number(context.raw).toLocaleString() + '원';
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                                ticks: { color: '#94a3b8', font: { size: 9 }, maxTicksLimit: 8 }
-                            },
-                            y: {
-                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                                ticks: { color: '#94a3b8', font: { size: 9 } }
-                            }
-                        }
-                    }
-                });
-            } else {
-                container.style.display = 'none';
-            }
-        }
-
-        const tbody = document.querySelector('#table-strategy-events tbody');
-        if (tbody) {
-            tbody.innerHTML = '';
-            const rows = events.events || [];
-            if (!rows.length) {
-                setTableMessage('#table-strategy-events tbody', 4, '전략 이벤트가 없습니다.');
-            } else {
-                rows.forEach((event) => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${escapeHtml(event.ts || '-')}</td>
-                        <td>${escapeHtml(event.event_type || '-')}</td>
-                        <td>${escapeHtml(event.strategy_version || '-')}</td>
-                        <td>${escapeHtml(eventPayloadSummary(event.payload))}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
-        }
-    } catch (err) {
-        setStatus(`전략 감사 조회 실패: ${err.message}`);
-    }
+    return window.HanstockDashboardStrategyAuditScreen.render(strategyId, {
+        getActiveId: () => activeStrategyAuditId,
+        setActiveId: (value) => { activeStrategyAuditId = value; },
+        getStrategyCatalog: () => aiStrategyCatalog,
+        fetchJson,
+        setElementText,
+        setTableMessage,
+        setStatus,
+        formatNumber,
+        summarizeCounts,
+        escapeHtml,
+        eventPayloadSummary,
+    });
 }
 
 async function renderAiStrategies() {
