@@ -5741,6 +5741,11 @@ th,
         max-width: none;
     }
 
+    /* Keep the first KPI row from touching the content edges on wide screens. */
+    body.namuh-dashboard .summary-grid {
+        margin-inline: 0.5rem;
+    }
+
     body.namuh-dashboard .dashboard-tabs {
         left: auto;
     }
