@@ -2450,7 +2450,7 @@ async function renderAiStrategies() {
     }
 }
 
-function renderWatchlistSummary(data) {
+function renderWatchlistSummaryLegacy(data) {
     const summary = data.summary || {};
     const policy = data.policy || {};
     watchlistPolicy = policy;
@@ -2525,6 +2525,13 @@ function renderWatchlistSummary(data) {
 }
 
 // 데이터 정렬 처리 유틸리티
+function renderWatchlistSummary(data) {
+    watchlistPolicy = window.HanstockDashboardWatchlistSummaryScreen.render({
+        formatNumber,
+        escapeHtml,
+    }, data);
+}
+
 function sortWatchlistData() {
     if (!watchlistSortKey) return;
     watchlistCache.sort((a, b) => {
