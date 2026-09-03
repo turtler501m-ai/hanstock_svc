@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     domestic_stock_broker: str = "namuh"
     nhplug_environment: str = "mock"
     nhplug_account: str = ""
+    nhplug_mock_account: str = ""
+    nhplug_live_account: str = ""
+    nhplug_live_fallback: bool = False
     nhplug_app_key: str = ""
     nhplug_app_secret: str = ""
 

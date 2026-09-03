@@ -38,8 +38,23 @@ def create_domestic_stock_broker(
             raise ValueError("NHPLUG_ENVIRONMENT must match TRADING_ENV before broker activation")
         app_key = str(getattr(settings, "nhplug_app_key", "") or "").strip()
         app_secret = str(getattr(settings, "nhplug_app_secret", "") or "").strip()
-        account = str(getattr(settings, "nhplug_account", "") or "").strip()
+        account = str(
+            getattr(settings, "nhplug_mock_account", "") if nh_env == "mock" else ""
+        ).strip() or str(getattr(settings, "nhplug_account", "") or "").strip()
         if not app_key or not app_secret or not account:
             raise ValueError("NHPLUG app key, app secret, and account are required")
         client = NHPlugRestClient(app_key, app_secret, environment=nh_env, account=account)
+        live_fallback = None
+        if nh_env == "mock" and bool(getattr(settings, "nhplug_live_fallback", False)):
+            live_account = str(getattr(settings, "nhplug_live_account", "") or "").strip()
+            if live_account:
+                live_fallback = NHPlugBrokerAdapter(
+                    NHPlugRestClient(app_key, app_secret, environment="live", account=live_account),
+                    account=live_account,
+                    order_submission_enabled=False,
+                )
+        if live_fallback is not None:
+            return NHPlugBrokerAdapter(client, account=account,
+                                       order_submission_enabled=order_submission_enabled,
+                                       read_fallback=live_fallback)
     return NHPlugBrokerAdapter(client, account=getattr(client, "account", ""), order_submission_enabled=order_submission_enabled)

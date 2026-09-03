@@ -360,6 +360,9 @@ BROKER_ENV_BINDINGS = {
     "DOMESTIC_STOCK_BROKER": ("domestic_stock_broker", str),
     "NHPLUG_ENVIRONMENT": ("nhplug_environment", str),
     "NHPLUG_ACCOUNT": ("nhplug_account", str),
+    "NHPLUG_MOCK_ACCOUNT": ("nhplug_mock_account", str),
+    "NHPLUG_LIVE_ACCOUNT": ("nhplug_live_account", str),
+    "NHPLUG_LIVE_FALLBACK": ("nhplug_live_fallback", _as_bool),
     "NHPLUG_APP_KEY": ("nhplug_app_key", str),
     "NHPLUG_APP_SECRET": ("nhplug_app_secret", str),
 }

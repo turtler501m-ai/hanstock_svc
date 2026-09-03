@@ -56,7 +56,6 @@ class BrokerContractTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "must match TRADING_ENV"):
             create_domestic_stock_broker("namuh", settings=settings)
-
     @unittest.skip("legacy transport fixture removed")
     def test_removed_adapter_normalizes_balance_and_retains_raw(self):
         client = Mock()

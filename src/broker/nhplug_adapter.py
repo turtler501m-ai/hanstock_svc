@@ -25,9 +25,11 @@ def _out(page: Any, key: str = "Output_0") -> Any:
 class NHPlugBrokerAdapter:
     broker_name = "namuh"
 
-    def __init__(self, client: Any, *, account: str = "", order_submission_enabled: bool = False) -> None:
+    def __init__(self, client: Any, *, account: str = "", order_submission_enabled: bool = False,
+                 read_fallback: Any | None = None) -> None:
         self.client, self.account = client, (account or getattr(client, "account", "")).strip()
         self.order_submission_enabled = bool(order_submission_enabled)
+        self.read_fallback = read_fallback
         if not self.account:
             raise ValueError("NHPLUG account is required")
 
@@ -63,7 +65,12 @@ class NHPlugBrokerAdapter:
                        _num(row.get("pft_rt")), raw=row)
 
     def fetch_quote(self, symbol: str) -> Quote:
-        page = self.client.post("/krstock/quote/v1/currentPrice", {"iem_cd": symbol, "market_cd": "KRX"})
+        try:
+            page = self.client.post("/krstock/quote/v1/currentPrice", {"iem_cd": symbol, "market_cd": "KRX"})
+        except Exception:
+            if self.read_fallback is None:
+                raise
+            return self.read_fallback.fetch_quote(symbol)
         row = _out(page) if isinstance(_out(page), Mapping) else {}
         return Quote(symbol, _num(row.get("stck_prpr")), _num(row.get("askp1") or row.get("askp")),
                      _num(row.get("bidp1") or row.get("bidp")), _num(row.get("hts_avls")), raw=row)
@@ -77,6 +84,8 @@ class NHPlugBrokerAdapter:
                              _num(r.get("stck_lwpr")), _num(r.get("stck_clpr")), _num(r.get("acml_vol")), r)
                     for r in rows]
         except Exception as exc:
+            if self.read_fallback is not None:
+                return self.read_fallback.fetch_daily_bars(symbol, count)
             # NHPLUG mock accounts do not expose currentDaily. Historical
             # analysis is read-only, so use Yahoo's public KRX series in demo
             # mode while keeping all orders on the NHPLUG mock account.
@@ -216,6 +225,7 @@ class NHPlugBrokerAdapter:
 
     def get_volume_rank(self, top_n: int = 50) -> list[str]:
         return self.fetch_volume_rank(top_n)
+
 
     def place_order(self, symbol: str, order_type: str, price: int, qty: int) -> dict[str, Any]:
         result = self.submit_order(OrderRequest(symbol, OrderSide(order_type), qty, price))
