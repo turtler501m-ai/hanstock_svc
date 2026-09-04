@@ -15,6 +15,7 @@ def _refresh_dependencies() -> None:
         "_refresh_dependencies", "_load_pending_approval", "_claim_pending_approval",
         "_current_holding_qty_from_balance", "_pending_approval_ids",
         "_current_sellable_qty_from_balance",
+        "_reserved_sell_qty_from_ledger",
         "_is_approval_already_claimed", "_auto_approve_pending_approvals",
         "_approve_pending_approval", "_approve_pending_approval_serialized",
         "_buy_approval_capacity_decision", "_enforce_buy_position_limit",
@@ -174,6 +175,27 @@ def _current_sellable_qty_from_balance(api, symbol: str) -> int:
         if str(holding.get("symbol") or "") == str(symbol):
             return _to_int(holding.get("sellable_qty"))
     return 0
+
+
+def _reserved_sell_qty_from_ledger(symbol: str) -> int:
+    """Return unfilled sell quantity already accepted for this symbol."""
+    with trader.connect_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT t.qty, t.filled_qty
+            FROM trades t
+            WHERE t.action = 'sell'
+              AND t.symbol = ?
+              AND t.order_status IN ('submitting', 'submitted', 'open', 'partial', 'partially_filled')
+              AND NOT EXISTS (
+                  SELECT 1 FROM orders o
+                  WHERE o.approval_id = t.source_approval_id
+                    AND o.status IN ('rejected', 'canceled', 'expired', 'failed')
+              )
+            """,
+            (str(symbol or '').strip(),),
+        ).fetchall()
+    return sum(max(0, _to_int(row[0]) - _to_int(row[1])) for row in rows)
 
 
 def _buy_approval_capacity_decision(
@@ -507,7 +529,13 @@ def _approve_pending_approval_serialized(
         )(api, item["symbol"])
         if str(item.get("action") or "").lower() == "sell":
             sellable_qty = _current_sellable_qty_from_balance(api, item["symbol"])
-            if sellable_qty < int(item["qty"]):
+            reserved_qty = _reserved_sell_qty_from_ledger(item["symbol"])
+            available_qty = max(0, sellable_qty - reserved_qty)
+            logger.info(
+                "sell capacity check approval_id={} symbol={} broker_sellable={} reserved={} available={} requested={}",
+                approval_id, item["symbol"], sellable_qty, reserved_qty, available_qty, int(item["qty"]),
+            )
+            if available_qty < int(item["qty"]):
                 raise RuntimeError(
                     f"증권사 매도가능수량 부족: 요청 {int(item['qty'])}주 / "
                     f"최신 확인 {sellable_qty}주"
