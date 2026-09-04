@@ -164,8 +164,15 @@ class NHPlugBrokerAdapter:
             cancel_order_id = (
                 int(request.order_id) if str(request.order_id).isdigit() else request.order_id
             )
-            body = {"act_no": self.account, "org_mkt_orr_no": cancel_order_id, "all_pat_dit_cd": "0",
-                    "iem_cd": request.symbol, "cor_qty": request.quantity}
+            # NHPLUG cancel uses 1 for full cancellation and 2 for a partial
+            # cancellation.  The previous value (0) was not a valid code and
+            # caused demo orders to be rejected as "cancel quantity exceeds
+            # cancelable quantity", leaving the local order in broker_unknown.
+            # The dashboard cancellation operation always means cancel the
+            # entire unfilled remainder, so use the broker's full-cancel form
+            # and do not send cor_qty (it is only valid for partial cancel).
+            body = {"act_no": self.account, "org_mkt_orr_no": cancel_order_id,
+                    "all_pat_dit_cd": "1", "iem_cd": request.symbol}
         page = self.client.post(path, body, request_kind="order")
         data = getattr(page, "data", page); output = data.get("Output_0") or {}
         order_id = str(output.get("mkt_orr_no") or output.get("itg_orr_no") or "")

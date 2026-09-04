@@ -96,6 +96,8 @@ class BrokerContractTests(unittest.TestCase):
 
         body = client.post.call_args.args[1]
         self.assertEqual(body["org_mkt_orr_no"], 548)
+        self.assertEqual(body["all_pat_dit_cd"], "1")
+        self.assertNotIn("cor_qty", body)
 
     def test_namuh_trade_history_accepts_mock_output_zero(self):
         client = Mock()
