@@ -46,9 +46,14 @@ class NHPlugBrokerAdapter:
         cts = cts_flag = ""
         seen_cts = set()
         for _ in range(20):
-            page = self.client.post(
-                "/krstock/inquiry/v1/balance", body, cts=cts, cts_flag=cts_flag
-            )
+            try:
+                page = self.client.post(
+                    "/krstock/inquiry/v1/balance", body, cts=cts, cts_flag=cts_flag
+                )
+            except Exception:
+                if pages:
+                    break
+                raise
             pages.append(page)
             continuation = getattr(page, "continuation", {}) or {}
             next_cts = str(continuation.get("cts") or "").strip()

@@ -189,7 +189,10 @@ class NHPlugRestClient:
         response = self._session.post(f"{self.base_url}/{path.lstrip('/')}",
                                       json=payload, headers=headers, timeout=self.timeout)
         try:
-            data = self._decode(response, path)
+            data = self._decode(
+                response, path,
+                allow_continuation=(path.rstrip("/") == "/krstock/inquiry/v1/balance"),
+            )
         except NHPlugApiError as exc:
             if request_kind == "query" and (
                 response.status_code == 401 or "IGW40043" in str(exc)
@@ -219,7 +222,7 @@ class NHPlugRestClient:
         })
 
     @staticmethod
-    def _decode(response: Any, operation: str) -> Mapping[str, Any]:
+    def _decode(response: Any, operation: str, *, allow_continuation: bool = False) -> Mapping[str, Any]:
         try:
             response.raise_for_status()
         except requests.RequestException as exc:
@@ -240,6 +243,8 @@ class NHPlugRestClient:
             raise NHPlugApiError(f"NHPLUG {operation} returned invalid JSON")
         code = str(payload.get("rsp_cd") or "")
         msg = str(payload.get("rsp_msg") or payload.get("message") or "")
+        if allow_continuation and code == "XA109" and payload.get("Output_0") is not None:
+            return payload
         if code and code not in {"00000", "00166", "00221", "13578"} and "완료" not in msg:
             raise NHPlugApiError(f"NHPLUG {operation} failed [{code}] {msg}")
         return payload
