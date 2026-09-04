@@ -62,6 +62,32 @@ def _compact_scheduler_candidate_scan(candidate_scan) -> dict:
     }
 
 
+def _market_regime_policy_from_result(result: dict) -> dict:
+    """Recover the policy when older scheduler results stored it per round."""
+    direct = result.get("market_regime_policy")
+    if isinstance(direct, dict) and direct:
+        return direct
+    for key in ("execution_runs", "runs"):
+        runs = result.get(key)
+        if not isinstance(runs, list):
+            continue
+        for run in reversed(runs):
+            if not isinstance(run, dict):
+                continue
+            candidates = [run.get("market_regime_policy")]
+            nested = run.get("result")
+            if isinstance(nested, dict):
+                candidates.extend([
+                    nested.get("market_regime_policy"),
+                    (nested.get("autonomy") or {}).get("market_regime_policy")
+                    if isinstance(nested.get("autonomy"), dict) else None,
+                ])
+            for policy in candidates:
+                if isinstance(policy, dict) and policy:
+                    return policy
+    return {}
+
+
 def _compact_scheduler_status_result(last_result: dict | None, item_limit: int = 100) -> dict | None:
     if not isinstance(last_result, dict):
         return last_result
@@ -117,6 +143,7 @@ def _compact_scheduler_status_result(last_result: dict | None, item_limit: int =
             "ok": result.get("ok"),
             "strategy_ids": result.get("strategy_ids") or [],
             "runs": compact_runs,
+            "market_regime_policy": _json_safe(_market_regime_policy_from_result(result)),
             "errors": [_trim_text(item) for item in errors],
             "summary_counts": {
                 "run_count": len(compact_runs),
@@ -187,7 +214,7 @@ def _compact_scheduler_status_result(last_result: dict | None, item_limit: int =
         "status": result.get("status"),
         "execution_status": result.get("execution_status") or result.get("status"),
         "ok": result.get("ok"),
-        "market_regime_policy": _json_safe(result.get("market_regime_policy") or {}),
+        "market_regime_policy": _json_safe(_market_regime_policy_from_result(result)),
         "blocked": [_trim_text(item) for item in (result.get("blocked") or [])],
         "execution_runs": _json_safe(_tail_items(execution_runs, 200)),
         "run_status_counts": _json_safe(run_status_counts),

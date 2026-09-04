@@ -79,6 +79,20 @@ class SchedulerPresenterTests(unittest.TestCase):
         self.assertEqual(compact["result"]["market_regime_policy"]["regime"], "bear")
         self.assertEqual(len(compact["result"]["blocked"]), 1)
 
+    def test_compaction_promotes_policy_from_execution_runs(self):
+        payload = {"result": {
+            "status": "success",
+            "execution_runs": [{
+                "market_regime_policy": {
+                    "regime": "bull",
+                    "allowed": True,
+                    "multiplier": 1.0,
+                },
+            }],
+        }}
+        compact = _compact_scheduler_status_result(payload)
+        self.assertEqual(compact["result"]["market_regime_policy"]["regime"], "bull")
+
     def test_compaction_counts_scheduler_run_outcomes_separately_from_orders(self):
         payload = {"result": {
             "status": "blocked",
