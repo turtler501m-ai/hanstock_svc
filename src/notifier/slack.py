@@ -19,6 +19,7 @@ from src.utils.logger import logger
 
 
 HTTP = requests.Session()
+_missing_webhook_logged = False
 
 
 def _instance_tag() -> str:
@@ -30,6 +31,8 @@ def _instance_tag() -> str:
         return "ORA"
     if repo_name.endswith("_kw"):
         return "KW"
+    if repo_name.endswith("_svc"):
+        return "SVC"
     return "HANSTOCK"
 
 
@@ -80,6 +83,12 @@ def _decorate_payload(payload: dict, *, tag: str | None = None) -> dict:
 
 
 def post_slack_payload(webhook_url: str, payload: dict, session, **kwargs) -> bool:
+    global _missing_webhook_logged
+    if not str(webhook_url or "").strip():
+        if not _missing_webhook_logged:
+            logger.warning("[SLACK] skipped: SLACK_WEBHOOK_URL is not configured")
+            _missing_webhook_logged = True
+        return False
     return _post_slack_payload_raw(
         webhook_url,
         _decorate_payload(payload),
