@@ -199,6 +199,30 @@ def _confirm_canceled_order(order_id: int, *, attempts: int = 8, interval_second
         )
 
 
+def _canonical_cancel_order_id(api, item: dict, current_id: str) -> str:
+    """Use Namuh's 10-digit market order number for cancel/modify APIs."""
+    if current_id.isdigit() and len(current_id) == 10:
+        return current_id
+    order_date = str(item.get("broker_order_date") or item.get("created_at") or "")[:10]
+    try:
+        executions = api.fetch_trade_history(order_date, order_date)
+    except Exception:
+        return current_id
+    for execution in executions or []:
+        raw = getattr(execution, "raw", {}) or {}
+        if str(getattr(execution, "symbol", "") or raw.get("iem_cd") or "") != str(item.get("symbol") or ""):
+            continue
+        aliases = {str(raw.get(key) or "").strip() for key in (
+            "itg_orr_no", "ord_no", "order_no", "ODNO", "odno", "mkt_orr_no", "MKT_ORR_NO"
+        )}
+        if current_id not in aliases:
+            continue
+        canonical = str(raw.get("mkt_orr_no") or raw.get("MKT_ORR_NO") or raw.get("ODNO") or raw.get("odno") or "").strip()
+        if canonical.isdigit() and len(canonical) == 10:
+            return canonical
+    return current_id
+
+
 def resume_cancel_pending_confirmations() -> int:
     """Resume bounded single-order checks after a dashboard restart."""
     from src.application.orders.repository import OrderLedgerRepository
@@ -242,6 +266,7 @@ def cancel_unified_order(order_id: int):
     broker_order_id = str(item.get("broker_order_id") or "")
     if not broker_order_id:
         raise HTTPException(status_code=409, detail="broker order id is not known")
+    broker_order_id = _canonical_cancel_order_id(_get_api(), item, broker_order_id)
     claimed = repository.transition(
         order_id, current, "cancel_pending", actor="dashboard", reason="operator cancellation"
     )
@@ -380,6 +405,7 @@ def cancel_replace_market_order(order_id: int):
     remaining = max(0, int(item.get("requested_qty") or 0) - int(item.get("filled_qty") or 0))
     if not broker_order_id or remaining <= 0:
         raise HTTPException(status_code=409, detail="active broker order and remaining quantity are required")
+    broker_order_id = _canonical_cancel_order_id(_get_api(), item, broker_order_id)
     repository.transition(order_id, current, "cancel_pending", actor="dashboard", reason="operator market replacement")
     try:
         result = _get_api().submit_cancellation(CancelOrderRequest(

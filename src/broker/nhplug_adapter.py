@@ -168,7 +168,7 @@ class NHPlugBrokerAdapter:
         side = OrderSide.SELL if "매도" in text else OrderSide.BUY
         status = OrderStatus.FILLED if requested and filled >= requested else OrderStatus.PARTIAL if filled else OrderStatus.OPEN
         if "취소" in str(row.get("cor_can_dit_cd_nm") or ""): status = OrderStatus.CANCELED
-        return TradeExecution(str(row.get("itg_orr_no") or ""), str(row.get("iem_cd") or ""), side,
+        return TradeExecution(str(row.get("mkt_orr_no") or row.get("odno") or row.get("ord_no") or row.get("itg_orr_no") or ""), str(row.get("iem_cd") or ""), side,
             requested, filled, max(0, requested-filled), _num(row.get("cns_avg_uit_pr")), status,
             str(row.get("orr_dt") or row.get("orr_tm") or ""), row)
 

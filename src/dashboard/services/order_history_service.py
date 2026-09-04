@@ -6,7 +6,7 @@ from src.market_metadata import normalize_kr_order_symbol
 
 
 def _broker_order_id_from_history(row: dict) -> str:
-    for key in ("ODNO", "odno", "ord_no", "order_no"):
+    for key in ("mkt_orr_no", "MKT_ORR_NO", "ODNO", "odno", "ord_no", "order_no", "itg_orr_no"):
         value = row.get(key)
         if value:
             return str(value).strip()
