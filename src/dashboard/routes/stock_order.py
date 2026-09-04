@@ -1467,6 +1467,23 @@ def _active_dashboard_sell_symbols() -> set[str]:
 
                               AND t.order_status IN ('submitted', 'open', 'partial')
                               AND t.qty > COALESCE(t.filled_qty, 0)
+                              AND (
+                                  EXISTS (
+                                      SELECT 1
+                                      FROM orders o
+                                      WHERE o.approval_id = a.id
+                                        AND o.status IN (
+                                            'created', 'risk_approved', 'approval_pending',
+                                            'approved', 'submitting', 'submitted', 'open',
+                                            'partial', 'cancel_pending', 'broker_unknown'
+                                        )
+                                  )
+                                  OR NOT EXISTS (
+                                      SELECT 1
+                                      FROM orders o
+                                      WHERE o.approval_id = a.id
+                                  )
+                              )
                         )
                     )
               )
