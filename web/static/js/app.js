@@ -4598,6 +4598,7 @@ async function renderScheduleInfo() {
             // Build groups dynamically by round
             const uniqueRounds = HanstockDashboardSchedulerRounds.buildRounds({
                 results, approved, approvalErrors, schedulerRuns,
+                mode: lastResult.mode,
                 fallbackTime: lastResult.recorded_at ? lastResult.recorded_at.replace("T", " ").split(" ")[1]?.substring(0, 5) || '-' : '-',
                 mode: lastResult.mode,
             });

@@ -15,7 +15,7 @@
         schedulerRuns.forEach((run) => {
             if (!run.round) return;
             rounds.set(run.round, {
-                time: run.time || '', results: [], approved: [], approvalErrors: [], mode: run.mode || mode,
+                time: run.time || '', results: [], approved: [], approvalErrors: [], mode: mode || run.mode,
                 strategyId: run.strategy_id || '', status: run.status || 'completed', message: run.message || '',
                 universeCount: Number(run.universe_count || 0), scannedCount: Number(run.scanned_count || 0),
                 candidateCount: Number(run.candidate_count || 0), conditionCounts: run.condition_counts || {},
