@@ -2,6 +2,7 @@
 
 import threading
 import time
+import uuid
 
 from src.dashboard.routes.compat_router import CompatRouter, refresh_dependencies
 from src.dashboard.routes import stock as _stock
@@ -297,6 +298,110 @@ def cancel_unified_order(order_id: int):
         "broker_order_id": result.broker_order_id,
         "status": str(getattr(result.status, "value", result.status)),
     }, "confirmation_started": bool(result.success)}
+
+
+def _replace_with_market_after_cancel(order_id: int) -> None:
+    """Submit the remaining quantity only after the broker confirms cancellation."""
+    from src.application.orders.identity import broker_account_scope_key
+    from src.application.orders.models import OrderIntent
+    from src.application.orders.repository import OrderLedgerRepository
+    from src.broker.models import OrderRequest, OrderSide
+
+    repository = OrderLedgerRepository(trader.connect_db)
+    _confirm_canceled_order(order_id, attempts=8, interval_seconds=2.0)
+    original = repository.get(order_id)
+    if not original or str(original.get("status") or "") != "canceled":
+        return
+    quantity = max(0, int(original.get("requested_qty") or 0) - int(original.get("filled_qty") or 0))
+    if quantity <= 0:
+        return
+    correlation_id = str(uuid.uuid4())
+    replacement = repository.create(OrderIntent(
+        client_order_key=f"cancel-replace-market:{order_id}:{correlation_id}",
+        correlation_id=correlation_id,
+        account_key=str(original.get("account_key") or broker_account_scope_key("KR")),
+        market=str(original.get("market") or "KR"), symbol=str(original["symbol"]),
+        name=str(original.get("name") or ""), side=str(original["side"]),
+        quantity=quantity, price=0, order_type="market",
+        time_in_force=str(original.get("time_in_force") or "DAY"),
+        strategy_id=original.get("strategy_id"), strategy_version=original.get("strategy_version"),
+        metadata={"source": "cancel_replace_market", "original_order_id": order_id},
+    ), initial_status="approved")
+    repository.record_event(
+        order_id, "market_replacement_created", actor="dashboard",
+        reason="broker cancellation confirmed; remaining quantity re-submitted as market order",
+        payload={"replacement_order_id": replacement["id"], "quantity": quantity},
+    )
+    repository.transition(replacement["id"], "approved", "submitting", actor="dashboard")
+    try:
+        result = _get_api().submit_order(OrderRequest(
+            symbol=str(original["symbol"]), side=OrderSide(str(original["side"])),
+            quantity=quantity, price=0,
+        ))
+        raw = dict(result.raw or {})
+        broker_order_id = str(
+            result.broker_order_id or raw.get("ord_no") or raw.get("order_no")
+            or raw.get("odno") or raw.get("ODNO")
+            or (raw.get("output") or {}).get("odno") or (raw.get("output") or {}).get("ODNO") or ""
+        )
+        repository.bind_broker_result(replacement["id"], broker_order_id, message=result.message)
+        repository.transition(
+            replacement["id"], "submitting", "submitted" if result.success and broker_order_id else "broker_unknown",
+            actor="broker", reason=result.message, payload=raw,
+        )
+        repository.record_event(
+            order_id, "market_replacement_submitted", actor="broker", reason=result.message,
+            payload={"replacement_order_id": replacement["id"], "broker_order_id": broker_order_id,
+                     "success": bool(result.success)},
+        )
+    except Exception as exc:
+        repository.transition(replacement["id"], "submitting", "broker_unknown", actor="broker", reason=str(exc))
+        repository.record_event(
+            order_id, "market_replacement_exception", actor="broker", reason=str(exc),
+            payload={"replacement_order_id": replacement["id"], "quantity": quantity},
+        )
+
+
+@router.post("/api/orders/{order_id}/cancel-replace-market")
+def cancel_replace_market_order(order_id: int):
+    """Cancel an active order, then submit its unfilled remainder at market price."""
+    from fastapi import HTTPException
+    from src.application.orders.repository import OrderLedgerRepository
+    from src.broker.models import CancelOrderRequest
+
+    repository = OrderLedgerRepository(trader.connect_db)
+    item = repository.get(order_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="order not found")
+    current = str(item.get("status") or "")
+    if current not in {"submitted", "open", "partial"}:
+        raise HTTPException(status_code=409, detail=f"order cannot be replaced from {current}")
+    broker_order_id = str(item.get("broker_order_id") or "")
+    remaining = max(0, int(item.get("requested_qty") or 0) - int(item.get("filled_qty") or 0))
+    if not broker_order_id or remaining <= 0:
+        raise HTTPException(status_code=409, detail="active broker order and remaining quantity are required")
+    repository.transition(order_id, current, "cancel_pending", actor="dashboard", reason="operator market replacement")
+    try:
+        result = _get_api().submit_cancellation(CancelOrderRequest(
+            order_id=broker_order_id, symbol=str(item["symbol"]), quantity=remaining,
+        ))
+    except Exception as exc:
+        repository.transition(order_id, "cancel_pending", "broker_unknown", actor="broker", reason=str(exc))
+        raise HTTPException(status_code=409, detail=f"cancellation result is unknown: {exc}") from exc
+    repository.record_event(
+        order_id, "broker_cancel_for_market_replace", actor="broker", reason=result.message,
+        payload={"success": bool(result.success), "remaining_qty": remaining,
+                 "original_broker_order_id": broker_order_id},
+    )
+    if not result.success:
+        repository.transition(order_id, "cancel_pending", "broker_unknown", actor="broker", reason=result.message)
+        raise HTTPException(status_code=409, detail=f"market replacement stopped: {result.message}")
+    threading.Thread(
+        target=_replace_with_market_after_cancel, args=(order_id,),
+        name=f"order-market-replace-{order_id}", daemon=True,
+    ).start()
+    return {"ok": True, "status": "cancel_pending", "order_id": order_id,
+            "remaining_qty": remaining, "replacement_started": True}
 
 
 @router.post("/api/orders/{order_id}/resolve-unknown")

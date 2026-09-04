@@ -2618,6 +2618,23 @@ async function cancelOpenOrder(button) {
     }
 }
 
+async function cancelReplaceMarketOrder(button) {
+    const orderId = Number(button.dataset.id || 0);
+    const symbolName = button.dataset.name || button.dataset.symbol || `주문 #${orderId}`;
+    const sideLabel = button.dataset.side === 'buy' ? '매수' : '매도';
+    if (!orderId || !window.confirm(`${symbolName} ${sideLabel} 미체결 주문을 취소한 뒤 잔량을 시장가로 재접수할까요?\n기존 주문이 취소 확정된 후에만 새 주문을 제출합니다.`)) return;
+    setButtonBusy(button, true);
+    try {
+        await postJson(`/api/orders/${orderId}/cancel-replace-market`, {});
+        setStatus(`${symbolName} 기존 주문 취소 접수 완료. 취소 확정 후 시장가 재접수를 진행합니다.`, true);
+        await renderOpenOrders();
+    } catch (err) {
+        setStatus(`시장가 재접수 실패: ${err.message}`);
+    } finally {
+        setButtonBusy(button, false);
+    }
+}
+
 async function resolveUnknownOpenOrder(button) {
     const orderId = Number(button.dataset.id || 0);
     const symbolName = button.dataset.name || button.dataset.symbol || `주문 #${orderId}`;
@@ -2663,6 +2680,7 @@ async function renderOpenOrders() {
         orderStatusLabel,
         pill,
         cancelOpenOrder,
+        cancelReplaceMarketOrder,
         resolveUnknownOpenOrder,
         activeStatuses: ACTIVE_ORDER_STATUSES,
         labels: {
@@ -2675,6 +2693,7 @@ async function renderOpenOrders() {
             remaining: '\uc794\ub7c9',
             marketPrice: '\uc2dc\uc7a5\uac00',
             cancel: '\uc8fc\ubb38 \ucde8\uc18c',
+            marketReplace: '\ucde8\uc18c \ud6c4 \uc2dc\uc7a5\uac00 \uc7ac\uc811\uc218',
             resolve: '\ubbf8\ud655\uc778 \uc885\ub8cc',
             noAction: '\uc870\uce58 \ud544\uc694 \uc5c6\uc74c',
         },

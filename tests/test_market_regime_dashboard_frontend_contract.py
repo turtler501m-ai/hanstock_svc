@@ -149,28 +149,28 @@ STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-
 class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
     def test_market_regime_presentation_module_loads_before_app(self):
         module_tag = '<script src="/static/js/dashboard-market-regime.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=74"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardMarketRegime", MARKET_REGIME_JS)
         self.assertNotIn("const MARKET_REGIME_LABELS = {", APP_JS)
 
     def test_strategy_audit_helpers_load_before_app(self):
         module_tag = '<script src="/static/js/dashboard-strategy-audit.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardStrategyAudit", STRATEGY_AUDIT_JS)
         self.assertNotIn("function eventPayloadSummary(payload)", APP_JS)
 
     def test_strategy_audit_screen_isolated_from_app_state(self):
         module_tag = '<script src="/static/js/dashboard-strategy-audit-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("getStrategyCatalog", STRATEGY_AUDIT_SCREEN_JS)
         self.assertNotIn("strategiesRes", APP_JS)
 
     def test_ai_allocation_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-ai-allocation-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardAiAllocationScreen", AI_ALLOCATION_SCREEN_JS)
         self.assertIn("data-source=", AI_ALLOCATION_SCREEN_JS)
@@ -178,7 +178,7 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
 
     def test_candidate_history_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-candidate-history-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardCandidateHistoryScreen", CANDIDATE_HISTORY_SCREEN_JS)
         self.assertIn("HanstockDashboardCandidateHistoryScreen.render", APP_JS)
@@ -186,189 +186,189 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
 
     def test_reconciliation_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-reconciliation-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardReconciliationScreen", RECONCILIATION_SCREEN_JS)
         self.assertIn("HanstockDashboardReconciliationScreen.render", APP_JS)
 
     def test_open_orders_screen_isolated_from_app(self):
-        module_tag = '<script src="/static/js/dashboard-open-orders-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        module_tag = '<script src="/static/js/dashboard-open-orders-screen.js?v=2"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardOpenOrdersScreen", OPEN_ORDERS_SCREEN_JS)
         self.assertIn("HanstockDashboardOpenOrdersScreen.render", APP_JS)
 
     def test_periodic_performance_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-periodic-performance-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardPeriodicPerformanceScreen", PERIODIC_PERFORMANCE_SCREEN_JS)
         self.assertIn("HanstockDashboardPeriodicPerformanceScreen.render", APP_JS)
 
     def test_trade_cleanup_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-trade-cleanup-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardTradeCleanupScreen", TRADE_CLEANUP_SCREEN_JS)
         self.assertIn("HanstockDashboardTradeCleanupScreen.render", APP_JS)
 
     def test_trade_sync_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-trade-sync-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardTradeSyncScreen", TRADE_SYNC_SCREEN_JS)
         self.assertIn("HanstockDashboardTradeSyncScreen.render", APP_JS)
 
     def test_approval_queue_loader_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-approval-queue.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardApprovalQueue", APPROVAL_QUEUE_JS)
         self.assertIn("HanstockDashboardApprovalQueue.load", APP_JS)
 
     def test_runtime_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-runtime-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardRuntimeScreen", RUNTIME_SCREEN_JS)
         self.assertIn("HanstockDashboardRuntimeScreen.render", APP_JS)
 
     def test_config_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-config-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardConfigScreen", CONFIG_SCREEN_JS)
         self.assertIn("HanstockDashboardConfigScreen.render", APP_JS)
 
     def test_risk_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-risk-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardRiskScreen", RISK_SCREEN_JS)
         self.assertIn("HanstockDashboardRiskScreen.render", APP_JS)
 
     def test_holding_summary_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-holding-summary-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardHoldingSummaryScreen", HOLDING_SUMMARY_SCREEN_JS)
         self.assertIn("HanstockDashboardHoldingSummaryScreen.render", APP_JS)
 
     def test_holdings_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-holdings-screen.js?v=2"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardHoldingsScreen", HOLDINGS_SCREEN_JS)
         self.assertIn("HanstockDashboardHoldingsScreen.render", APP_JS)
 
     def test_holding_strategy_summary_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-holding-strategy-summary-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardHoldingStrategySummaryScreen", HOLDING_STRATEGY_SUMMARY_SCREEN_JS)
         self.assertIn("HanstockDashboardHoldingStrategySummaryScreen.render", APP_JS)
 
     def test_signals_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-signals-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSignalsScreen", SIGNALS_SCREEN_JS)
         self.assertIn("HanstockDashboardSignalsScreen.render", APP_JS)
 
     def test_watchlist_summary_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-watchlist-summary-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardWatchlistSummaryScreen", WATCHLIST_SUMMARY_SCREEN_JS)
         self.assertIn("HanstockDashboardWatchlistSummaryScreen.render", APP_JS)
 
     def test_optimizer_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-optimizer-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardOptimizerScreen", OPTIMIZER_SCREEN_JS)
         self.assertIn("HanstockDashboardOptimizerScreen.render", APP_JS)
 
     def test_portfolio_chart_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-portfolio-chart.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardPortfolioChart", PORTFOLIO_CHART_JS)
         self.assertIn("HanstockDashboardPortfolioChart.render", APP_JS)
 
     def test_performance_detail_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-performance-detail.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardPerformanceDetail", PERFORMANCE_DETAIL_JS)
         self.assertIn("HanstockDashboardPerformanceDetail.render", APP_JS)
 
     def test_strategy_lookup_history_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-strategy-lookup-history.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardStrategyLookupHistory", STRATEGY_LOOKUP_HISTORY_JS)
         self.assertIn("HanstockDashboardStrategyLookupHistory.render", APP_JS)
 
     def test_strategy_preview_cache_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-strategy-preview-cache.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardStrategyPreviewCache", STRATEGY_PREVIEW_CACHE_JS)
         self.assertIn("HanstockDashboardStrategyPreviewCache.renderCached", APP_JS)
 
     def test_candidate_messages_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-candidate-messages.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardCandidateMessages", CANDIDATE_MESSAGES_JS)
         self.assertIn("HanstockDashboardCandidateMessages.noCandidates", APP_JS)
 
     def test_candidate_strategy_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-candidate-strategy.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardCandidateStrategy", CANDIDATE_STRATEGY_JS)
         self.assertIn("HanstockDashboardCandidateStrategy.render", APP_JS)
 
     def test_strategy_settings_schema_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-strategy-settings-schema.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardStrategySettingsSchema", STRATEGY_SETTINGS_SCHEMA_JS)
         self.assertIn("HanstockDashboardStrategySettingsSchema.groups", APP_JS)
 
     def test_ai_strategy_summary_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-ai-strategy-summary.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardAiStrategySummary", AI_STRATEGY_SUMMARY_JS)
         self.assertIn("HanstockDashboardAiStrategySummary.render", APP_JS)
 
     def test_ai_detail_modal_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-ai-detail-modal.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardAiDetailModal", AI_DETAIL_MODAL_JS)
         self.assertIn("HanstockDashboardAiDetailModal.render", APP_JS)
 
     def test_strategy_settings_save_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-strategy-settings-save.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardStrategySettingsSave", STRATEGY_SETTINGS_SAVE_JS)
         self.assertIn("HanstockDashboardStrategySettingsSave.handle", APP_JS)
 
     def test_strategy_context_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-strategy-context.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardStrategyContext", STRATEGY_CONTEXT_JS)
         self.assertIn("HanstockDashboardStrategyContext.render", APP_JS)
 
     def test_ai_schedule_settings_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-ai-schedule-settings.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardAiScheduleSettings", AI_SCHEDULE_SETTINGS_JS)
         self.assertIn("HanstockDashboardAiScheduleSettings.load", APP_JS)
@@ -376,21 +376,21 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
 
     def test_strategy_settings_screen_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-strategy-settings-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardStrategySettingsScreen", STRATEGY_SETTINGS_SCREEN_JS)
         self.assertIn("HanstockDashboardStrategySettingsScreen.render", APP_JS)
 
     def test_scheduler_strategy_checklist_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-scheduler-strategy-checklist.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerStrategyChecklist", SCHEDULER_CHECKLIST_JS)
         self.assertIn("HanstockDashboardSchedulerStrategyChecklist.render", APP_JS)
 
     def test_scheduler_formatters_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-scheduler-formatters.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerFormatters", SCHEDULER_FORMATTERS_JS)
         self.assertIn("HanstockDashboardSchedulerFormatters.approvalStatus", APP_JS)
@@ -398,28 +398,28 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
 
     def test_scheduler_actions_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-scheduler-actions.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerActions", SCHEDULER_ACTIONS_JS)
         self.assertIn("HanstockDashboardSchedulerActions.trigger", APP_JS)
 
     def test_scheduler_overview_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-scheduler-overview.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerOverview", SCHEDULER_OVERVIEW_JS)
         self.assertIn("HanstockDashboardSchedulerOverview.render", APP_JS)
 
     def test_scheduler_collapse_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-scheduler-collapse.js?v=2"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerCollapse", SCHEDULER_COLLAPSE_JS)
         self.assertIn("HanstockDashboardSchedulerCollapse.toggle", APP_JS)
 
     def test_scheduler_rows_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-scheduler-rows.js?v=2"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerRows", SCHEDULER_ROWS_JS)
         self.assertIn("appendPlanRows", SCHEDULER_ROWS_JS)
@@ -429,14 +429,14 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
 
     def test_ai_strategy_table_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-ai-strategy-table.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardAiStrategyTable", AI_STRATEGY_TABLE_JS)
         self.assertIn("HanstockDashboardAiStrategyTable.render", APP_JS)
 
     def test_scheduler_rounds_isolated_from_app(self):
-        module_tag = '<script src="/static/js/dashboard-scheduler-rounds.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        module_tag = '<script src="/static/js/dashboard-scheduler-rounds.js?v=2"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerRounds", SCHEDULER_ROUNDS_JS)
         self.assertIn("buildRounds", SCHEDULER_ROUNDS_JS)
@@ -444,7 +444,7 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
 
     def test_scheduler_round_card_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-scheduler-round-card.js?v=3"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerRoundCard", SCHEDULER_ROUND_CARD_JS)
         self.assertIn("scheduler-round-card", SCHEDULER_ROUND_CARD_JS)
@@ -452,28 +452,28 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
 
     def test_scheduler_analysis_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-scheduler-analysis.js?v=2"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerAnalysis", SCHEDULER_ANALYSIS_JS)
         self.assertIn("HanstockDashboardSchedulerAnalysis.render", APP_JS)
 
     def test_scheduler_summary_isolated_from_app(self):
         module_tag = '<script src="/static/js/dashboard-scheduler-summary.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardSchedulerSummary", SCHEDULER_SUMMARY_JS)
         self.assertIn("HanstockDashboardSchedulerSummary.render", APP_JS)
 
     def test_strategy_analysis_isolated_from_app(self):
-        module_tag = '<script src="/static/js/dashboard-strategy-analysis.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        module_tag = '<script src="/static/js/dashboard-strategy-analysis.js?v=2"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardStrategyAnalysis", STRATEGY_ANALYSIS_JS)
         self.assertIn("HanstockDashboardStrategyAnalysis.evaluate", APP_JS)
 
     def test_strategy_preview_screen_isolated_from_app(self):
-        module_tag = '<script src="/static/js/dashboard-strategy-preview-screen.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        module_tag = '<script src="/static/js/dashboard-strategy-preview-screen.js?v=2"></script>'
+        app_tag = '<script src="/static/js/app.js?v=75"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardStrategyPreviewScreen", STRATEGY_PREVIEW_SCREEN_JS)
         self.assertIn("HanstockDashboardStrategyPreviewScreen.render", APP_JS)

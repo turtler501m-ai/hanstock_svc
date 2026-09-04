@@ -145,6 +145,8 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn("const ACTIVE_ORDER_STATUSES", FRONTEND_JS)
         self.assertIn("async function renderOpenOrders()", FRONTEND_JS)
         self.assertIn("`/api/orders/${orderId}/cancel`", FRONTEND_JS)
+        self.assertIn("`/api/orders/${orderId}/cancel-replace-market`", FRONTEND_JS)
+        self.assertIn("cancelReplaceMarketOrder", FRONTEND_JS)
         self.assertIn("async function waitForCanceledOrder", FRONTEND_JS)
         self.assertIn("`/api/orders/${orderId}`", FRONTEND_JS)
         self.assertIn("renderOpenOrders(),", FRONTEND_JS)

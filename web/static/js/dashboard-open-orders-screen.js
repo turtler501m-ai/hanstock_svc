@@ -27,7 +27,7 @@
                 const side = row.side === 'buy' ? deps.labels.buy : deps.labels.sell;
                 const sideKind = row.side === 'buy' ? 'buy' : 'sell';
                 const action = cancellable
-                    ? `<button type="button" class="button-danger compact-button cancel-open-order" data-id="${deps.escapeHtml(row.id)}" data-symbol="${deps.escapeHtml(row.symbol || '')}" data-name="${deps.escapeHtml(row.name || row.symbol || '')}" data-side="${deps.escapeHtml(row.side || '')}">${deps.labels.cancel}</button>`
+                    ? `<div class="button-row"><button type="button" class="button-danger compact-button cancel-open-order" data-id="${deps.escapeHtml(row.id)}" data-symbol="${deps.escapeHtml(row.symbol || '')}" data-name="${deps.escapeHtml(row.name || row.symbol || '')}" data-side="${deps.escapeHtml(row.side || '')}">${deps.labels.cancel}</button><button type="button" class="button-primary compact-button market-replace-open-order" data-id="${deps.escapeHtml(row.id)}" data-symbol="${deps.escapeHtml(row.symbol || '')}" data-name="${deps.escapeHtml(row.name || row.symbol || '')}" data-side="${deps.escapeHtml(row.side || '')}">${deps.labels.marketReplace}</button></div>`
                     : resolvableUnknown
                         ? `<button type="button" class="button-danger compact-button resolve-unknown-order" data-id="${deps.escapeHtml(row.id)}" data-symbol="${deps.escapeHtml(row.symbol || '')}" data-name="${deps.escapeHtml(row.name || row.symbol || '')}">${deps.labels.resolve}</button>`
                         : `<span class="time-muted">${deps.labels.noAction}</span>`;
@@ -35,6 +35,9 @@
             }).join('');
             tbody.querySelectorAll('.cancel-open-order').forEach((button) => {
                 button.addEventListener('click', () => deps.cancelOpenOrder(button));
+            });
+            tbody.querySelectorAll('.market-replace-open-order').forEach((button) => {
+                button.addEventListener('click', () => deps.cancelReplaceMarketOrder(button));
             });
             tbody.querySelectorAll('.resolve-unknown-order').forEach((button) => {
                 button.addEventListener('click', () => deps.resolveUnknownOpenOrder(button));
