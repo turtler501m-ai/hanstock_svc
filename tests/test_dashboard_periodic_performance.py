@@ -459,6 +459,26 @@ class DashboardPeriodicPerformanceTests(unittest.TestCase):
         self.assertEqual(quiet_rows["2026-05-02"]["holding_change_pct"], 10.0)
         self.assertEqual(quiet_rows["2026-05-03"]["holding_change_pct"], -10.0)
 
+    def test_periodic_performance_normalizes_legacy_price_dates(self):
+        trader.config.dry_run = True
+        trades = [{
+            "ok": 1, "dry_run": 1, "symbol": "AAA", "action": "buy",
+            "qty": 10, "price": 90, "ts": "2026-09-03 10:00:00",
+        }]
+        prices = {
+            "AAA": [
+                {"date": "26/09/03", "close": 100},
+                {"date": "26/09/04", "close": 110},
+            ],
+        }
+        with patch("src.dashboard.core._load_index_rows", return_value={}), patch(
+            "src.dashboard.core._load_symbol_price_rows", return_value=prices
+        ):
+            performance = _build_periodic_performance(trades)
+        row = next(item for item in performance["daily"] if item["period"] == "2026-09-04")
+        self.assertEqual(row["holding_change_pct"], 10.0)
+        self.assertNotIn("26/09/04", {item["period"] for item in performance["daily"]})
+
 
 if __name__ == "__main__":
     unittest.main()

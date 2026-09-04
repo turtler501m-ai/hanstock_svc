@@ -2140,6 +2140,16 @@ def _daily_holding_change_context(
     trades: list[dict], dates: set[str], *, include_holding_sessions: bool = False
 ) -> dict[str, dict]:
     """Return prior-close weighted moves for positions held at each session open."""
+    def normalize_date(value: object) -> str:
+        text = str(value or "").strip()
+        if len(text) >= 10 and text[4:5] == "-" and text[7:8] == "-":
+            return text[:10]
+        if len(text) == 8 and text.isdigit():
+            return f"{text[:4]}-{text[4:6]}-{text[6:8]}"
+        if len(text) == 8 and text[2] == "/" and text[5] == "/":
+            return f"20{text[:2]}-{text[3:5]}-{text[6:8]}"
+        return ""
+
     valid_trades = []
     symbols: set[str] = set()
     for trade in _account_trades(trades):
@@ -2156,9 +2166,9 @@ def _daily_holding_change_context(
     price_rows = _load_symbol_price_rows(symbols)
     prices_by_symbol = {
         symbol: {
-            str(row.get("date") or "")[:10]: float(row.get("close") or 0)
+            normalize_date(row.get("date")): float(row.get("close") or 0)
             for row in rows
-            if float(row.get("close") or 0) > 0
+            if normalize_date(row.get("date")) and float(row.get("close") or 0) > 0
         }
         for symbol, rows in price_rows.items()
     }
