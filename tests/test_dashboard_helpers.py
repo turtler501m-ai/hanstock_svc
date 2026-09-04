@@ -8,6 +8,19 @@ from src.dashboard.services.cache_policy import cache_age_seconds, mark_cache_fr
 
 
 class DashboardHelperTests(unittest.TestCase):
+    def test_parse_balance_omits_empty_settlement_rows(self):
+        parsed = dashboard._parse_balance({
+            "output1": [
+                {"pdno": "005930", "prdt_name": "삼성전자", "hldg_qty": "3", "prpr": "71000"},
+                {"pdno": "", "prdt_name": "", "hldg_qty": "-224", "prpr": "0"},
+                {"pdno": "000660", "prdt_name": "", "hldg_qty": "2", "prpr": "180000"},
+            ],
+            "output2": [{}],
+        })
+
+        self.assertEqual([item["symbol"] for item in parsed["holdings"]], ["005930", "000660"])
+        self.assertEqual(parsed["holdings"][1]["name"], "000660")
+
     def test_parse_balance_exposes_complete_broker_response(self):
         raw = {
             "Output_0": {"tot_aet_amt": 1000, "new_summary_field": "visible"},

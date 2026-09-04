@@ -71,7 +71,8 @@ class NHPlugBrokerAdapter:
         holdings = tuple(
             self._holding(row)
             for row in rows
-            if _int(row.get("itg_bnc_qty") or row.get("ny_stl_qty") or row.get("rsdl_qty"))
+            if str(row.get("iem_cd") or "").strip()
+            and _int(row.get("itg_bnc_qty") or row.get("ny_stl_qty") or row.get("rsdl_qty")) > 0
         )
         stock_value = sum(x.market_value for x in holdings)
         total = _num(summary.get("tot_aet_amt") or summary.get("tot_eal_amt"))

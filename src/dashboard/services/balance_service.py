@@ -60,7 +60,13 @@ def parse_balance(balance_data: dict) -> dict:
 
     holdings = []
     for stock in stocks:
+        symbol = str(stock.get("pdno") or "").strip()
         qty = to_int(stock.get("hldg_qty"))
+        # NHPLUG includes settlement/adjustment rows with an empty code and
+        # negative quantity. They are not holdings and must not render as a
+        # nameless stock in the portfolio detail.
+        if not symbol or qty <= 0:
+            continue
         sellable_source = stock.get("hldg_qty")
         for key in (
             "ord_psbl_qty",
@@ -80,8 +86,8 @@ def parse_balance(balance_data: dict) -> dict:
         if price <= 0 and qty > 0:
             price = round(value / qty)
         holdings.append({
-            "symbol": stock.get("pdno", ""),
-            "name": stock.get("prdt_name", stock.get("pdno", "")),
+            "symbol": symbol,
+            "name": str(stock.get("prdt_name") or symbol).strip(),
             "qty": qty,
             "sellable_qty": sellable_qty,
             "price": price,
