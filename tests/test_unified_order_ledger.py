@@ -205,6 +205,15 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
                 order["id"], status="mystery", cumulative_filled_qty=2,
             )
 
+    def test_zero_fills_cannot_remain_partial(self):
+        order = self.repository.create(self.intent(), initial_status="approved")
+        self.repository.transition(order["id"], "approved", "submitting")
+        self.repository.transition(order["id"], "submitting", "submitted")
+        self.repository.reconcile_snapshot(
+            order["id"], status="partial", cumulative_filled_qty=0,
+        )
+        self.assertEqual("open", self.repository.get(order["id"])["status"])
+
     def test_startup_closes_only_prior_session_legacy_day_orders(self):
         with self.connect() as conn:
             conn.execute(

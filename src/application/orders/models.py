@@ -39,7 +39,10 @@ ALLOWED_TRANSITIONS = {
     "submitting": {"submitted", "broker_unknown", "rejected", "failed"},
     "submitted": {"open", "partial", "filled", "cancel_pending", "canceled", "rejected", "broker_unknown"},
     "open": {"partial", "filled", "cancel_pending", "canceled", "rejected", "broker_unknown"},
-    "partial": {"partial", "filled", "cancel_pending", "canceled", "broker_unknown"},
+    # A broker inquiry can correct a stale partial projection back to open
+    # when cumulative fills are zero.  This is not a fill regression; it is a
+    # status correction caused by an inquiry response that carried no fills.
+    "partial": {"open", "partial", "filled", "cancel_pending", "canceled", "broker_unknown"},
     "cancel_pending": {"partial", "filled", "canceled", "broker_unknown"},
     "broker_unknown": {"submitted", "open", "partial", "filled", "cancel_pending", "canceled", "rejected"},
     # A broker-confirmed fill may correct a locally misclassified submission.

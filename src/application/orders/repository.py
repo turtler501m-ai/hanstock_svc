@@ -181,6 +181,10 @@ class OrderLedgerRepository:
             previous_status = str(current["status"])
             if incoming == requested and requested > 0:
                 status = "filled"
+            elif incoming == 0 and status == "partial":
+                # Never expose partial when the broker confirms zero fills.
+                # Keep the order active as open until it is filled or canceled.
+                status = "open"
             elif incoming > 0 and status not in {"canceled", "filled"}:
                 status = "partial"
             if previous_status in {"filled", "canceled", "rejected", "expired"}:
