@@ -3114,7 +3114,7 @@ async function renderTrades() {
         // 성과 요약 (Performance)
         try {
             const perf = await fetchJson(performancePath('/api/performance'), 30000);
-            document.getElementById('perf-total-trades').textContent = `${perf.total_trades}회`;
+            document.getElementById('perf-total-trades').textContent = `${Number(perf.total_trades || 0).toLocaleString()}회`;
             document.getElementById('perf-success-rate').textContent = `${perf.success_rate}%`;
             
             const pnlEl = document.getElementById('perf-realized-pnl');
@@ -3394,7 +3394,12 @@ function updatePeriodicPerformanceUI() {
     if (!periodicDataCache) return;
     setPerformanceDetailPanelOpen(false);
     
-    const dataList = periodicActiveTab === 'daily' ? (periodicDataCache.daily || []) : (periodicDataCache.monthly || []);
+    const sourceDataList = periodicActiveTab === 'daily' ? (periodicDataCache.daily || []) : (periodicDataCache.monthly || []);
+    // 일별 데이터에는 보유/시장 변동만 있는 무주문 세션도 포함될 수 있다.
+    // API 원본은 유지하고 화면과 차트에는 최근 30거래일만 표시한다.
+    const dataList = periodicActiveTab === 'daily'
+        ? sourceDataList.slice(-30)
+        : sourceDataList;
     
     // 1. Populate the table
     const tbody = document.querySelector('#table-periodic-performance tbody');
@@ -3417,7 +3422,7 @@ function updatePeriodicPerformanceUI() {
                 
                 tr.innerHTML = `
                     <td><strong>${escapeHtml(item.period)}</strong></td>
-                    <td>${Number(item.order_count || 0).toLocaleString()}회</td>
+                    <td>${Number(item.order_count || 0).toLocaleString()}건 <span class="time-muted">(매수 ${Number(item.buy_count || 0).toLocaleString()} · 매도 ${Number(item.sell_count || 0).toLocaleString()})</span></td>
                     <td>${formatCurrency(item.buy_amount)}</td>
                     <td>${formatCurrency(item.sell_amount)}</td>
                     <td class="${pnlClass}">${pnl > 0 ? '+' : ''}${formatCurrency(pnl)}</td>
@@ -3438,7 +3443,7 @@ function updatePeriodicPerformanceUI() {
                     periodCell.appendChild(button);
                 }
                 if (tr.cells[1]) {
-                    tr.cells[1].textContent = `${Number(item.order_count || 0).toLocaleString()}건`;
+                    tr.cells[1].innerHTML = `${Number(item.order_count || 0).toLocaleString()}건 <span class="time-muted">(매수 ${Number(item.buy_count || 0).toLocaleString()} · 매도 ${Number(item.sell_count || 0).toLocaleString()})</span>`;
                 }
                 tbody.appendChild(tr);
             });
