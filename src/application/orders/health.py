@@ -89,8 +89,10 @@ def build_order_health(connect, *, stale_minutes: int = 10, include_runtime: boo
     applied_migrations = {int(row[0]): str(row[1]) for row in migration_rows}
     schema_ready = applied_migrations == expected_migrations
     blockers = []
-    if unknown_count:
-        blockers.append({"code": "BROKER_UNKNOWN", "count": unknown_count})
+    # An outcome-unknown order must remain visible and non-retryable until it
+    # is reconciled, but it must not freeze unrelated new orders.  Active,
+    # stale, reconciliation, schema, and kill-switch invariants remain hard
+    # blockers below.
     if stale_count:
         blockers.append({"code": "STALE_ACTIVE_ORDER", "count": stale_count})
     if reconciliation_count:
@@ -104,6 +106,8 @@ def build_order_health(connect, *, stale_minutes: int = 10, include_runtime: boo
     if not schema_ready:
         blockers.append({"code": "SCHEMA_NOT_READY", "count": 1})
     warnings = []
+    if unknown_count:
+        warnings.append({"code": "BROKER_UNKNOWN", "count": unknown_count})
     if stale_pending_approval_count:
         warnings.append({"code": "STALE_PENDING_APPROVAL", "count": stale_pending_approval_count})
     if expired_pending_approval_count:
@@ -114,6 +118,16 @@ def build_order_health(connect, *, stale_minutes: int = 10, include_runtime: boo
         from src.application.orders.recovery import get_runtime_state
         runtime = get_runtime_state(connect)
     state = runtime["state"] if runtime and runtime["state"] != "ready" else computed_state
+    # Clear a persisted reduce_only state when the current hard-invariant scan
+    # is clean. This lets the policy change take effect without requiring an
+    # operator to manually resolve an unrelated historical unknown order.
+    if (
+        runtime
+        and runtime["state"] == "reduce_only"
+        and not blockers
+        and str(runtime.get("reason") or "") == "startup blockers require reconciliation"
+    ):
+        state = computed_state
     if runtime and runtime["state"] == "ready" and blockers:
         state = "reduce_only"
     if runtime and runtime["state"] != computed_state:

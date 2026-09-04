@@ -160,14 +160,16 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
         with self.assertRaises(NewRiskBlockedError):
             assert_new_risk_allowed(self.connect)
 
-    def test_unknown_order_blocks_new_risk(self):
+    def test_unknown_order_is_warning_but_does_not_block_new_risk(self):
         order = self.repository.create(self.intent())
         self.repository.transition(order["id"], "approval_pending", "approved")
         self.repository.transition(order["id"], "approved", "submitting")
         self.repository.transition(order["id"], "submitting", "broker_unknown")
         run_startup_recovery(self.connect)
-        with self.assertRaises(NewRiskBlockedError):
-            assert_new_risk_allowed(self.connect)
+        assert_new_risk_allowed(self.connect)
+        health = build_order_health(self.connect)
+        self.assertTrue(health["new_risk_allowed"])
+        self.assertIn("BROKER_UNKNOWN", {item["code"] for item in health["warnings"]})
 
     def test_broker_identity_is_unique_per_account_and_market(self):
         first = self.repository.create(self.intent("first"), initial_status="approved")
