@@ -435,7 +435,13 @@ def resolve_unknown_unified_order(order_id: int, payload: dict = Body(...)):
     """Close a broker-unknown row only after explicit operator verification."""
     from src.application.orders.repository import OrderLedgerRepository
 
-    if str(payload.get("confirmation") or "") != "BROKER_ORDER_NOT_FOUND":
+    confirmation = str(payload.get("confirmation") or "")
+    demo_unknown_confirmation = (
+        confirmation == "DEMO_BROKER_ORDER_NOT_FOUND"
+        and str(getattr(trader.config, "trading_env", "") or "").lower() == "demo"
+        and not bool(getattr(trader.config, "enable_live_trading", False))
+    )
+    if confirmation != "BROKER_ORDER_NOT_FOUND" and not demo_unknown_confirmation:
         raise HTTPException(status_code=400, detail="증권사 미체결 없음 확인이 필요합니다")
     repository = OrderLedgerRepository(trader.connect_db)
     item = repository.get(order_id)
@@ -443,7 +449,7 @@ def resolve_unknown_unified_order(order_id: int, payload: dict = Body(...)):
         raise HTTPException(status_code=404, detail="주문을 찾을 수 없습니다")
     if str(item.get("status") or "") != "broker_unknown":
         raise HTTPException(status_code=409, detail="미확인 주문 상태에서만 종결할 수 있습니다")
-    if str(item.get("broker_order_id") or "").strip():
+    if str(item.get("broker_order_id") or "").strip() and not demo_unknown_confirmation:
         raise HTTPException(status_code=409, detail="증권사 주문번호가 있는 주문은 취소 또는 현행화해야 합니다")
 
     reason = "운영자가 증권사 미체결 주문 없음 확인 후 종결"
@@ -468,7 +474,7 @@ def resolve_unknown_unified_order(order_id: int, payload: dict = Body(...)):
     resolved = repository.transition(
         order_id, "broker_unknown", "rejected",
         actor="dashboard", reason=reason,
-        payload={"operator_confirmation": "BROKER_ORDER_NOT_FOUND"},
+        payload={"operator_confirmation": confirmation},
     )
     if approval_id:
         now = trader.datetime.now(trader.KST).strftime("%Y-%m-%d %H:%M:%S")
