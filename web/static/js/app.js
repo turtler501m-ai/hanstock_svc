@@ -3306,6 +3306,7 @@ async function renderPeriodicPerformance() {
         fetchJson,
         performancePath,
         escapeHtml,
+        setStatus,
         setPeriodicData: (data) => { periodicDataCache = data; },
         activateTab: (tab, activeButton, otherButton) => {
             periodicActiveTab = tab;
@@ -4763,11 +4764,21 @@ function startSchedulerPolling(mode) {
         getActiveStrategyId,
         setStatus,
         refreshAll: async () => {
-            await renderScheduleInfo();
-            if (typeof refreshOverview === 'function') refreshOverview();
-            if (typeof renderSignals === 'function') renderSignals();
-            if (typeof renderApprovals === 'function') renderApprovals();
-            if (typeof renderWatchlist === 'function') renderWatchlist();
+            // A scheduler run can create fills, change holdings, update the
+            // order ledger and change performance at the same time.  Refresh
+            // every affected projection after the run, otherwise the UI
+            // reports a completed run while showing stale positions/results.
+            await Promise.all([
+                renderScheduleInfo(),
+                renderBalance(),
+                renderTrades(),
+                renderOpenOrders(),
+                renderExecutionPlan(),
+                typeof refreshOverview === 'function' ? refreshOverview() : Promise.resolve(),
+                typeof renderSignals === 'function' ? renderSignals() : Promise.resolve(),
+                typeof renderApprovals === 'function' ? renderApprovals() : Promise.resolve(),
+                typeof renderWatchlist === 'function' ? renderWatchlist() : Promise.resolve(),
+            ]);
         },
     }, mode, () => schedulerPollInterval, (value) => { schedulerPollInterval = value; });
 }

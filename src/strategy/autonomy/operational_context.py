@@ -65,7 +65,18 @@ class OperationalSnapshotProvider:
             else f"namuh:{getattr(config, 'nhplug_environment', 'mock')}"
         ).strip()
         self.kill_switch_reader = kill_switch_reader or _default_kill_switch_reader
-        self.market_regime_reader = market_regime_reader or _default_market_regime_reader
+        # A repository injected for a test or an isolated runtime must not
+        # accidentally read the process-wide market-regime database.  That
+        # leaked state made snapshots depend on whatever stale/insufficient
+        # record happened to exist in .runtime.  Production uses the default
+        # repository and keeps the persisted-regime preference; custom
+        # repositories must explicitly provide a regime reader when needed.
+        if market_regime_reader is not None:
+            self.market_regime_reader = market_regime_reader
+        elif candidate_repository is ai_stock_repository:
+            self.market_regime_reader = _default_market_regime_reader
+        else:
+            self.market_regime_reader = lambda: None
         self.require_persisted_kr_regime = bool(require_persisted_kr_regime)
         self.daily_equity = daily_equity or DailyEquityService(
             repo=candidate_repository,

@@ -7,6 +7,7 @@ TEMPLATE = (ROOT / "web" / "templates" / "index.html").read_text(encoding="utf-8
 STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-8")
 SCHEDULER_ROWS = (ROOT / "web" / "static" / "js" / "dashboard-scheduler-rows.js").read_text(encoding="utf-8")
 SCHEDULER_ACTIONS = (ROOT / "web" / "static" / "js" / "dashboard-scheduler-actions.js").read_text(encoding="utf-8")
+PERIODIC_PERFORMANCE = (ROOT / "web" / "static" / "js" / "dashboard-periodic-performance-screen.js").read_text(encoding="utf-8")
 APP_JS = (ROOT / "web" / "static" / "js" / "app.js").read_text(encoding="utf-8")
 
 
@@ -59,6 +60,16 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertNotIn(".switch-toggle { position: relative", TEMPLATE)
         self.assertNotIn("CSS styles specific to Plunge Bounce Strategy", TEMPLATE)
         self.assertIn(".pb-tabs-container", STYLE)
+
+    def test_scheduler_completion_refreshes_all_affected_projections(self):
+        self.assertIn("renderBalance()", APP_JS)
+        self.assertIn("renderTrades()", APP_JS)
+        self.assertIn("renderOpenOrders()", APP_JS)
+        self.assertIn("renderExecutionPlan()", APP_JS)
+
+    def test_periodic_performance_errors_are_visible(self):
+        self.assertIn("성과 조회 실패", PERIODIC_PERFORMANCE)
+        self.assertIn("setStatus", PERIODIC_PERFORMANCE)
 
     def test_mobile_navigation_remains_bottom_navigation(self):
         self.assertIn("@media (max-width: 768px)", STYLE)

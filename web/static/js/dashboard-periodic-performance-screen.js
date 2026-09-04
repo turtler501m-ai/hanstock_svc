@@ -27,9 +27,15 @@
                 console.error('Forward performance render failed:', error);
                 const tbody = document.querySelector('#table-strategy-validation tbody');
                 if (tbody) tbody.innerHTML = `<tr><td colspan="11">\uc804\ub7b5 \uc131\uacfc \uc870\ud68c \uc2e4\ud328: ${deps.escapeHtml(error.message)}</td></tr>`;
+                if (deps.setStatus) deps.setStatus(`전략 성과 조회 실패: ${error.message}`);
             }
         } catch (error) {
             console.error('Periodic performance render failed:', error);
+            const tbody = document.querySelector('#table-periodic-performance tbody');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="10">성과 조회 실패: ${deps.escapeHtml(error.message)}</td></tr>`;
+            }
+            if (deps.setStatus) deps.setStatus(`기간별 성과 조회 실패: ${error.message}`);
         }
     }
     global.HanstockDashboardPeriodicPerformanceScreen = Object.freeze({ render: renderPeriodicPerformance });
