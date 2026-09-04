@@ -227,6 +227,11 @@ def _enforce_buy_position_limit(approval_id: int, pending: dict) -> None:
                 WHERE action = 'buy'
                   AND order_status IN ('submitted', 'open', 'partial')
                   AND ts >= ?
+                  AND NOT EXISTS (
+                      SELECT 1 FROM orders o
+                      WHERE o.approval_id = trades.source_approval_id
+                        AND o.status IN ('rejected', 'canceled', 'expired', 'failed')
+                  )
                 """,
                 (today,),
             ).fetchall()
