@@ -6,6 +6,7 @@ from typing import Any, Mapping
 from src.broker.models import (AccountBalance, CancelOrderRequest, DailyBar, Holding,
     OrderRequest, OrderResult, OrderSide, OrderSnapshot, OrderStatus, Quote,
     ReviseOrderRequest, TradeExecution)
+from src.broker.response import broker_order_accepted
 
 
 def _num(value: Any) -> float:
@@ -136,7 +137,7 @@ class NHPlugBrokerAdapter:
         page = self.client.post(path, body, request_kind="order")
         data = getattr(page, "data", page); output = data.get("Output_0") or {}
         order_id = str(output.get("mkt_orr_no") or output.get("itg_orr_no") or "")
-        success = str(data.get("rsp_cd") or "00000") in {"00000", "00166", "00221", "13578"}
+        success = broker_order_accepted(data)
         return OrderResult(success, str(data.get("rsp_msg") or data.get("message") or ""), order_id,
                            OrderStatus.SUBMITTED if success else OrderStatus.REJECTED, raw=data)
 
