@@ -251,6 +251,8 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn('id="select-watchlist-policy-filter"', INDEX_HTML)
         self.assertIn("function renderWatchlistSummary(data)", FRONTEND_JS)
         self.assertIn("'/api/watchlist/policy'", FRONTEND_JS)
+        self.assertIn('btn-watchlist-market-buy', FRONTEND_JS)
+        self.assertIn("source: 'watchlist_market_buy'", FRONTEND_JS)
         self.assertIn("row.policy_status === policyFilter", FRONTEND_JS)
 
     def test_schedule_tab_groups_overview_settings_execution_and_results(self):

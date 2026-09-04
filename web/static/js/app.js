@@ -1494,6 +1494,9 @@ function drawWatchlist() {
             <td style="color: rgba(255,255,255,0.6); font-size: 0.85rem;" title="${reasonStr}">${reasonStr}</td>
             <td style="text-align: center; color: rgba(255,255,255,0.4); font-size: 0.8rem;">${escapeHtml(timeStr)}</td>
             <td style="text-align: center;">
+                <button type="button" class="button-primary btn-watchlist-market-buy compact-button"
+                    data-symbol="${escapeHtml(s.symbol)}" data-name="${escapeHtml(s.name || s.symbol)}"
+                    style="background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); padding: 2px 8px; border-radius: 4px; font-size: 0.78rem; cursor: pointer;">시장가매수</button>
                 <button type="button" class="button-ghost btn-delete-watchlist compact-button"
                     data-symbol="${escapeHtml(s.symbol)}"
                     ${watchlistInherited ? 'disabled title="공용 관심종목을 상속 중입니다."' : ''}
@@ -1515,6 +1518,40 @@ function drawWatchlist() {
                 await renderWatchlist();
             } catch (err) {
                 setStatus(`관심 종목 삭제 실패: ${err.message}`);
+                setButtonBusy(btn, false);
+            }
+        });
+    });
+
+    tbody.querySelectorAll('.btn-watchlist-market-buy').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const symbol = btn.getAttribute('data-symbol') || '';
+            const name = btn.getAttribute('data-name') || symbol;
+            const rawQty = window.prompt(`${name}(${symbol}) 시장가 매수 수량`, '1');
+            if (rawQty === null) return;
+            const qty = Number(rawQty);
+            if (!Number.isInteger(qty) || qty <= 0) {
+                setStatus('시장가 매수 수량은 1주 이상의 정수로 입력해 주세요.');
+                return;
+            }
+            if (!window.confirm(`${name}(${symbol}) ${qty.toLocaleString()}주를 시장가 매수할까요?\n\n자동승인 설정이 켜져 있으면 즉시 주문 접수됩니다.`)) return;
+            setButtonBusy(btn, true);
+            try {
+                const result = await postJson('/api/approvals', {
+                    symbol,
+                    name,
+                    action: 'buy',
+                    qty,
+                    price: 0,
+                    source: 'watchlist_market_buy',
+                    reason: '관심종목 수동 시장가 매수',
+                    strategy_id: getActiveStrategyId() || 'manual_strategy',
+                });
+                const status = result.status === 'executed' ? '주문 접수' : '승인 대기';
+                setStatus(`${name} ${qty.toLocaleString()}주 시장가 매수 ${status} (#${result.id || '-'})`, true);
+                await renderWatchlist();
+            } catch (err) {
+                setStatus(`관심종목 시장가 매수 실패: ${err.message}`);
                 setButtonBusy(btn, false);
             }
         });
