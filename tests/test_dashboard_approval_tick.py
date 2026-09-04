@@ -24,6 +24,8 @@ class DashboardApprovalTickSizeTest(unittest.TestCase):
             approval_service, "_claim_pending_approval", return_value=item
         ), patch.object(
             approval_service, "_current_holding_qty_from_balance", return_value=20
+        ), patch.object(
+            approval_service, "_current_sellable_qty_from_balance", return_value=20
         ), patch.object(approval_service.trader, "save_trade") as save_trade, patch.object(
             approval_service.trader, "connect_db"
         ) as connect_db, patch.object(approval_service, "_slack_order"):

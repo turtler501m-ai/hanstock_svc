@@ -14,6 +14,7 @@ def _refresh_dependencies() -> None:
     protected = {name for name in globals() if name.startswith("_approval") or name in {
         "_refresh_dependencies", "_load_pending_approval", "_claim_pending_approval",
         "_current_holding_qty_from_balance", "_pending_approval_ids",
+        "_current_sellable_qty_from_balance",
         "_is_approval_already_claimed", "_auto_approve_pending_approvals",
         "_approve_pending_approval", "_approve_pending_approval_serialized",
         "_buy_approval_capacity_decision", "_enforce_buy_position_limit",
@@ -159,6 +160,19 @@ def _current_holding_qty_from_balance(api, symbol: str) -> int:
     for holding in parsed.get("holdings", []):
         if str(holding.get("symbol") or "") == str(symbol):
             return _to_int(holding.get("qty"))
+    return 0
+
+
+def _current_sellable_qty_from_balance(api, symbol: str) -> int:
+    """Read sellable quantity from a fresh broker balance snapshot."""
+    try:
+        _clear_balance_cache()
+        parsed = _parse_balance(_get_balance_data(api, allow_cache=False))
+    except (DashboardOperationError, RuntimeError, TypeError, ValueError):
+        return 0
+    for holding in parsed.get("holdings", []):
+        if str(holding.get("symbol") or "") == str(symbol):
+            return _to_int(holding.get("sellable_qty"))
     return 0
 
 
@@ -491,6 +505,13 @@ def _approve_pending_approval_serialized(
         pre_order_qty = _dependency(
             "_current_holding_qty_from_balance", _current_holding_qty_from_balance
         )(api, item["symbol"])
+        if str(item.get("action") or "").lower() == "sell":
+            sellable_qty = _current_sellable_qty_from_balance(api, item["symbol"])
+            if sellable_qty < int(item["qty"]):
+                raise RuntimeError(
+                    f"증권사 매도가능수량 부족: 요청 {int(item['qty'])}주 / "
+                    f"최신 확인 {sellable_qty}주"
+                )
         submission_started = True
         result = api.place_order(item["symbol"], item["action"], item["price"], item["qty"])
         if result.get("rt_cd") != "0" and _is_tick_size_error(result):
