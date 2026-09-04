@@ -4136,6 +4136,64 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 관심 종목 수동 추가 폼 바인딩
     const addWatchlistForm = document.getElementById('form-watchlist-add');
+    const watchlistStockSearch = document.getElementById('watchlist-stock-search');
+    const watchlistStockResults = document.getElementById('watchlist-stock-search-results');
+    let watchlistSearchTimer = null;
+    let selectedWatchlistSymbol = '';
+
+    function closeWatchlistStockResults() {
+        if (watchlistStockResults) {
+            watchlistStockResults.hidden = true;
+            watchlistStockResults.innerHTML = '';
+        }
+        if (watchlistStockSearch) watchlistStockSearch.setAttribute('aria-expanded', 'false');
+    }
+
+    function selectWatchlistStock(result) {
+        selectedWatchlistSymbol = String(result.symbol || '');
+        watchlistStockSearch.value = `${result.name} (${selectedWatchlistSymbol})`;
+        watchlistStockSearch.dataset.symbol = selectedWatchlistSymbol;
+        closeWatchlistStockResults();
+    }
+
+    async function searchWatchlistStocks(query) {
+        const requestedQuery = query.trim();
+        if (!watchlistStockResults || requestedQuery.length < 1) {
+            closeWatchlistStockResults();
+            return;
+        }
+        try {
+            const data = await fetchJson(`/api/stocks/search?q=${encodeURIComponent(requestedQuery)}&limit=20`);
+            if (watchlistStockSearch.value.trim() !== requestedQuery) return;
+            const results = data.results || [];
+            watchlistStockResults.innerHTML = results.length
+                ? results.map((item, index) => `<button type="button" role="option" data-index="${index}"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.symbol)} · ${escapeHtml(item.market || '국내')} · ${escapeHtml(item.sector || '미분류')}</span></button>`).join('')
+                : '<span class="watchlist-stock-search-empty">일치하는 종목이 없습니다.</span>';
+            watchlistStockResults.hidden = false;
+            watchlistStockSearch.setAttribute('aria-expanded', 'true');
+            watchlistStockResults.querySelectorAll('button[data-index]').forEach((button) => {
+                button.addEventListener('click', () => selectWatchlistStock(results[Number(button.dataset.index)]));
+            });
+        } catch (err) {
+            closeWatchlistStockResults();
+            setStatus(`종목 검색 실패: ${err.message}`);
+        }
+    }
+
+    if (watchlistStockSearch) {
+        watchlistStockSearch.addEventListener('input', () => {
+            selectedWatchlistSymbol = '';
+            delete watchlistStockSearch.dataset.symbol;
+            clearTimeout(watchlistSearchTimer);
+            watchlistSearchTimer = setTimeout(() => searchWatchlistStocks(watchlistStockSearch.value), 200);
+        });
+        watchlistStockSearch.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closeWatchlistStockResults();
+        });
+        document.addEventListener('click', (event) => {
+            if (!addWatchlistForm?.contains(event.target)) closeWatchlistStockResults();
+        });
+    }
     if (addWatchlistForm) {
         addWatchlistForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -4144,7 +4202,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const formData = new FormData(addWatchlistForm);
             const rawVal = formData.get('watchlist_code');
-            const symbol = rawVal.trim ? rawVal.trim() : rawVal;
+            const typedValue = rawVal.trim ? rawVal.trim() : rawVal;
+            const symbol = selectedWatchlistSymbol || (/^\d{6}$/.test(typedValue) ? typedValue : '');
+            if (!symbol) {
+                setStatus('검색 결과에서 종목을 선택하거나 6자리 종목코드를 입력해 주세요.');
+                setButtonBusy(submitBtn, false);
+                return;
+            }
             
             try {
                 const strategyId = getActiveStrategyId();
@@ -4154,6 +4218,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 setStatus(`관심 종목에 성공적으로 추가되었습니다: ${res.name} (${res.symbol})`, true);
                 addWatchlistForm.reset();
+                selectedWatchlistSymbol = '';
+                delete watchlistStockSearch.dataset.symbol;
+                closeWatchlistStockResults();
                 await renderWatchlist();
             } catch (err) {
                 setStatus(`관심 종목 추가 실패: ${err.message}`);

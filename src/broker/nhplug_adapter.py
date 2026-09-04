@@ -15,6 +15,10 @@ def _num(value: Any) -> float:
 
 def _int(value: Any) -> int: return int(_num(value))
 
+def _market_cap_won(value: Any) -> float:
+    """Convert NHPlug hts_avls (억원) to the application's KRW contract."""
+    return _num(value) * 100_000_000
+
 def _whole(value: Any) -> str:
     """Serialize broker numeric values without a trailing ``.0``."""
     return str(int(round(_num(value))))
@@ -134,7 +138,7 @@ class NHPlugBrokerAdapter:
             return self.read_fallback.fetch_quote(symbol)
         row = _out(page) if isinstance(_out(page), Mapping) else {}
         return Quote(symbol, _num(row.get("stck_prpr")), _num(row.get("askp1") or row.get("askp")),
-                     _num(row.get("bidp1") or row.get("bidp")), _num(row.get("hts_avls")), raw=row)
+                     _num(row.get("bidp1") or row.get("bidp")), _market_cap_won(row.get("hts_avls")), raw=row)
 
     def fetch_daily_bars(self, symbol: str, count: int = 60) -> list[DailyBar]:
         try:

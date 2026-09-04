@@ -1,5 +1,7 @@
 """Analysis and strategy HTTP handlers."""
 
+from fastapi import Query
+
 from src.dashboard.routes.compat_router import CompatRouter, refresh_dependencies
 from src.dashboard.routes import stock as _stock
 
@@ -1106,6 +1108,16 @@ def get_watchlist(strategy_id: str | None = None):
             "sector_count": len(sector_counts),
             "sectors": sector_summary,
         },
+    }
+
+
+@router.get("/api/stocks/search")
+def search_stocks(q: str = Query(min_length=1, max_length=80), limit: int = 20):
+    from src.market_metadata import search_kr_stocks
+
+    return {
+        "query": q.strip(),
+        "results": search_kr_stocks(q, limit=limit),
     }
 
 

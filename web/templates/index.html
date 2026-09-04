@@ -1559,8 +1559,15 @@
                     <div class="watchlist-manual-controls">
                         <!-- 수동 추가 폼 -->
                         <form id="form-watchlist-add" class="watchlist-add-form">
-                            <span>수동 종목 코드 추가</span>
-                            <input type="text" name="watchlist_code" placeholder="예: 005930" required maxlength="6">
+                            <span>종목 검색·추가</span>
+                            <div class="watchlist-stock-search">
+                                <input type="search" id="watchlist-stock-search" name="watchlist_code"
+                                    placeholder="종목명 또는 코드 (예: 삼성전자)" required autocomplete="off"
+                                    aria-label="관심종목 종목명 또는 코드 검색" aria-controls="watchlist-stock-search-results"
+                                    aria-expanded="false">
+                                <div id="watchlist-stock-search-results" class="watchlist-stock-search-results"
+                                    role="listbox" hidden></div>
+                            </div>
                             <button type="submit">추가</button>
                         </form>
 
@@ -2278,7 +2285,7 @@
     <script src="/static/js/dashboard-scheduler-summary.js?v=1"></script>
     <script src="/static/js/dashboard-strategy-analysis.js?v=2"></script>
     <script src="/static/js/dashboard-strategy-preview-screen.js?v=2"></script>
-    <script src="/static/js/app.js?v=75"></script>
+    <script src="/static/js/app.js?v=76"></script>
 
     <!-- Plunge Bounce Strategy Scripts -->
     <script>

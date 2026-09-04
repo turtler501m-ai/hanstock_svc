@@ -83,9 +83,12 @@ class BrokerContractTests(unittest.TestCase):
 
     def test_namuh_quote_contract(self):
         client = Mock()
-        client.post.return_value = {"Output_0": {"iem_cd": "005930", "stck_prpr": "71000"}}
+        client.post.return_value = {"Output_0": {
+            "iem_cd": "005930", "stck_prpr": "71000", "hts_avls": "292200",
+        }}
         quote = NHPlugBrokerAdapter(client).fetch_quote("005930")
         self.assertEqual(quote.current_price, 71000)
+        self.assertEqual(quote.market_cap, 29_220_000_000_000)
 
     def test_namuh_cancel_sends_numeric_market_order_number(self):
         client = Mock()

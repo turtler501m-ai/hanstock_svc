@@ -20,6 +20,9 @@ PLACEHOLDER_SECTORS = {
     "미분류",
     "Unknown",
 }
+STOCK_SEARCH_ALIASES = {
+    "010120": ("LS ELECTRIC", "LS일렉트릭"),
+}
 
 
 def normalize_kr_symbol(symbol: Any) -> str:
@@ -89,3 +92,49 @@ def resolve_stock_sector(symbol: Any, fallback: Any = None) -> str:
     if fallback_sector and not is_placeholder_sector(fallback_sector):
         return fallback_sector
     return "미분류"
+
+
+def search_kr_stocks(query: Any, limit: int = 20) -> list[dict[str, Any]]:
+    """Search checked-in KRX metadata by a partial name or symbol."""
+    needle = str(query or "").strip().casefold()
+    if not needle:
+        return []
+    safe_limit = max(1, min(int(limit or 20), 50))
+    matches: list[tuple[tuple[int, int, str, str], dict[str, Any]]] = []
+    for symbol, item in load_kr_stock_metadata().items():
+        # The existing watchlist/order contract accepts six-digit domestic
+        # symbols only. Do not offer newer alphanumeric metadata entries that
+        # the add endpoint would immediately reject.
+        if not symbol.isdigit() or len(symbol) != 6:
+            continue
+        name = str(item.get("name") or "").strip()
+        symbol_key = symbol.casefold()
+        name_key = name.casefold()
+        aliases = tuple(
+            str(alias).strip() for alias in (
+                *STOCK_SEARCH_ALIASES.get(symbol, ()),
+                *(item.get("aliases") or ()),
+            ) if str(alias).strip()
+        )
+        alias_keys = tuple(alias.casefold() for alias in aliases)
+        if (
+            needle not in symbol_key
+            and needle not in name_key
+            and not any(needle in alias for alias in alias_keys)
+        ):
+            continue
+        rank = (
+            0 if needle in {symbol_key, name_key, *alias_keys} else 1,
+            0 if symbol_key.startswith(needle) or name_key.startswith(needle)
+            or any(alias.startswith(needle) for alias in alias_keys) else 1,
+            name_key,
+            symbol_key,
+        )
+        matches.append((rank, {
+            "symbol": symbol,
+            "name": name or symbol,
+            "market": str(item.get("market") or "").strip(),
+            "sector": resolve_stock_sector(symbol, item.get("sector")),
+        }))
+    matches.sort(key=lambda row: row[0])
+    return [row for _, row in matches[:safe_limit]]
