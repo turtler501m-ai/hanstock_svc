@@ -214,14 +214,16 @@ def load_watchlist_data() -> dict:
     try:
         init_db()
         with connect_db() as conn:
-            c = conn.execute("SELECT symbol, name FROM watchlist ORDER BY symbol ASC")
+            c = conn.execute("SELECT symbol, name, source FROM watchlist ORDER BY symbol ASC")
             rows = c.fetchall()
             symbols = [row[0] for row in rows]
             names = {}
+            sources = {}
             name_updates: list[tuple[str, str]] = []
             for row in rows:
                 symbol = str(row[0] or "").strip()
                 stored_name = str(row[1] or "").strip() if len(row) > 1 else ""
+                sources[symbol] = str(row[2] or "manual").strip().lower() if len(row) > 2 else "manual"
                 resolved_name = resolve_stock_name(symbol, stored_name)
                 names[symbol] = resolved_name
                 if symbol and resolved_name != stored_name and not is_placeholder_stock_name(resolved_name, symbol):
@@ -274,6 +276,7 @@ def load_watchlist_data() -> dict:
             return {
                 "symbols": symbols,
                 "names": names,
+                "sources": sources,
                 "ai_auto_add": ai_auto_add,
                 "ai_auto_add_threshold": ai_auto_add_threshold,
                 "policy": policy,
@@ -283,6 +286,7 @@ def load_watchlist_data() -> dict:
         return {
             "symbols": KOSPI_UNIVERSE,
             "names": {s: resolve_stock_name(s, STOCK_NAMES.get(s, "우량 종목")) for s in KOSPI_UNIVERSE},
+            "sources": {s: "manual" for s in KOSPI_UNIVERSE},
             "ai_auto_add": False,
             "ai_auto_add_threshold": 3.0,
             "policy": normalize_watchlist_policy(),
@@ -316,6 +320,7 @@ def save_watchlist_data(data: dict) -> None:
                 )
             
             names_by_symbol = data.get("names", {}) if isinstance(data.get("names"), dict) else {}
+            sources_by_symbol = data.get("sources", {}) if isinstance(data.get("sources"), dict) else {}
             if "symbols" in data:
                 conn.execute("DELETE FROM watchlist")
                 ts = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
@@ -323,8 +328,8 @@ def save_watchlist_data(data: dict) -> None:
                     fallback_name = names_by_symbol.get(s) or STOCK_NAMES.get(s, "우량 종목")
                     name = resolve_stock_name(s, fallback_name)
                     conn.execute(
-                        "INSERT OR IGNORE INTO watchlist (symbol, name, created_at) VALUES (?, ?, ?)",
-                        (s, name, ts)
+                        "INSERT OR REPLACE INTO watchlist (symbol, name, source, created_at) VALUES (?, ?, ?, ?)",
+                        (s, name, str(sources_by_symbol.get(s) or "manual").strip().lower(), ts)
                     )
             conn.commit()
     except (sqlite3.Error, OSError, ValueError, TypeError) as e:

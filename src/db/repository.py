@@ -125,10 +125,12 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS watchlist (
                 symbol TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
+                source TEXT NOT NULL DEFAULT 'manual',
                 created_at TEXT NOT NULL
             )
             """
         )
+        _ensure_column(conn, "watchlist", "source", "TEXT NOT NULL DEFAULT 'manual'")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS watchlist_settings (

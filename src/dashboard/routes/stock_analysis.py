@@ -1021,6 +1021,7 @@ def get_watchlist(strategy_id: str | None = None):
     data = load_watchlist_data()
     policy = normalize_watchlist_policy(data.get("policy"))
     names_by_symbol = data.get("names", {}) if isinstance(data.get("names"), dict) else {}
+    sources_by_symbol = data.get("sources", {}) if isinstance(data.get("sources"), dict) else {}
     inherited = False
     if strategy_id:
         from src.db.repository import load_strategy_universe_symbols
@@ -1044,6 +1045,14 @@ def get_watchlist(strategy_id: str | None = None):
         extra = get_watchlist_extra_info(code)
         stored_name = str(names_by_symbol.get(code) or "").strip()
         static_name = STOCK_NAMES.get(code)
+        if extra["price"] is None:
+            try:
+                quote = _get_api().get_quote(code)
+                if float(quote.get("current") or 0) > 0:
+                    extra["price"] = quote["current"]
+                    extra["updated_at"] = trader.datetime.now(trader.KST).isoformat()
+            except (DashboardOperationError, RuntimeError, TypeError, ValueError, OSError):
+                pass
         sector = resolve_stock_sector(code, STOCK_SECTORS.get(code)) or "미분류"
         sector_counts[sector] += 1
         price = extra["price"]
@@ -1079,6 +1088,7 @@ def get_watchlist(strategy_id: str | None = None):
             "updated_at": extra["updated_at"],
             "policy_status": policy_status,
             "policy_reason": policy_reason,
+            "source": str(sources_by_symbol.get(code) or "manual").lower(),
         })
     total_count = len(symbols_detail)
     sector_summary = [
@@ -1165,6 +1175,7 @@ def add_to_watchlist(payload: WatchlistAddPayload):
         raise HTTPException(status_code=400, detail="이미 관심목록에 등록되어 있는 종목입니다.")
 
     data["symbols"].append(code)
+    data.setdefault("sources", {})[code] = "manual"
     save_watchlist_data(data)
     sync_watchlist_runtime()
 

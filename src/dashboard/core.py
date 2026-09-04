@@ -1122,6 +1122,7 @@ def _sync_watchlist_from_scan_result(
         keep_threshold = add_threshold
     symbols = list(watchlist_data.get("symbols", []))
     symbol_set = set(symbols)
+    sources = watchlist_data.setdefault("sources", {})
     scanned_rows = scan_result.get("scan_summary") or scan_result.get("candidates") or []
     candidates = scan_result.get("candidates") or []
     policy = normalize_watchlist_policy(watchlist_data.get("policy"))
@@ -1164,6 +1165,7 @@ def _sync_watchlist_from_scan_result(
             continue
         symbols.append(symbol)
         symbol_set.add(symbol)
+        sources[symbol] = "auto"
         added_symbols.append({
             "symbol": symbol,
             "name": cand.get("name") or symbol,
@@ -1174,6 +1176,15 @@ def _sync_watchlist_from_scan_result(
     # registered symbol". Keep explicit registrations stable across scheduled
     # scans; pruning must be an explicit user action.
     removed_symbols = []
+    for symbol in list(symbols):
+        if str(sources.get(symbol) or "manual").lower() != "auto":
+            continue
+        if symbol not in score_by_symbol or score_by_symbol[symbol] >= keep_threshold:
+            continue
+        symbols.remove(symbol)
+        symbol_set.discard(symbol)
+        sources.pop(symbol, None)
+        removed_symbols.append(symbol)
     watchlist_data["symbols"] = symbols
     return {
         "changed": bool(added_symbols or removed_symbols),
