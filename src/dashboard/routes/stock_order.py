@@ -1810,6 +1810,26 @@ def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
             """,
             (trader.config.trading_env, trader.config.trading_env),
         ).fetchall()
+        unified_repair_refs = []
+
+        # A previous sync may have corrected the legacy row before the
+        # unified-ledger mirror was deployed. Revisit those rows idempotently.
+        for row in confirmed_rows:
+            item = dict(row)
+            source_approval_id = _to_int(item.get("source_approval_id"))
+            if (
+                source_approval_id > 0
+                and str(item.get("order_status") or "") == "reconciled"
+                and _to_int(item.get("filled_qty")) > 0
+            ):
+                unified_repair_refs.append({
+                    "approval_id": source_approval_id,
+                    "symbol": str(item.get("symbol") or ""),
+                    "qty": _to_int(item.get("filled_qty")),
+                    "price": _to_int(item.get("filled_price")) or _to_int(item.get("price")),
+                    "broker_order_id": item.get("broker_order_id") or "",
+                    "ts": item.get("ts") or "",
+                })
 
         positions = {}
         average_costs = {}
@@ -1843,7 +1863,6 @@ def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
             groups.setdefault(key, []).append(item)
 
         reconciled_items = []
-        unified_repair_refs = []
         for (symbol, action), rows in groups.items():
             local_qty = positions.get(symbol, 0)
             broker_holding = current_holdings.get(symbol) or {}
