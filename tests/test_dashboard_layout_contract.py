@@ -48,6 +48,8 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("outline: 2px solid #f97316 !important", STYLE)
         self.assertIn("watchlist-data-card", TEMPLATE)
         self.assertIn(".watchlist-table-scroll", STYLE)
+        self.assertIn("overflow: auto", STYLE)
+        self.assertIn("min-width: 190px", STYLE)
         self.assertIn(".ai-strategy-create-form", STYLE)
         self.assertNotIn('id="form-add-ai-strategy" style=', TEMPLATE)
 
