@@ -1843,6 +1843,7 @@ def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
             groups.setdefault(key, []).append(item)
 
         reconciled_items = []
+        unified_repair_refs = []
         for (symbol, action), rows in groups.items():
             local_qty = positions.get(symbol, 0)
             broker_holding = current_holdings.get(symbol) or {}
@@ -1905,10 +1906,94 @@ def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
                     "order_status": "reconciled",
                     "message": message,
                 })
+                source_approval_id = _to_int(row.get("source_approval_id"))
+                if source_approval_id > 0:
+                    unified_repair_refs.append({
+                        "approval_id": source_approval_id,
+                        "symbol": symbol,
+                        "qty": qty,
+                        "price": price,
+                        "broker_order_id": row.get("broker_order_id") or "",
+                        "ts": row.get("ts") or "",
+                    })
+
+    # The legacy projection and approval were repaired above. Mirror the same
+    # broker-confirmed fill into the unified ledger so positions and health use
+    # one source of truth on the next reconciliation pass.
+    if unified_repair_refs:
+        from src.application.orders.legacy_bridge import ensure_approval_order
+        from src.application.orders.repository import OrderLedgerRepository
+
+        ledger = OrderLedgerRepository(trader.connect_db)
+        for repair in unified_repair_refs:
+            with trader.connect_db() as conn:
+                conn.row_factory = sqlite3.Row
+                approval_row = conn.execute(
+                    "SELECT * FROM approvals WHERE id=?", (repair["approval_id"],)
+                ).fetchone()
+            if not approval_row:
+                continue
+            order = ensure_approval_order(trader.connect_db, dict(approval_row))
+            if not order:
+                continue
+            try:
+                ledger.reconcile_snapshot(
+                    int(order["id"]),
+                    status="filled",
+                    cumulative_filled_qty=int(repair["qty"]),
+                    average_fill_price=float(repair["price"] or 0),
+                    broker_order_id=str(repair["broker_order_id"] or ""),
+                    broker_order_date=str(repair.get("ts") or "")[:10],
+                    raw={"source": "balance_response_reconciliation"},
+                )
+            except (RuntimeError, ValueError) as exc:
+                logger.warning(
+                    "[RECONCILIATION] unified fill mirror skipped approval_id=%s: %s",
+                    repair["approval_id"], exc,
+                )
+
+    closed_issue_count = 0
+    from src.application.orders.identity import broker_account_scope_key
+    account_key = broker_account_scope_key("KR")
+    with trader.connect_db() as conn:
+        conn.row_factory = sqlite3.Row
+        open_rows = conn.execute(
+            "SELECT * FROM reconciliation_adjustments WHERE status='open' "
+            "ORDER BY symbol, id DESC"
+        ).fetchall()
+        grouped = {}
+        for row in open_rows:
+            grouped.setdefault(str(row["symbol"] or ""), []).append(row)
+        now = trader.datetime.now(trader.KST).strftime("%Y-%m-%d %H:%M:%S")
+        for symbol, rows in grouped.items():
+            live_qty = _to_int((current_holdings.get(symbol) or {}).get("qty"))
+            position_row = conn.execute(
+                "SELECT quantity FROM positions WHERE account_key=? AND market='KR' AND symbol=?",
+                (account_key, symbol),
+            ).fetchone()
+            if not position_row or _to_int(position_row[0]) != live_qty:
+                continue
+            for index, row in enumerate(rows):
+                target = "resolved" if index == 0 and _to_int(row["broker_qty"]) == live_qty else "superseded"
+                conn.execute(
+                    """UPDATE reconciliation_adjustments
+                       SET status=?, reviewed_by='system:broker-confirmed-fill',
+                           reviewed_at=?, reason=reason || ?
+                       WHERE id=? AND status='open'""",
+                    (
+                        target, now,
+                        " | automatically resolved by broker-confirmed fill"
+                        if target == "resolved"
+                        else " | superseded by broker-confirmed current balance",
+                        int(row["id"]),
+                    ),
+                )
+                closed_issue_count += 1
 
     return {
         "ok": True,
         "reconciled_count": len(reconciled_items),
+        "closed_issue_count": closed_issue_count,
         "items": reconciled_items,
     }
 
@@ -2341,6 +2426,7 @@ def _execute_trade_sync(*, days: int, run_id: str, started_at: str) -> dict:
             "history_imported_count": imported_count,
             "history_updated_count": updated_count,
             "response_loss_reconciled_count": response_loss_reconciliation["reconciled_count"],
+            "reconciliation_closed_count": response_loss_reconciliation.get("closed_issue_count", 0),
             "history_sync": history_sync,
             "history_error": history_error,
             "order_status_sync": order_status_sync,
