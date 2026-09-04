@@ -41,7 +41,7 @@ ALLOWED_TRANSITIONS = {
     "open": {"partial", "filled", "cancel_pending", "canceled", "rejected", "broker_unknown"},
     "partial": {"partial", "filled", "cancel_pending", "canceled", "broker_unknown"},
     "cancel_pending": {"partial", "filled", "canceled", "broker_unknown"},
-    "broker_unknown": {"submitted", "open", "partial", "filled", "canceled", "rejected"},
+    "broker_unknown": {"submitted", "open", "partial", "filled", "cancel_pending", "canceled", "rejected"},
     # A broker-confirmed fill may correct a locally misclassified submission.
     # This is only reachable through reconcile_snapshot, which materializes
     # broker evidence and an auditable fill event.
