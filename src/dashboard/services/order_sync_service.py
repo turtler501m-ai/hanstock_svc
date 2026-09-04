@@ -514,10 +514,16 @@ def _sync_order_status_from_history(
         except ValueError as exc:
             terminal_status = str(trade.get("order_status") or "").lower()
             is_terminal_regression = (
-                terminal_status in TERMINAL_ORDER_STATUSES
-                and (
+                (
                     "broker snapshot cannot regress terminal order" in str(exc)
                     or "invalid broker order transition" in str(exc)
+                )
+                and (
+                    terminal_status in TERMINAL_ORDER_STATUSES
+                    # The legacy trade mirror can still say submitted while
+                    # the linked unified order is already terminal. In that
+                    # case the repository error is authoritative as well.
+                    or "broker snapshot cannot regress terminal order" in str(exc)
                 )
             )
             if not is_terminal_regression:
