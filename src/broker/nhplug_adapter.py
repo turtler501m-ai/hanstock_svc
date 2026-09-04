@@ -27,6 +27,37 @@ def _out(page: Any, key: str = "Output_0") -> Any:
     return getattr(page, "data", page).get(key, [])
 
 
+def _volume_scores_from_frame(frame: Any, symbols: list[str]) -> list[tuple[float, str]]:
+    """Extract latest volumes from a yfinance batch frame."""
+    if frame is None or getattr(frame, "empty", True):
+        return []
+    try:
+        volumes = frame["Volume"]
+    except (KeyError, TypeError):
+        return []
+    if getattr(volumes, "ndim", 1) == 1:
+        volumes = volumes.to_frame(name=symbols[0] if symbols else "")
+    scores = []
+    for symbol in symbols:
+        ticker = f"{symbol}.KS"
+        try:
+            column = ticker if ticker in volumes.columns else symbol
+            value = _num(volumes[column].dropna().iloc[-1])
+        except (KeyError, IndexError, TypeError):
+            continue
+        if value > 0:
+            scores.append((value, symbol))
+    scores.sort(key=lambda item: (-item[0], item[1]))
+    return scores
+
+
+def _volume_rank_from_frame(frame: Any, symbols: list[str], top_n: int) -> list[str]:
+    """Extract a latest-volume ranking from a yfinance batch frame."""
+    scores = _volume_scores_from_frame(frame, symbols)
+    scores.sort(key=lambda item: (-item[0], item[1]))
+    return [symbol for _, symbol in scores[:max(1, int(top_n))]]
+
+
 class NHPlugBrokerAdapter:
     broker_name = "namuh"
 
@@ -142,7 +173,28 @@ class NHPlugBrokerAdapter:
             return result
 
     def fetch_volume_rank(self, top_n: int = 50) -> list[str]:
-        return []  # NHPLUG has no direct equivalent to the former ranking endpoint.
+        """Return a read-only KRX volume ranking when NHPLUG has no rank API."""
+        # NHPLUG does not expose the former volume-rank endpoint.  Use the
+        # same KOSPI universe used by the strategy and download it in batches
+        # so ranking does not create one broker request per symbol.
+        try:
+            import yfinance as yf
+            from src.strategy.seven_split import KOSPI_UNIVERSE
+
+            symbols = list(dict.fromkeys(str(symbol).zfill(6) for symbol in KOSPI_UNIVERSE))
+            scores: list[tuple[float, str]] = []
+            for start in range(0, len(symbols), 50):
+                batch = symbols[start:start + 50]
+                frame = yf.download(
+                    [f"{symbol}.KS" for symbol in batch],
+                    period="5d", interval="1d", progress=False,
+                    auto_adjust=False, group_by="column", threads=False,
+                )
+                scores.extend(_volume_scores_from_frame(frame, batch))
+            scores.sort(key=lambda item: (-item[0], item[1]))
+            return [symbol for _, symbol in scores[:max(1, int(top_n))]]
+        except Exception:
+            return []
 
     def _order(self, path: str, request: OrderRequest | ReviseOrderRequest | CancelOrderRequest) -> OrderResult:
         if not self.order_submission_enabled:

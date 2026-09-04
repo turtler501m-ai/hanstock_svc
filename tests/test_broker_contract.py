@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 from src.broker.base import DomesticStockBroker
 from src.broker.factory import create_domestic_stock_broker, selected_domestic_stock_broker
-from src.broker.nhplug_adapter import NHPlugBrokerAdapter
+from src.broker.nhplug_adapter import NHPlugBrokerAdapter, _volume_rank_from_frame
 from src.broker.models import CancelOrderRequest, OrderRequest, OrderSide, OrderStatus
 from src.broker.nhplug_client import NHPlugRestClient
 
@@ -98,6 +98,19 @@ class BrokerContractTests(unittest.TestCase):
         self.assertEqual(body["org_mkt_orr_no"], 548)
         self.assertEqual(body["all_pat_dit_cd"], "1")
         self.assertNotIn("cor_qty", body)
+
+    def test_volume_rank_extracts_latest_batch_volumes(self):
+        import pandas as pd
+
+        frame = pd.DataFrame({
+            ("Volume", "000660.KS"): [100, 900],
+            ("Volume", "005930.KS"): [800, 200],
+        })
+        frame.columns = pd.MultiIndex.from_tuples(frame.columns)
+        self.assertEqual(
+            ["000660", "005930"],
+            _volume_rank_from_frame(frame, ["000660", "005930"], 2),
+        )
 
     def test_namuh_trade_history_accepts_mock_output_zero(self):
         client = Mock()
