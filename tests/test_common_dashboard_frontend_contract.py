@@ -130,8 +130,10 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn('id="holding-broker-response-count"', INDEX_HTML)
         self.assertIn('<details class="holding-broker-response-detail">', INDEX_HTML)
         self.assertNotIn('<section class="card glass holding-broker-response-panel">', INDEX_HTML)
-        self.assertIn('<th>구분</th><th>항목</th><th>값</th><th>API 필드</th>', INDEX_HTML)
+        self.assertIn('<th>구분</th><th>항목</th><th>값</th><th>설명</th><th>API 필드</th>', INDEX_HTML)
         self.assertIn("renderBrokerResponse(balance.broker_response", FRONTEND_JS)
+        self.assertIn("brokerFieldDescriptions", FRONTEND_JS)
+        self.assertIn("계좌 자산유형 상세코드", FRONTEND_JS)
 
     def test_runtime_card_displays_operational_and_new_buy_status(self):
         self.assertIn('id="runtime-operational-status"', INDEX_HTML)

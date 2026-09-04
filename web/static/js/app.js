@@ -812,7 +812,7 @@ async function renderBalance() {
         setStatus(`계좌 API 오류: ${err.message}`);
         setTableMessage('#table-holdings tbody', 10, err.message);
         setTableMessage('#table-holding-strategies tbody', 7, err.message);
-        setTableMessage('#table-holding-broker-response tbody', 4, err.message);
+        setTableMessage('#table-holding-broker-response tbody', 5, err.message);
     }
 }
 

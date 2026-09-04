@@ -1943,6 +1943,13 @@ button:not(:disabled):active {
     white-space: pre-wrap;
 }
 
+#table-holding-broker-response .broker-response-description {
+    min-width: 280px;
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
 .panel-chart {
     grid-column: 2 / 3;
     grid-row: 1 / 2;
