@@ -513,17 +513,24 @@ def _sync_order_status_from_history(
             _mirror_trade_to_unified_ledger(snapshot, trade)
         except ValueError as exc:
             terminal_status = str(trade.get("order_status") or "").lower()
+            error_text = str(exc)
+            transition_text = error_text.rsplit(": ", 1)[-1]
+            previous_transition_status = transition_text.split(" -> ", 1)[0].strip().lower()
             is_terminal_regression = (
                 (
-                    "broker snapshot cannot regress terminal order" in str(exc)
-                    or "invalid broker order transition" in str(exc)
+                    "broker snapshot cannot regress terminal order" in error_text
+                    or (
+                        "invalid broker order transition" in error_text
+                        and previous_transition_status in TERMINAL_ORDER_STATUSES
+                    )
                 )
                 and (
                     terminal_status in TERMINAL_ORDER_STATUSES
                     # The legacy trade mirror can still say submitted while
                     # the linked unified order is already terminal. In that
                     # case the repository error is authoritative as well.
-                    or "broker snapshot cannot regress terminal order" in str(exc)
+                    or "broker snapshot cannot regress terminal order" in error_text
+                    or previous_transition_status in TERMINAL_ORDER_STATUSES
                 )
             )
             if not is_terminal_regression:
