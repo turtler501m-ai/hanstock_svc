@@ -86,6 +86,18 @@ class MarketRegimeBackendTests(unittest.TestCase):
         self.assertEqual(set(indices), {"kospi", "kosdaq"})
         self.assertEqual(breadth.valid_count, 2)
 
+    def test_collector_normalizes_namuh_short_session_date(self):
+        broker = FakeBroker()
+
+        def short_date_bars(symbol, count=60):
+            return [Bar("26/09/04", 100 + i) for i in range(80)]
+
+        broker.fetch_daily_bars = short_date_bars
+        collector = NamuhKrCollector(broker, universe=("005930",))
+        _, breadth = collector.collect()
+        self.assertEqual(breadth.session_date, "2026-09-04")
+        self.assertEqual(breadth.valid_count, 1)
+
     def test_service_refresh_current_history_and_diagnostics(self):
         broker, repo = FakeBroker(), MemoryRepository()
         collector = NamuhKrCollector(broker, universe=tuple(f"{i:06d}" for i in range(60)))

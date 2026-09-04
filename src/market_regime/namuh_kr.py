@@ -27,6 +27,19 @@ def _value(row: Any, name: str) -> Any:
     return row.get(name) if isinstance(row, dict) else getattr(row, name)
 
 
+def _normalize_session_date(value: Any) -> str:
+    """Normalize Namuh/Yahoo session dates to one comparable ISO format."""
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    for fmt in ("%Y-%m-%d", "%Y%m%d", "%y/%m/%d", "%Y/%m/%d", "%y-%m-%d"):
+        try:
+            return datetime.strptime(raw[:10], fmt).date().isoformat()
+        except ValueError:
+            continue
+    return raw[:10]
+
+
 def _returns(closes: list[float]) -> list[float]:
     return [closes[i] / closes[i - 1] - 1 for i in range(1, len(closes)) if closes[i - 1] > 0]
 
@@ -40,7 +53,7 @@ def _vol(values: list[float]) -> float:
 
 
 def build_index_features(code: str, rows: list[Any]) -> IndexFeatures:
-    normalized = sorted(rows, key=lambda row: str(_value(row, "date")))
+    normalized = sorted(rows, key=lambda row: _normalize_session_date(_value(row, "date")))
     closes = [float(_value(row, "close" if isinstance(row, dict) else "close_price")) for row in normalized]
     if len(closes) < 200 or any(not math.isfinite(v) or v <= 0 for v in closes):
         raise ValueError("index history requires at least 200 positive closes")
@@ -50,7 +63,7 @@ def build_index_features(code: str, rows: list[Any]) -> IndexFeatures:
     if vol120 <= 0:
         raise ValueError("baseline volatility must be positive")
     return IndexFeatures(
-        code=code, session_date=str(_value(normalized[-1], "date")), observations=len(closes), close=current,
+        code=code, session_date=_normalize_session_date(_value(normalized[-1], "date")), observations=len(closes), close=current,
         sma20=sum(closes[-20:]) / 20, sma60=sum(closes[-60:]) / 60, sma200=sum(closes[-200:]) / 200,
         return_5d=current / closes[-6] - 1, return_20d=current / closes[-21] - 1,
         drawdown_20d=current / max(closes[-20:]) - 1, volatility_20d=vol20,
@@ -80,7 +93,8 @@ class NamuhKrCollector:
                 if len(closes) < 60 or min(closes) <= 0:
                     raise ValueError("fewer than 60 valid bars")
                 stats.append((closes[-1] > closes[-2], closes[-1] > sum(closes[-20:]) / 20,
-                              closes[-1] > sum(closes[-60:]) / 60, str(_value(rows[-1], "date"))))
+                              closes[-1] > sum(closes[-60:]) / 60,
+                              _normalize_session_date(_value(rows[-1], "date"))))
             except Exception as exc:
                 failures[symbol] = f"{type(exc).__name__}: {exc}"
         valid = len(stats)
