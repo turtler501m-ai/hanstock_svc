@@ -39,11 +39,30 @@ class NHPlugBrokerAdapter:
             raise ValueError("NHPLUG account is required")
 
     def fetch_balance(self) -> AccountBalance:
-        page = self.client.post("/krstock/inquiry/v1/balance", {
+        body = {
             "act_no": self.account, "bnc_bse_cd": "5", "ltg_aot_dit_cd": "9",
-            "aet_bse": "2", "qut_dit_cd": "UNT"})
-        summary = _out(page) if isinstance(_out(page), Mapping) else {}
-        rows = _rows(getattr(page, "data", page), "Output_1")
+            "aet_bse": "2", "qut_dit_cd": "UNT"}
+        pages = []
+        cts = cts_flag = ""
+        seen_cts = set()
+        for _ in range(20):
+            page = self.client.post(
+                "/krstock/inquiry/v1/balance", body, cts=cts, cts_flag=cts_flag
+            )
+            pages.append(page)
+            continuation = getattr(page, "continuation", {}) or {}
+            next_cts = str(continuation.get("cts") or "").strip()
+            next_flag = str(continuation.get("cts_flag") or "").strip()
+            if not next_cts or next_flag.upper() == "N" or next_cts in seen_cts:
+                break
+            seen_cts.add(next_cts)
+            cts, cts_flag = next_cts, next_flag
+        first = pages[0]
+        summary = _out(first) if isinstance(_out(first), Mapping) else {}
+        rows = []
+        for page in pages:
+            payload = getattr(page, "data", page)
+            rows.extend(_rows(payload, "Output_1"))
         holdings = tuple(
             self._holding(row)
             for row in rows

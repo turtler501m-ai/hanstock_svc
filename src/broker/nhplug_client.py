@@ -167,7 +167,7 @@ class NHPlugRestClient:
             return token
 
     def post(self, path: str, body: Mapping[str, Any] | None = None,
-             *, request_kind: str = "query") -> NHPlugPage:
+             *, request_kind: str = "query", cts: str = "", cts_flag: str = "") -> NHPlugPage:
         if request_kind not in {"query", "order"}:
             raise ValueError("request_kind must be 'query' or 'order'")
         with self._throttle_lock:
@@ -181,6 +181,10 @@ class NHPlugRestClient:
             "x-client-secret": self._app_secret,
             "content-type": "application/json;charset=UTF-8",
         }
+        if cts:
+            headers["cts"] = str(cts)
+        if cts_flag:
+            headers["cts_flag"] = str(cts_flag)
         payload = {"Input_0": dict(body or {})}
         response = self._session.post(f"{self.base_url}/{path.lstrip('/')}",
                                       json=payload, headers=headers, timeout=self.timeout)
