@@ -1,6 +1,7 @@
 """Normalize official NHPLUG domestic-stock responses to broker models."""
 
 from datetime import date, datetime, timedelta
+import logging
 from typing import Any, Mapping
 
 from src.broker.models import (AccountBalance, CancelOrderRequest, DailyBar, Holding,
@@ -60,6 +61,23 @@ def _volume_rank_from_frame(frame: Any, symbols: list[str], top_n: int) -> list[
     scores = _volume_scores_from_frame(frame, symbols)
     scores.sort(key=lambda item: (-item[0], item[1]))
     return [symbol for _, symbol in scores[:max(1, int(top_n))]]
+
+
+class _QuietYahooLogs:
+    """Suppress expected per-symbol Yahoo no-data errors in batch scans."""
+
+    def __enter__(self):
+        self._loggers = []
+        for name in ("yfinance", "yfinance.scrapers.history", "yfinance.multi"):
+            logger = logging.getLogger(name)
+            self._loggers.append((logger, logger.level))
+            logger.setLevel(logging.CRITICAL + 1)
+        return self
+
+    def __exit__(self, *_exc):
+        for logger, level in self._loggers:
+            logger.setLevel(level)
+        return False
 
 
 class NHPlugBrokerAdapter:
@@ -189,11 +207,12 @@ class NHPlugBrokerAdapter:
             scores: list[tuple[float, str]] = []
             for start in range(0, len(symbols), 50):
                 batch = symbols[start:start + 50]
-                frame = yf.download(
-                    [f"{symbol}.KS" for symbol in batch],
-                    period="5d", interval="1d", progress=False,
-                    auto_adjust=False, group_by="column", threads=False,
-                )
+                with _QuietYahooLogs():
+                    frame = yf.download(
+                        [f"{symbol}.KS" for symbol in batch],
+                        period="5d", interval="1d", progress=False,
+                        auto_adjust=False, group_by="column", threads=False,
+                    )
                 scores.extend(_volume_scores_from_frame(frame, batch))
             scores.sort(key=lambda item: (-item[0], item[1]))
             return [symbol for _, symbol in scores[:max(1, int(top_n))]]
