@@ -19,6 +19,13 @@ class StockOrderRouteStateTests(unittest.TestCase):
         finally:
             stock_order._trade_sync_thread = original_thread
 
+    def test_same_process_sync_run_is_not_marked_as_restart(self):
+        self.assertFalse(
+            stock_order._trade_sync_run_predates_process({
+                "started_at": "2099-01-01T00:00:00+09:00",
+            })
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

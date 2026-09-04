@@ -28,6 +28,19 @@ router = _CompatRouter(
 )
 _trade_sync_lock = threading.Lock()
 _trade_sync_thread: threading.Thread | None = None
+# Distinguish an orphaned pre-restart run from a same-process worker that is
+# still publishing its final result.
+_TRADE_SYNC_PROCESS_STARTED_EPOCH = time.time()
+
+
+def _trade_sync_run_predates_process(run: dict) -> bool:
+    try:
+        started_epoch = trader.datetime.fromisoformat(
+            str(run.get("started_at"))
+        ).timestamp()
+    except (TypeError, ValueError, OverflowError):
+        return True
+    return started_epoch < _TRADE_SYNC_PROCESS_STARTED_EPOCH
 
 _ATTRIBUTED_BALANCE_SYNC_REASON = "증권사 잔고 전략귀속 동기화"
 
@@ -2196,7 +2209,11 @@ def get_trade_sync_status():
             run_age = (trader.datetime.now(trader.KST) - started_at).total_seconds()
         except (TypeError, ValueError):
             run_age = startup_grace
-        if not thread_alive and run_age >= startup_grace:
+        if (
+            not thread_alive
+            and run_age >= startup_grace
+            and _trade_sync_run_predates_process(runs[0])
+        ):
             interrupted = {
                 **runs[0],
                 "status": "failed",
