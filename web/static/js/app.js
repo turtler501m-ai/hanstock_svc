@@ -1620,15 +1620,13 @@ function strategyExcludedRowsMarkup(rows) {
 
 function strategyManualBuyButton(row, verdict) {
     const symbol = String(row.ticker || row.symbol || '').trim();
-    const price = Number(row.limit_price || row.current_price || 0);
     const qty = Math.max(1, Number(row.planned_qty || 1));
-    if (!symbol || price <= 0) {
+    if (!symbol) {
         return '<button type="button" class="button-ghost" disabled>가격 없음</button>';
     }
     return `<button type="button" class="button-ghost strategy-manual-buy"
         data-symbol="${escapeHtml(symbol)}"
         data-name="${escapeHtml(row.name || symbol)}"
-        data-price="${price}"
         data-qty="${qty}"
         data-strategy-id="${escapeHtml(row.strategy_id || '')}"
         data-strategy-version="${Number(row.strategy_version || 0)}"
@@ -1637,18 +1635,55 @@ function strategyManualBuyButton(row, verdict) {
         data-reason="${escapeHtml((row.reasons || []).map(strategyReasonLabel).join(' · '))}">수동매수</button>`;
 }
 
-async function createStrategyLookupManualBuy(button) {
+async function createStrategyLookupMarketBuy(button) {
     const symbol = button.dataset.symbol || '';
     const name = button.dataset.name || symbol;
     const defaultQty = Math.max(1, Number(button.dataset.qty || 1));
-    const defaultPrice = Math.max(1, Number(button.dataset.price || 0));
+    const qtyText = window.prompt(`${name}(${symbol}) 수동 시장가 매수 수량`, String(defaultQty));
+    if (qtyText === null) return;
+    const qty = Number(qtyText);
+    if (!Number.isInteger(qty) || qty <= 0) {
+        setStatus('수량은 1 이상의 정수로 입력해야 합니다.');
+        return;
+    }
+    const verdict = button.dataset.verdict || 'unknown';
+    if (!window.confirm(
+        `${name}(${symbol}) ${qty.toLocaleString()}주를 시장가로 승인 대기에 등록할까요?\n\n` +
+        `분석 판정: ${verdict}\n분석 결과와 무관하게 수동 시장가 매수로 기록됩니다.`
+    )) return;
+    button.disabled = true;
+    try {
+        const result = await postJson('/api/strategy-lookup/manual-buy', {
+            symbol, name, qty, price: 0,
+            strategy_id: button.dataset.strategyId || 'manual_strategy',
+            strategy_version: Number(button.dataset.strategyVersion || 0) || null,
+            profile_hash: button.dataset.profileHash || '',
+            analysis_verdict: verdict,
+            reason: button.dataset.reason || '',
+            manual_override_acknowledged: true,
+        });
+        setStatus(`${name} 수동 시장가 매수 ${qty.toLocaleString()}주를 승인 대기에 등록했습니다.`, true);
+        showOrdersTab();
+        await renderApprovals();
+        return result;
+    } catch (error) {
+        setStatus(`수동 시장가 매수 등록 실패: ${error.message}`);
+        button.disabled = false;
+    }
+}
+
+async function createStrategyLookupManualBuy(button) {
+    return createStrategyLookupMarketBuy(button);
+
+    const symbol = button.dataset.symbol || '';
+    const name = button.dataset.name || symbol;
+    const defaultQty = Math.max(1, Number(button.dataset.qty || 1));
     const qtyText = window.prompt(`${name}(${symbol}) 수동 매수 수량`, String(defaultQty));
     if (qtyText === null) return;
     const priceText = window.prompt(`${name}(${symbol}) 지정가`, String(defaultPrice));
     if (priceText === null) return;
     const qty = Number(qtyText);
-    const price = Number(priceText);
-    if (!Number.isInteger(qty) || qty <= 0 || !Number.isInteger(price) || price <= 0) {
+    if (!Number.isInteger(qty) || qty <= 0) {
         setStatus('수량과 지정가는 1 이상의 정수로 입력해야 합니다.');
         return;
     }
@@ -1700,7 +1735,7 @@ function renderStrategyPreviewCards(results, strategies = []) {
         pill,
         reasonLabel: strategyReasonLabel,
         manualBuy: strategyManualBuyButton,
-        bindManualBuy: (container) => container.querySelectorAll('.strategy-manual-buy').forEach((button) => button.addEventListener('click', () => createStrategyLookupManualBuy(button))),
+        bindManualBuy: (container) => container.querySelectorAll('.strategy-manual-buy').forEach((button) => button.addEventListener('click', () => createStrategyLookupMarketBuy(button))),
         getSortKey: (id) => strategyAnalysisSortState.get(id) || 'score_desc',
         setSortKey: (id, value) => strategyAnalysisSortState.set(id, value),
     }, results, strategies);

@@ -1263,11 +1263,8 @@ def create_strategy_lookup_manual_buy(payload: dict = Body(...)):
             detail="manual_override_acknowledged=true is required",
         )
     qty = _to_int(payload.get("qty"))
-    price = _to_int(payload.get("price"))
     if qty <= 0:
         raise HTTPException(status_code=400, detail="qty must be greater than 0")
-    if price <= 0:
-        raise HTTPException(status_code=400, detail="price must be greater than 0")
 
     symbol = str(payload.get("symbol") or "").strip()
     if not symbol:
@@ -1284,7 +1281,9 @@ def create_strategy_lookup_manual_buy(payload: dict = Body(...)):
         "name": str(payload.get("name") or symbol),
         "action": "buy",
         "qty": qty,
-        "price": price,
+        # Strategy-diagnosis manual buys are always market orders. Ignore any
+        # stale/current price supplied by the browser.
+        "price": 0,
         "reason": reason,
         "source": "strategy_lookup_manual",
         "strategy_id": strategy_id or "manual_strategy",
@@ -1292,12 +1291,11 @@ def create_strategy_lookup_manual_buy(payload: dict = Body(...)):
         "profile_hash": payload.get("profile_hash"),
     })
     logger.warning(
-        "[MANUAL_BUY_OVERRIDE] approval_id={} symbol={} qty={} price={} "
+        "[MANUAL_BUY_OVERRIDE] approval_id={} symbol={} qty={} order_type=market "
         "strategy_id={} analysis_verdict={}",
         approval_id,
         symbol,
         qty,
-        price,
         strategy_id or "manual_strategy",
         verdict,
     )
