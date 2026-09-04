@@ -120,6 +120,12 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
         self.assertNotIn('<section class="card glass holding-broker-response-panel">', INDEX_HTML)
         self.assertIn('<th>구분</th><th>항목</th><th>값</th><th>API 필드</th>', INDEX_HTML)
         self.assertIn("renderBrokerResponse(balance.broker_response", FRONTEND_JS)
+
+    def test_runtime_card_displays_operational_and_new_buy_status(self):
+        self.assertIn('id="runtime-operational-status"', INDEX_HTML)
+        self.assertIn('id="runtime-new-buy-status"', INDEX_HTML)
+        self.assertIn("/api/operations/health", FRONTEND_JS)
+        self.assertIn("new_risk_allowed", FRONTEND_JS)
         self.assertIn("brokerFieldLabels", FRONTEND_JS)
         self.assertIn("await renderBalance()", APP_JS)
 

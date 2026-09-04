@@ -1082,6 +1082,23 @@ button:disabled {
     background: rgba(7, 16, 29, 0.34);
 }
 
+.runtime-grid .runtime-critical-item[data-state="danger"] {
+    border-color: rgba(239, 109, 115, 0.72);
+    background: rgba(127, 29, 29, 0.24);
+}
+
+.runtime-grid .runtime-critical-item[data-state="good"] {
+    border-color: rgba(34, 197, 94, 0.42);
+}
+
+.runtime-critical-item small {
+    display: block;
+    margin-top: 0.35rem;
+    color: #ffb4b8;
+    font-size: 0.7rem;
+    line-height: 1.3;
+}
+
 .runtime-grid strong {
     display: block;
     margin-top: 0.25rem;

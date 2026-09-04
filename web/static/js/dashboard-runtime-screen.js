@@ -1,7 +1,10 @@
 /* Runtime status screen rendering. Loaded before app.js. */
 (function (global) {
     async function renderRuntime(deps) {
-        const health = await deps.fetchJson('/api/health');
+        const [health, orderHealth] = await Promise.all([
+            deps.fetchJson('/api/health'),
+            deps.fetchJson('/api/operations/health'),
+        ]);
         const isReal = health.trading_env === 'real';
         const isLive = Boolean(health.real_orders_enabled);
         const canSubmit = Boolean(health.order_submission_enabled);
@@ -24,6 +27,26 @@
         setContextState('context-item-order', isLive ? 'danger' : (canSubmit ? 'good' : 'warn'));
         setContextState('context-item-approval', autoApproval ? 'warn' : 'good');
         deps.setText('runtime-env', isReal ? deps.labels.real : deps.labels.demo);
+        const operationalStatus = orderHealth.operational_status || 'unknown';
+        const operationalLabels = {
+            healthy: '정상', degraded: '주의', blocked: '차단', unknown: '확인 필요',
+        };
+        const operationalState = operationalStatus === 'healthy'
+            ? 'good' : (operationalStatus === 'degraded' ? 'warn' : 'danger');
+        const operationalEl = document.getElementById('runtime-operational-status');
+        if (operationalEl) {
+            operationalEl.innerHTML = deps.pill(operationalLabels[operationalStatus] || operationalLabels.unknown, operationalState === 'good' ? 'buy' : 'warn');
+        }
+        const newBuyAllowed = orderHealth.new_risk_allowed === true;
+        const newBuyItem = document.getElementById('runtime-new-buy-item');
+        const newBuyEl = document.getElementById('runtime-new-buy-status');
+        const newBuyReason = document.getElementById('runtime-new-buy-reason');
+        if (newBuyItem) newBuyItem.dataset.state = newBuyAllowed ? 'good' : 'danger';
+        if (newBuyEl) newBuyEl.innerHTML = deps.pill(newBuyAllowed ? '가능' : '차단', newBuyAllowed ? 'buy' : 'sell');
+        if (newBuyReason) {
+            const blockers = (orderHealth.blockers || []).map((item) => `${item.code} ${item.count}건`);
+            newBuyReason.textContent = newBuyAllowed ? '안전 조건 충족' : (blockers.join(', ') || '운영 안전 조건 확인 필요');
+        }
         deps.setText('context-env', isReal ? deps.labels.real : deps.labels.demo);
         deps.setText(
             'context-order',
