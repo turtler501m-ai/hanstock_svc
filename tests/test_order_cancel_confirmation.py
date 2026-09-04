@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 from src.application.orders.models import OrderIntent
 from src.application.orders.repository import OrderLedgerRepository
@@ -13,6 +14,23 @@ class OrderCancelConfirmationTests(unittest.TestCase):
         self.assertEqual(
             stock_order._canonical_cancel_order_id(object(), {}, "548"),
             "0000000548",
+        )
+
+    def test_cancel_order_id_prefers_ten_digit_history_alias(self):
+        class FakeBroker:
+            def fetch_trade_history(self, start_date, end_date):
+                return [SimpleNamespace(
+                    symbol="069620",
+                    raw={"iem_cd": "069620", "mkt_orr_no": "548", "odno": "0000012345"},
+                )]
+
+        self.assertEqual(
+            stock_order._canonical_cancel_order_id(
+                FakeBroker(),
+                {"symbol": "069620", "broker_order_date": "2026-09-04"},
+                "548",
+            ),
+            "0000012345",
         )
 
     def test_single_order_poll_confirms_cancellation_without_full_sync(self):

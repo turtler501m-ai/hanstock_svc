@@ -204,27 +204,38 @@ def _canonical_cancel_order_id(api, item: dict, current_id: str) -> str:
     current_id = str(current_id or "").strip()
     if current_id.isdigit() and len(current_id) == 10:
         return current_id
-    # NHPLUG mock/demo responses can omit leading zeroes (e.g. ``548``),
-    # while the cancel contract still requires the 10-digit market number.
-    if current_id.isdigit() and 0 < len(current_id) < 10:
-        return current_id.zfill(10)
+
+    def _numeric_alias(value: object) -> str:
+        value = str(value or "").strip()
+        return str(int(value)) if value.isdigit() else value
+
     order_date = str(item.get("broker_order_date") or item.get("created_at") or "")[:10]
     try:
         executions = api.fetch_trade_history(order_date, order_date)
     except Exception:
-        return current_id
+        executions = []
     for execution in executions or []:
         raw = getattr(execution, "raw", {}) or {}
         if str(getattr(execution, "symbol", "") or raw.get("iem_cd") or "") != str(item.get("symbol") or ""):
             continue
-        aliases = {str(raw.get(key) or "").strip() for key in (
+        aliases = [str(raw.get(key) or "").strip() for key in (
             "itg_orr_no", "ord_no", "order_no", "ODNO", "odno", "mkt_orr_no", "MKT_ORR_NO"
-        )}
-        if current_id not in aliases:
+        )]
+        if current_id not in aliases and _numeric_alias(current_id) not in {
+            _numeric_alias(alias) for alias in aliases
+        }:
             continue
-        canonical = str(raw.get("mkt_orr_no") or raw.get("MKT_ORR_NO") or raw.get("ODNO") or raw.get("odno") or "").strip()
-        if canonical.isdigit() and len(canonical) == 10:
-            return canonical
+        # Some NHPLUG/demo responses put a short internal id in mkt_orr_no
+        # and the actual 10-digit market number in ODNO/odno. Prefer any
+        # valid 10-digit alias instead of trusting one response field.
+        for alias in aliases:
+            if alias.isdigit() and len(alias) == 10:
+                return alias
+
+    # NHPLUG mock/demo responses can omit leading zeroes (e.g. ``548``),
+    # while the cancel contract still requires the 10-digit market number.
+    if current_id.isdigit() and 0 < len(current_id) < 10:
+        return current_id.zfill(10)
     return current_id
 
 
