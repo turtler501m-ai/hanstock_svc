@@ -1210,12 +1210,27 @@ def cancel_blocking_sell_and_retry_approval(approval_id: int):
     symbol = str(item.get("symbol") or "").strip()
     api = _get_api()
     blocking_order = _open_sell_order_from_history(api, symbol)
+    # The mock inquiry can omit a still-open order from daily history while
+    # the local trade projection still has its authoritative broker id.
+    # Prefer that id for cancel-retry instead of falling back to direct retry,
+    # which correctly rejects it as a duplicate sell.
+    if not blocking_order:
+        trade_status = str((trade or {}).get("order_status") or "").lower()
+        if trade and trade_status in {"submitted", "accepted", "open", "partial", "partially_filled"}:
+            blocking_order = trade
     if not blocking_order:
         return retry_approval_order(approval_id)
 
-    order_no = _broker_order_id_from_history(blocking_order)
-    remaining_qty = _history_remaining_qty(blocking_order)
-    branch = _history_text(blocking_order, "ord_gno_brno", "ORD_GNO_BRNO")
+    if blocking_order is trade:
+        order_no = str(blocking_order.get("broker_order_id") or "").strip()
+        remaining_qty = max(
+            0, _to_int(blocking_order.get("qty")) - _to_int(blocking_order.get("filled_qty"))
+        )
+        branch = str(blocking_order.get("ord_gno_brno") or "").strip()
+    else:
+        order_no = _broker_order_id_from_history(blocking_order)
+        remaining_qty = _history_remaining_qty(blocking_order)
+        branch = _history_text(blocking_order, "ord_gno_brno", "ORD_GNO_BRNO")
     if not order_no or remaining_qty <= 0:
         raise HTTPException(status_code=409, detail="blocking sell order was not identifiable")
 
