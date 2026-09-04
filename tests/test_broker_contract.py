@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 from src.broker.base import DomesticStockBroker
 from src.broker.factory import create_domestic_stock_broker, selected_domestic_stock_broker
 from src.broker.nhplug_adapter import NHPlugBrokerAdapter
-from src.broker.models import OrderRequest, OrderSide, OrderStatus
+from src.broker.models import CancelOrderRequest, OrderRequest, OrderSide, OrderStatus
 from src.broker.nhplug_client import NHPlugRestClient
 
 
@@ -86,6 +86,16 @@ class BrokerContractTests(unittest.TestCase):
         client.post.return_value = {"Output_0": {"iem_cd": "005930", "stck_prpr": "71000"}}
         quote = NHPlugBrokerAdapter(client).fetch_quote("005930")
         self.assertEqual(quote.current_price, 71000)
+
+    def test_namuh_cancel_sends_numeric_market_order_number(self):
+        client = Mock()
+        client.post.return_value = {"Output_0": {}, "rsp_cd": "00000", "rsp_msg": "취소 접수"}
+        broker = NHPlugBrokerAdapter(client, account="demo", order_submission_enabled=True)
+
+        broker.submit_cancellation(CancelOrderRequest("0000000548", "069620", 20))
+
+        body = client.post.call_args.args[1]
+        self.assertEqual(body["org_mkt_orr_no"], 548)
 
     def test_namuh_balance_contract_uses_settlement_quantity_and_total_assets(self):
         client = Mock()

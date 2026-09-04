@@ -132,7 +132,14 @@ class NHPlugBrokerAdapter:
                     "iem_cd": request.symbol, "cor_qty": request.quantity, "cor_pr": request.price,
                     "sop_cnd_pr": "", "rmt_mkt_cd": request.exchange, "sor_mkt_sli_yn": "N"}
         else:
-            body = {"act_no": self.account, "org_mkt_orr_no": request.order_id, "all_pat_dit_cd": "0",
+            # NHPLUG's cancel endpoint declares org_mkt_orr_no as a numeric
+            # field.  Sending the persisted string (including zero padding)
+            # is rejected with IGW40011, while the numeric wire value is
+            # accepted by both mock and live-compatible gateways.
+            cancel_order_id = (
+                int(request.order_id) if str(request.order_id).isdigit() else request.order_id
+            )
+            body = {"act_no": self.account, "org_mkt_orr_no": cancel_order_id, "all_pat_dit_cd": "0",
                     "iem_cd": request.symbol, "cor_qty": request.quantity}
         page = self.client.post(path, body, request_kind="order")
         data = getattr(page, "data", page); output = data.get("Output_0") or {}
