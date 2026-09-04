@@ -149,7 +149,7 @@ STYLE = (ROOT / "web" / "static" / "css" / "style.css").read_text(encoding="utf-
 class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
     def test_market_regime_presentation_module_loads_before_app(self):
         module_tag = '<script src="/static/js/dashboard-market-regime.js?v=1"></script>'
-        app_tag = '<script src="/static/js/app.js?v=72"></script>'
+        app_tag = '<script src="/static/js/app.js?v=74"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardMarketRegime", MARKET_REGIME_JS)
         self.assertNotIn("const MARKET_REGIME_LABELS = {", APP_JS)
