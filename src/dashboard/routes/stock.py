@@ -334,7 +334,47 @@ def _enrich_scheduler_display(last_result: dict | None) -> dict | None:
 
     for item in plans:
         if isinstance(item, dict):
+            value = item.get("approval_id")
+            approval = approval_by_id.get(int(value)) if str(value or "").isdigit() else None
+            if approval:
+                # A scheduled result can be persisted just before the global
+                # auto-approval sweeper finishes. Resolve the live approval
+                # state on read so the round does not remain falsely pending.
+                item["approval_status"] = approval.get("status")
             enrich_name(item)
+
+    existing_approval_ids = {
+        int(item.get("approval_id") or item.get("id"))
+        for item in approved
+        if isinstance(item, dict)
+        and str(item.get("approval_id") or item.get("id") or "").isdigit()
+    }
+    for item in plans:
+        if not isinstance(item, dict):
+            continue
+        value = item.get("approval_id")
+        approval = approval_by_id.get(int(value)) if str(value or "").isdigit() else None
+        if not approval or int(value) in existing_approval_ids:
+            continue
+        status = str(approval.get("status") or "").lower()
+        if status not in {"pending", "executing"}:
+            approved.append({
+                "id": int(value),
+                "approval_id": int(value),
+                "symbol": approval.get("symbol") or item.get("symbol"),
+                "name": approval.get("name") or item.get("name"),
+                "action": approval.get("action") or item.get("action"),
+                "qty": approval.get("qty") or item.get("qty"),
+                "price": approval.get("price") if approval.get("price") is not None else item.get("price"),
+                "status": approval.get("status"),
+                "response_msg": approval.get("response_msg") or "",
+                "strategy_id": approval.get("strategy_id") or item.get("strategy_id"),
+                "strategy_name": item.get("strategy_name"),
+                "round": item.get("round"),
+                "time": item.get("time"),
+                "run_date": item.get("run_date"),
+            })
+            existing_approval_ids.add(int(value))
 
     for item in approved:
         if not isinstance(item, dict):
@@ -342,6 +382,7 @@ def _enrich_scheduler_display(last_result: dict | None) -> dict | None:
         value = item.get("approval_id") or item.get("id")
         approval = approval_by_id.get(int(value)) if str(value or "").isdigit() else None
         if approval:
+            item["status"] = approval.get("status") or item.get("status")
             for key in ("symbol", "name", "action", "qty", "price", "status", "response_msg"):
                 if item.get(key) in (None, "", "-") and approval.get(key) not in (None, ""):
                     item[key] = approval[key]

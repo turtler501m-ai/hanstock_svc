@@ -32,6 +32,14 @@
             const element = document.getElementById(id);
             if (element) element.textContent = `${value}건`;
         });
+        const successBuy = Number(summaryCounts.success_buy_count ?? approved.filter((row) => row.status === 'executed' && row.action === 'buy').length);
+        const successSell = Number(summaryCounts.success_sell_count ?? approved.filter((row) => row.status === 'executed' && row.action === 'sell').length);
+        const failedBuy = Number(summaryCounts.failed_buy_count ?? approved.filter((row) => ['failed', 'broker_unknown', 'rejected'].includes(row.status) && row.action === 'buy').length);
+        const failedSell = Number(summaryCounts.failed_sell_count ?? approved.filter((row) => ['failed', 'broker_unknown', 'rejected'].includes(row.status) && row.action === 'sell').length);
+        const successBreakdown = document.getElementById('sched-result-success-breakdown');
+        const failedBreakdown = document.getElementById('sched-result-failed-breakdown');
+        if (successBreakdown) successBreakdown.textContent = `매수 ${successBuy} / 매도 ${successSell}`;
+        if (failedBreakdown) failedBreakdown.textContent = `매수 ${failedBuy} / 매도 ${failedSell}`;
         const status = String(lastResult.result.execution_status || lastResult.result.status || 'success');
         const statusElement = document.getElementById('sched-result-status');
         if (statusElement) {

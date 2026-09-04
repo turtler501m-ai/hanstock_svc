@@ -176,6 +176,35 @@ def _compact_scheduler_status_result(last_result: dict | None, item_limit: int =
         1 for item in approved_items
         if isinstance(item, dict) and item.get("status") in {"failed", "broker_unknown"}
     )
+    approval_success_by_action = {
+        action: sum(
+            1 for item in approved_items
+            if isinstance(item, dict)
+            and item.get("status") == "executed"
+            and str(item.get("action") or "").lower() == action
+        )
+        for action in ("buy", "sell")
+    }
+    approval_failed_by_action = {
+        action: sum(
+            1 for item in approved_items
+            if isinstance(item, dict)
+            and item.get("status") in {"failed", "broker_unknown", "rejected"}
+            and str(item.get("action") or "").lower() == action
+        )
+        for action in ("buy", "sell")
+    }
+    plan_action_by_approval = {
+        str(item.get("approval_id")): str(item.get("action") or "").lower()
+        for item in plan_items
+        if isinstance(item, dict) and item.get("approval_id")
+    }
+    for item in approval_errors:
+        if not isinstance(item, dict):
+            continue
+        action = str(item.get("action") or plan_action_by_approval.get(str(item.get("approval_id"))) or "").lower()
+        if action in approval_failed_by_action:
+            approval_failed_by_action[action] += 1
     execution_runs = result.get("execution_runs") if isinstance(result.get("execution_runs"), list) else []
     run_status_counts = result.get("run_status_counts") if isinstance(result.get("run_status_counts"), dict) else {}
     if not run_status_counts:
@@ -224,7 +253,14 @@ def _compact_scheduler_status_result(last_result: dict | None, item_limit: int =
             "approved_count": len(approved_items) + len(approval_errors),
             "success_count": approved_executed,
             "rejected_count": approved_rejected,
-            "failed_count": approved_failed + len(approval_errors) + len(run_errors),
+            "failed_count": approved_failed + sum(
+                1 for item in approved_items
+                if isinstance(item, dict) and item.get("status") == "rejected"
+            ) + len(approval_errors) + len(run_errors),
+            "success_buy_count": approval_success_by_action["buy"],
+            "success_sell_count": approval_success_by_action["sell"],
+            "failed_buy_count": approval_failed_by_action["buy"],
+            "failed_sell_count": approval_failed_by_action["sell"],
             "run_count": len(execution_runs),
             "run_success_count": int(run_status_counts.get("success") or 0),
             "run_partial_count": int(run_status_counts.get("partial") or 0),
