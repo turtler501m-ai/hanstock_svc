@@ -164,7 +164,10 @@ class NHPlugBrokerAdapter:
                 page = self.client.post("/krstock/inquiry/v1/dailyOrderExecution", {
                     "orr_dt": start.strftime("%Y%m%d"), "act_no": self.account,
                     "orr_mkt_cd": "", "ost_cns_dit": "1"})
-                rows.extend(_rows(getattr(page, "data", page), "Output_1"))
+                payload = getattr(page, "data", page)
+                # NHPLUG mock returns daily orders in Output_0, while some
+                # live-compatible gateways use Output_1.
+                rows.extend(_rows(payload, "Output_1") or _rows(payload, "Output_0"))
             start += timedelta(days=1)
         return [self._execution(r) for r in rows]
 

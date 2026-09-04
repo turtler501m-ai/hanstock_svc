@@ -428,8 +428,35 @@ def cancel_replace_market_order(order_id: int):
             order_id=broker_order_id, symbol=str(item["symbol"]), quantity=remaining,
         ))
     except Exception as exc:
-        repository.transition(order_id, "cancel_pending", "broker_unknown", actor="broker", reason=str(exc))
-        raise HTTPException(status_code=409, detail=f"cancellation result is unknown: {exc}") from exc
+        message = str(exc)
+        # NHPLUG mock reports 14330 when a previous cancel already removed
+        # the order from its active book. Treat this as an idempotent cancel
+        # only in demo mode; live orders remain fail-closed as unknown.
+        already_canceled = (
+            "[14330]" in message
+            and str(getattr(trader.config, "trading_env", "") or "").lower() == "demo"
+            and not bool(getattr(trader.config, "enable_live_trading", False))
+        )
+        if not already_canceled:
+            repository.transition(order_id, "cancel_pending", "broker_unknown", actor="broker", reason=message)
+            raise HTTPException(status_code=409, detail=f"cancellation result is unknown: {exc}") from exc
+        repository.reconcile_snapshot(
+            order_id, status="canceled", cumulative_filled_qty=int(item.get("filled_qty") or 0),
+            average_fill_price=float(item.get("average_fill_price") or 0),
+            broker_order_id=str(item.get("broker_order_id") or broker_order_id),
+            broker_order_date=str(item.get("broker_order_date") or ""), raw={"code": "14330"},
+        )
+        repository.record_event(
+            order_id, "broker_cancel_already_completed", actor="broker", reason=message,
+            payload={"remaining_qty": remaining, "broker_order_id": broker_order_id},
+        )
+        threading.Thread(
+            target=_replace_with_market_after_cancel, args=(order_id,),
+            name=f"order-market-replace-{order_id}", daemon=True,
+        ).start()
+        return {"ok": True, "status": "canceled", "order_id": order_id,
+                "remaining_qty": remaining, "replacement_started": True,
+                "cancel_already_completed": True}
     repository.record_event(
         order_id, "broker_cancel_for_market_replace", actor="broker", reason=result.message,
         payload={"success": bool(result.success), "remaining_qty": remaining,

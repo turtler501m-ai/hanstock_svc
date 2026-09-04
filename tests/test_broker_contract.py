@@ -97,6 +97,19 @@ class BrokerContractTests(unittest.TestCase):
         body = client.post.call_args.args[1]
         self.assertEqual(body["org_mkt_orr_no"], 548)
 
+    def test_namuh_trade_history_accepts_mock_output_zero(self):
+        client = Mock()
+        client.account = "demo"
+        client.post.return_value = type("Page", (), {"data": {
+            "Output_0": [{"itg_orr_no": 548, "iem_cd": "069620", "orr_qty": 20,
+                           "tot_cns_qty": 0, "ny_cns_qty": 20}],
+        }})()
+        history = NHPlugBrokerAdapter(client, account="demo").fetch_trade_history(
+            "2026-09-04", "2026-09-04"
+        )
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0].order_id, "548")
+
     def test_namuh_balance_contract_uses_settlement_quantity_and_total_assets(self):
         client = Mock()
         client.account = "demo"
