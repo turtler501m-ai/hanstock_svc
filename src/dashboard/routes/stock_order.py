@@ -201,8 +201,13 @@ def _confirm_canceled_order(order_id: int, *, attempts: int = 8, interval_second
 
 def _canonical_cancel_order_id(api, item: dict, current_id: str) -> str:
     """Use Namuh's 10-digit market order number for cancel/modify APIs."""
+    current_id = str(current_id or "").strip()
     if current_id.isdigit() and len(current_id) == 10:
         return current_id
+    # NHPLUG mock/demo responses can omit leading zeroes (e.g. ``548``),
+    # while the cancel contract still requires the 10-digit market number.
+    if current_id.isdigit() and 0 < len(current_id) < 10:
+        return current_id.zfill(10)
     order_date = str(item.get("broker_order_date") or item.get("created_at") or "")[:10]
     try:
         executions = api.fetch_trade_history(order_date, order_date)
@@ -399,7 +404,7 @@ def cancel_replace_market_order(order_id: int):
     if not item:
         raise HTTPException(status_code=404, detail="order not found")
     current = str(item.get("status") or "")
-    if current not in {"submitted", "open", "partial"}:
+    if current not in {"submitted", "open", "partial", "broker_unknown"}:
         raise HTTPException(status_code=409, detail=f"order cannot be replaced from {current}")
     broker_order_id = str(item.get("broker_order_id") or "")
     remaining = max(0, int(item.get("requested_qty") or 0) - int(item.get("filled_qty") or 0))

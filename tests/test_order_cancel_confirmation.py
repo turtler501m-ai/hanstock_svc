@@ -9,6 +9,12 @@ from src.dashboard.routes import stock_order
 
 
 class OrderCancelConfirmationTests(unittest.TestCase):
+    def test_cancel_order_id_is_zero_padded_for_nhplug_contract(self):
+        self.assertEqual(
+            stock_order._canonical_cancel_order_id(object(), {}, "548"),
+            "0000000548",
+        )
+
     def test_single_order_poll_confirms_cancellation_without_full_sync(self):
         original_db_path = stock_order.trader.config.trade_db_path
         try:
