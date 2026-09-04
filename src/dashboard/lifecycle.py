@@ -31,7 +31,8 @@ def log_server_lifecycle(event: str) -> None:
     flags = trader.runtime_flags()
     logger.info(
         "[SERVER_LIFECYCLE] service=hanstock_svc event={} pid={} host={} revision={} "
-        "trading_env={} dry_run={} order_submission_enabled={}",
+        "trading_env={} dry_run={} order_submission_enabled={} real_orders_enabled={} "
+        "online_access_blocked={}",
         event,
         os.getpid(),
         socket.gethostname(),
@@ -39,6 +40,8 @@ def log_server_lifecycle(event: str) -> None:
         flags.trading_env,
         flags.dry_run,
         flags.order_submission_enabled,
+        flags.real_orders_enabled,
+        flags.online_access_blocked,
     )
 
 

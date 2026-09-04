@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from src.db.migrations import MIGRATIONS
+from src.utils.logger import logger
 
 
 def build_order_health(connect, *, stale_minutes: int = 10, include_runtime: bool = True) -> dict:
@@ -123,7 +124,7 @@ def build_order_health(connect, *, stale_minutes: int = 10, include_runtime: boo
     operational_status = "blocked" if blockers or state != "ready" else (
         "degraded" if warnings else "healthy"
     )
-    return {
+    result = {
         "state": state,
         "operational_status": operational_status,
         "new_risk_allowed": state == "ready" and not blockers,
@@ -143,6 +144,14 @@ def build_order_health(connect, *, stale_minutes: int = 10, include_runtime: boo
         "checked_at": checked_at.isoformat(timespec="seconds"),
         "runtime": runtime,
     }
+    logger.info(
+        "[ORDER_HEALTH] state={} operational_status={} new_risk_allowed={} "
+        "blockers={} warnings={} orders_by_status={} pending_approvals={}",
+        result["state"], result["operational_status"], result["new_risk_allowed"],
+        result["blockers"], result["warnings"], result["orders_by_status"],
+        result["approvals"]["pending"],
+    )
+    return result
 
 
 class NewRiskBlockedError(RuntimeError):
