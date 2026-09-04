@@ -20,7 +20,22 @@
             const strategy = map.get(String(result.strategyId)) || getCatalog().find((item) => String(item.id) === String(result.strategyId)) || { id: result.strategyId, name: result.strategyId };
             const data = result.data || {};
             const rows = data.candidates || [];
-            const analysisRows = (data.scan_summary || []).map((row) => ({ ...row, strategy_id: row.strategy_id || result.strategyId, strategy_version: row.strategy_version || strategy.strategy_version || null, profile_hash: row.profile_hash || strategy.profile_hash || '' }));
+            const plansBySymbol = new Map((data.candidate_plan_rows || []).map((row) => [String(row.symbol || row.ticker || ''), row]));
+            const analysisRows = (data.scan_summary || []).map((row) => {
+                const plan = plansBySymbol.get(String(row.symbol || row.ticker || '')) || {};
+                const currentPrice = Number(row.current_price || row.price || plan.price || 0);
+                const plannedQty = Number(row.planned_qty || plan.qty || 0);
+                return {
+                    ...row,
+                    current_price: currentPrice,
+                    planned_qty: plannedQty,
+                    limit_price: Number(row.limit_price || plan.price || currentPrice || 0),
+                    estimated_cost: Number(row.estimated_cost || plan.estimated_cost || plannedQty * currentPrice || 0),
+                    strategy_id: row.strategy_id || result.strategyId,
+                    strategy_version: row.strategy_version || strategy.strategy_version || null,
+                    profile_hash: row.profile_hash || strategy.profile_hash || '',
+                };
+            });
             const sortKey = deps.getSortKey(String(result.strategyId));
             const sorted = sortRows(analysisRows, sortKey);
             const error = result.error || data.scan_error;

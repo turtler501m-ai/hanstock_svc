@@ -44,12 +44,12 @@
     }
 
     function excludedRows(deps, rows) {
-        if (!rows.length) return '<tr><td colspan="8" class="table-message">분석 상세 내역이 없습니다.</td></tr>';
+        if (!rows.length) return '<tr><td colspan="9" class="table-message">분석 상세 내역이 없습니다.</td></tr>';
         return rows.map((row) => {
             const evaluation = evaluate(deps, row);
             const failed = evaluation.checks.filter((item) => !item.passed);
             const reasons = (row.reasons || []).map(deps.reasonLabel).join(' · ') || '진입 기준 미충족';
-            return `<tr><td><span class="symbol-name">${deps.escapeHtml(row.name || row.ticker)}</span><span class="symbol-code">${deps.escapeHtml(row.ticker || '')}</span></td><td>${deps.formatNumber(row.score, 2)} / ${deps.formatNumber(row.min_score, 2)}</td><td><strong>${evaluation.checklistScore}%</strong> / 100%</td><td>${deps.pill(evaluation.verdict, evaluation.tradePossible ? 'buy' : (evaluation.verdict === '관찰' ? 'warn' : 'sell'))}</td><td><ul class="strategy-analysis-checklist">${checklistMarkup(deps, row)}</ul></td><td><div class="reason-detail">${deps.escapeHtml(reasons)}</div></td><td>${failed.length.toLocaleString()}개</td><td>${deps.manualBuy(row, evaluation.verdict)}</td></tr>`;
+            return `<tr><td><span class="symbol-name">${deps.escapeHtml(row.name || row.ticker)}</span><span class="symbol-code">${deps.escapeHtml(row.ticker || '')}</span></td><td>${deps.formatCurrency(row.current_price)}</td><td>${deps.formatNumber(row.score, 2)} / ${deps.formatNumber(row.min_score, 2)}</td><td><strong>${evaluation.checklistScore}%</strong> / 100%</td><td>${deps.pill(evaluation.verdict, evaluation.tradePossible ? 'buy' : (evaluation.verdict === '관찰' ? 'warn' : 'sell'))}</td><td><ul class="strategy-analysis-checklist">${checklistMarkup(deps, row)}</ul></td><td><div class="reason-detail">${deps.escapeHtml(reasons)}${row.estimated_cost ? `<br><small>예상 ${deps.formatNumber(row.planned_qty, 0)}주 · ${deps.formatCurrency(row.estimated_cost)}</small>` : ''}</div></td><td>${failed.length.toLocaleString()}개</td><td>${deps.manualBuy(row, evaluation.verdict)}</td></tr>`;
         }).join('');
     }
 

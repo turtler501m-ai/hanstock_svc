@@ -1133,6 +1133,8 @@ def create_strategy_lookup_manual_buy(payload: dict = Body(...)):
         raise HTTPException(status_code=400, detail="price must be greater than 0")
 
     symbol = str(payload.get("symbol") or "").strip()
+    if not symbol:
+        raise HTTPException(status_code=400, detail="symbol is required")
     verdict = str(payload.get("analysis_verdict") or "").strip() or "unknown"
     strategy_id = str(payload.get("strategy_id") or "").strip()
     reason_detail = str(payload.get("reason") or "").strip()
