@@ -16,6 +16,18 @@ router = _CompatRouter(
 )
 
 
+def _normalize_session_date(value: object) -> str:
+    """Normalize legacy broker dates before joining market/performance rows."""
+    text = str(value or "").strip()
+    if len(text) >= 10 and text[4] == "-" and text[7] == "-":
+        return text[:10]
+    if len(text) == 8 and text.isdigit():
+        return f"{text[:4]}-{text[4:6]}-{text[6:8]}"
+    if len(text) == 8 and text[2] == "/" and text[5] == "/":
+        return f"20{text[:2]}-{text[3:5]}-{text[6:8]}"
+    return ""
+
+
 def _merge_current_holding_change(result: dict, parsed: dict, today: str) -> None:
     """Expose the live holding move even when there were no trades today.
 
@@ -52,7 +64,7 @@ def _merge_stored_holding_changes(result: dict, snapshots: list[dict]) -> None:
     rows = result.setdefault("daily", [])
     by_day = {str(row.get("period") or ""): row for row in rows}
     for snapshot in snapshots:
-        day = str(snapshot.get("session_date") or "")[:10]
+        day = _normalize_session_date(snapshot.get("session_date"))
         if len(day) != 10:
             continue
         row = by_day.get(day)

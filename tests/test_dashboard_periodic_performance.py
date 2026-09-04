@@ -18,6 +18,7 @@ from src.dashboard.core import (
 from src.dashboard.routes.stock_performance import (
     _merge_current_holding_change,
     _merge_stored_holding_changes,
+    _normalize_session_date,
 )
 from src.dashboard.services.performance_metrics import (
     account_trades,
@@ -30,6 +31,20 @@ from src.dashboard.services.performance_metrics import (
 
 
 class DashboardPeriodicPerformanceTests(unittest.TestCase):
+    def test_normalize_legacy_session_date(self):
+        self.assertEqual(_normalize_session_date("26/03/13"), "2026-03-13")
+        self.assertEqual(_normalize_session_date("20260904"), "2026-09-04")
+        self.assertEqual(_normalize_session_date("2026-09-04 12:00:00"), "2026-09-04")
+
+    def test_stored_holding_change_normalizes_legacy_date_for_market_join(self):
+        result = {"daily": [], "monthly": []}
+        _merge_stored_holding_changes(result, [{
+            "session_date": "26/03/13",
+            "holding_change_pct": 1.0,
+            "symbol_count": 2,
+        }])
+        self.assertEqual(result["daily"][0]["period"], "2026-03-13")
+
     def test_account_trades_service_filters_and_normalizes_fills(self):
         rows = account_trades([
             {"ok": 1, "dry_run": 0, "order_status": "filled", "filled_qty": 2, "filled_price": 105, "price": 100},
