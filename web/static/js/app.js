@@ -773,6 +773,8 @@ async function renderBalance() {
             chartData.push(holding.value || holding.qty * holding.price);
             chartColors.push(colors[idx % colors.length]);
         });
+        const holdingCountEl = document.getElementById('portfolio-holding-count');
+        if (holdingCountEl) holdingCountEl.textContent = `보유 ${balance.holdings.length.toLocaleString()}건`;
         const hanstockCapital = Number(latestConfig?.total_capital || displayTotal || 0);
         holdingsCache = (balance.holdings || []).map((holding) => ({
             ...holding,
