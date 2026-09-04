@@ -66,7 +66,7 @@ def _allowed_categories_for_strategy(strategy_id: str | None) -> set[str]:
         # position sell signals out of the execution plan.
         return {"position", "candidate"}
     if strategy_id in _ISOLATED_STRATEGY_IDS:
-        return {"candidate"}
+        return {"position", "candidate"}
     return {"position", "candidate", "ai_rebalance"}
 
 

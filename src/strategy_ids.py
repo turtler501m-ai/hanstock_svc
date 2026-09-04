@@ -6,6 +6,18 @@ ISOLATED_STOCK_STRATEGY_IDS = frozenset(
     }
 )
 
+# Only this strategy is intentionally allowed to evaluate the whole account.
+# Every other strategy must operate on positions explicitly attributed to it.
+ACCOUNT_WIDE_STRATEGY_IDS = frozenset({"seven_split"})
+
+# These positions require explicit operator action.  They must never become an
+# accidental sell candidate of an account-wide strategy.
+NON_AUTO_MANAGED_STRATEGY_IDS = frozenset({
+    "manual_strategy",
+    "broker_account_baseline",
+    "unattributed",
+})
+
 INDEPENDENT_STOCK_SCHEDULE_IDS = ISOLATED_STOCK_STRATEGY_IDS
 AI_STOCK_SCHEDULE_ID = "ai_stock_default_v1"
 AI_REBALANCE_STRATEGY_ID = "ai_rebalance"

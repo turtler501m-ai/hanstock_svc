@@ -37,7 +37,13 @@ from src.execution_plan import (
     candidate_order_to_plan_row,
     build_execution_plan,
 )
-from src.strategy_ids import AI_REBALANCE_STRATEGY_ID, ISOLATED_STOCK_STRATEGY_IDS
+from src.strategy_ids import (
+    ACCOUNT_WIDE_STRATEGY_IDS,
+    AI_REBALANCE_STRATEGY_ID,
+    ISOLATED_STOCK_STRATEGY_IDS,
+    MANUAL_STRATEGY_ID,
+    NON_AUTO_MANAGED_STRATEGY_IDS,
+)
 
 KST = timezone(timedelta(hours=9))
 
@@ -649,7 +655,6 @@ def build_runtime_plan(
     )
     buying_cash = int(buying_cash_info["buying_cash"])
     pnl = int(summary.get("evlu_pfls_smtl_amt", 0) or 0)
-    isolated_strategy_run = active_strategy_id in _ISOLATED_STRATEGY_IDS
     owned_symbols = set()
     owned_position_qty = {}
     if active_strategy_id:
@@ -670,20 +675,40 @@ def build_runtime_plan(
         except Exception as ownership_error:
             logger.warning(f"[OWNERSHIP] strategy position lookup failed: {ownership_error}")
 
+    # Account-wide strategies must not take ownership of manually entered or
+    # broker-imported positions.  Those positions remain operator-managed
+    # until explicitly attributed to a trading strategy.
+    non_auto_managed_symbols = set()
+    try:
+        from src.db.repository import reconstruct_strategy_positions
+        for protected_strategy_id in NON_AUTO_MANAGED_STRATEGY_IDS:
+            protected_positions = reconstruct_strategy_positions(
+                protected_strategy_id, runtime.flags.trading_env
+            )
+            non_auto_managed_symbols.update(
+                str(item.get("symbol") or "")
+                for item in protected_positions
+                if int(item.get("qty") or 0) > 0
+            )
+    except Exception as protection_error:
+        logger.warning(
+            f"[OWNERSHIP] protected position lookup failed: {protection_error}"
+        )
+
     position_rows = []
-    if stocks and (
-        not isolated_strategy_run
-        or active_strategy_id == "heikin_ashi_scalping_strategy"
-    ):
+    if stocks and active_strategy_id != MANUAL_STRATEGY_ID:
         for stock in stocks:
             sym = stock.get("pdno", "")
             if is_excluded_symbol(sym):
                 logger.info(f"[EXCLUDE] Skipping holding signal for excluded symbol {sym}")
                 continue
             name = stock.get("prdt_name", sym)
-            account_wide_strategy = active_strategy_id in {
-                "seven_split", "broker_account_baseline"
-            }
+            account_wide_strategy = active_strategy_id in ACCOUNT_WIDE_STRATEGY_IDS
+            if account_wide_strategy and sym in non_auto_managed_symbols:
+                logger.info(
+                    f"[OWNERSHIP] {sym} skipped: manual/unattributed holding is operator-managed"
+                )
+                continue
             if active_strategy_id and not account_wide_strategy and sym not in owned_symbols:
                 logger.info(
                     f"[OWNERSHIP] {sym} skipped: not owned by {active_strategy_id}"
