@@ -1590,6 +1590,12 @@
                             <p class="section-help">지정된 종목들은 AI 매수후보 스캔 시 항시 스캔 모수에 병합되어 우선 연산됩니다.</p>
                         </div>
                         <div class="watchlist-table-filters" aria-label="관심종목 목록 필터">
+                            <label class="watchlist-list-search-label">
+                                <span>목록 검색</span>
+                                <input type="search" id="input-watchlist-list-search"
+                                    placeholder="종목명 또는 코드" autocomplete="off"
+                                    aria-label="등록된 관심종목 검색">
+                            </label>
                             <label>
                                 <span>조건</span>
                                 <select id="select-watchlist-policy-filter">
@@ -2285,7 +2291,7 @@
     <script src="/static/js/dashboard-scheduler-summary.js?v=1"></script>
     <script src="/static/js/dashboard-strategy-analysis.js?v=2"></script>
     <script src="/static/js/dashboard-strategy-preview-screen.js?v=2"></script>
-    <script src="/static/js/app.js?v=76"></script>
+    <script src="/static/js/app.js?v=77"></script>
 
     <!-- Plunge Bounce Strategy Scripts -->
     <script>

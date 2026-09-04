@@ -119,6 +119,12 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn("/api/stocks/search?q=", FRONTEND_JS)
         self.assertIn("selectWatchlistStock", FRONTEND_JS)
 
+    def test_registered_watchlist_can_be_filtered_by_name_or_symbol(self):
+        self.assertIn('id="input-watchlist-list-search"', INDEX_HTML)
+        self.assertIn("row.name || ''", FRONTEND_JS)
+        self.assertIn("row.symbol || ''", FRONTEND_JS)
+        self.assertIn("watchlistListSearch.addEventListener('input', drawWatchlist)", FRONTEND_JS)
+
     def test_holdings_tab_displays_complete_namuh_balance_response(self):
         self.assertIn('id="table-holding-broker-response"', INDEX_HTML)
         self.assertIn('id="holding-broker-response-count"', INDEX_HTML)

@@ -5033,6 +5033,20 @@ tbody tr:hover {
     color: #e2e8f0;
 }
 
+.watchlist-table-filters input[type="search"] {
+    width: 190px;
+    min-width: 150px;
+    padding: 0.42rem 0.55rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 6px;
+    background: #172033;
+    color: #e2e8f0;
+}
+
+.watchlist-table-filters input[type="search"]::placeholder {
+    color: rgba(226, 232, 240, 0.38);
+}
+
 .watchlist-policy-badge {
     display: inline-flex;
     padding: 0.25rem 0.5rem;
@@ -5075,6 +5089,11 @@ tbody tr:hover {
 
     .watchlist-table-filters label {
         justify-content: space-between;
+    }
+
+    .watchlist-table-filters input[type="search"] {
+        flex: 1;
+        width: auto;
     }
 }
 

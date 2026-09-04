@@ -1388,12 +1388,22 @@ function drawWatchlist() {
 
     const policyFilter = document.getElementById('select-watchlist-policy-filter')?.value || 'all';
     const sectorFilter = document.getElementById('select-watchlist-sector-filter')?.value || 'all';
+    const searchQuery = (document.getElementById('input-watchlist-list-search')?.value || '')
+        .trim()
+        .toLocaleLowerCase('ko-KR');
     const visibleRows = watchlistCache.filter((row) => (
         (policyFilter === 'all' || row.policy_status === policyFilter)
         && (sectorFilter === 'all' || row.sector === sectorFilter)
+        && (!searchQuery || `${row.name || ''} ${row.symbol || ''}`.toLocaleLowerCase('ko-KR').includes(searchQuery))
     ));
     if (!visibleRows.length) {
-        setTableMessage('#table-watchlist tbody', 11, '선택한 조건에 해당하는 관심 종목이 없습니다.');
+        setTableMessage(
+            '#table-watchlist tbody',
+            11,
+            searchQuery
+                ? `'${searchQuery}'와 일치하는 등록 관심종목이 없습니다.`
+                : '선택한 조건에 해당하는 관심 종목이 없습니다.'
+        );
         return;
     }
 
@@ -4270,6 +4280,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const select = document.getElementById(id);
         if (select) select.addEventListener('change', drawWatchlist);
     });
+    const watchlistListSearch = document.getElementById('input-watchlist-list-search');
+    if (watchlistListSearch) watchlistListSearch.addEventListener('input', drawWatchlist);
 
     // AI 자동 추가 적용 토글 및 임계값 제어 바인딩
     const chkWatchlistAiAuto = document.getElementById('chk-watchlist-ai-auto');
