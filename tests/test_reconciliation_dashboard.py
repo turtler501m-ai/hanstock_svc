@@ -1,4 +1,5 @@
 import sqlite3
+import json
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -97,6 +98,40 @@ class ReconciliationDashboardTests(unittest.TestCase):
                 ).fetchone()[0],
                 0,
             )
+
+    def test_balance_reconciles_accepted_false_failed_order_without_old_overage(self):
+        accepted = {
+            "rt_cd": "1",
+            "rsp_cd": "10000",
+            "rsp_msg": "\ubaa8\uc758\ud22c\uc790 \ub9e4\uc218\uc8fc\ubb38\uc774\uc644\ub8cc\ub418\uc5c8\uc2b5\ub2c8\ub2e4.",
+            "output": {"ODNO": "8"},
+        }
+        with stock_order.trader.connect_db() as conn:
+            for ts, qty, order_id in (
+                ("2026-09-03 15:00:36", 160, "302"),
+                ("2026-09-04 08:57:57", 1157, "8"),
+            ):
+                conn.execute(
+                    """INSERT INTO trades
+                       (ts,symbol,name,action,qty,price,ok,env,broker_order_id,
+                        order_status,filled_qty,broker_result)
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (ts, "001800", "test", "buy", qty, 1000, 0,
+                     stock_order.trader.config.trading_env, order_id, "failed", 0,
+                     json.dumps(accepted, ensure_ascii=False)),
+                )
+
+        result = stock_order._reconcile_ambiguous_orders_from_balance({
+            "001800": {"qty": 1157, "price": 1000},
+        })
+
+        self.assertEqual(result["reconciled_count"], 1)
+        with stock_order.trader.connect_db() as conn:
+            rows = conn.execute(
+                "SELECT qty, ok, order_status FROM trades ORDER BY id"
+            ).fetchall()
+        self.assertEqual(rows[-1], (1157, 1, "reconciled"))
+        self.assertEqual(rows[-2], (160, 0, "failed"))
 
 
 if __name__ == "__main__":

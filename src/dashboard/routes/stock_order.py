@@ -1760,7 +1760,36 @@ def _is_ambiguous_order_failure(message: object) -> bool:
 
 
 def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
-    """Promote response-lost orders only when their total exactly explains the balance gap."""
+    """Promote response-lost/false-failed orders only when balance proves them."""
+    import json
+    from src.broker.response import broker_order_accepted
+
+    def accepted_response(row: dict) -> bool:
+        try:
+            payload = json.loads(str(row.get("broker_result") or "{}"))
+        except (TypeError, ValueError):
+            return False
+        return broker_order_accepted(payload)
+
+    def exact_latest_subset(rows: list[dict], target: int) -> list[dict]:
+        """Choose the newest exact quantity subset; never reconcile an overage."""
+        selected: list[dict] = []
+
+        def visit(index: int, remaining: int, picked: list[dict]) -> bool:
+            if remaining == 0:
+                selected.extend(picked)
+                return True
+            if remaining < 0 or index >= len(rows):
+                return False
+            row = rows[index]
+            qty = _to_int(row.get("qty"))
+            return visit(index + 1, remaining - qty, [*picked, row]) or visit(
+                index + 1, remaining, picked
+            )
+
+        visit(0, target, [])
+        return selected
+
     with trader.connect_db() as conn:
         conn.row_factory = sqlite3.Row
         confirmed_rows = conn.execute(
@@ -1775,10 +1804,9 @@ def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
             """
             SELECT * FROM trades
             WHERE COALESCE(env, ?) = ?
-              AND COALESCE(broker_order_id, '') = ''
               AND COALESCE(order_status, '') IN ('failed', 'broker_unknown')
               AND COALESCE(filled_qty, 0) = 0
-            ORDER BY ts ASC, id ASC
+            ORDER BY ts DESC, id DESC
             """,
             (trader.config.trading_env, trader.config.trading_env),
         ).fetchall()
@@ -1806,7 +1834,10 @@ def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
         groups = {}
         for row in unresolved_rows:
             item = dict(row)
-            if not _is_ambiguous_order_failure(item.get("response_msg")):
+            if not (
+                _is_ambiguous_order_failure(item.get("response_msg"))
+                or accepted_response(item)
+            ):
                 continue
             key = (str(item.get("symbol") or ""), str(item.get("action") or ""))
             groups.setdefault(key, []).append(item)
@@ -1818,8 +1849,10 @@ def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
             broker_qty = _to_int(broker_holding.get("qty"))
             balance_gap = broker_qty - local_qty
             expected_qty = balance_gap if action == "buy" else -balance_gap
-            group_qty = sum(_to_int(row.get("qty")) for row in rows)
-            if expected_qty <= 0 or group_qty != expected_qty:
+            if expected_qty <= 0:
+                continue
+            rows = exact_latest_subset(rows, expected_qty)
+            if not rows:
                 continue
 
             raw_holding = broker_holding.get("_raw") or {}
@@ -1851,7 +1884,7 @@ def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
                         """
                         UPDATE approvals
                         SET status = 'executed', response_msg = ?, updated_at = ?
-                        WHERE id = ? AND status = 'broker_unknown'
+                        WHERE id = ? AND status IN ('broker_unknown', 'failed')
                         """,
                         (
                             message,
@@ -1868,7 +1901,7 @@ def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
                     "action": action,
                     "qty": qty,
                     "price": price,
-                    "broker_order_id": "",
+                    "broker_order_id": row.get("broker_order_id") or "",
                     "order_status": "reconciled",
                     "message": message,
                 })
