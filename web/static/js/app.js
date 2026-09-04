@@ -3165,7 +3165,10 @@ function startTradeSyncPolling() {
         updateTradeSyncButton(result);
         if (bulkReconciliationRunId && result.run_id === bulkReconciliationRunId) {
             const bulkButton = document.getElementById('btn-resolve-all-reconciliation');
-            if (['success', 'completed'].includes(result.status)) {
+            const syncHasBrokerError = Boolean(result.history_error || result.order_status_error || result.error);
+            const canApplyBrokerBalance = ['success', 'completed', 'review_required'].includes(result.status)
+                || (result.status === 'partial' && !syncHasBrokerError);
+            if (canApplyBrokerBalance) {
                 setStatus('전체 불일치 해결 2/2: 최신 증권사 잔고로 내부 원장을 보정 중입니다.', true);
                 await renderReconciliationIssues();
                 await applyBrokerBalanceReconciliation({

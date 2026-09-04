@@ -162,6 +162,7 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn("전체 불일치 해결 2/2", FRONTEND_JS)
         self.assertIn("/api/reconciliation/issues?status=open", FRONTEND_JS)
         self.assertIn("/api/reconciliation/issues/apply-broker-balance", FRONTEND_JS)
+        self.assertIn("result.status === 'partial' && !syncHasBrokerError", FRONTEND_JS)
         self.assertIn("confirmation: 'APPLY_BROKER_BALANCE'", FRONTEND_JS)
 
     def test_holdings_tab_exposes_strategy_value_loss_summary_and_filters(self):
