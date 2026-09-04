@@ -18,6 +18,9 @@ class OrderHistoryServiceTests(unittest.TestCase):
         self.assertEqual(_history_fill_price(row), 26900)
         self.assertEqual(_history_remaining_qty(row), 56)
 
+    def test_malformed_history_row_is_safe(self):
+        self.assertEqual(_history_remaining_qty(None), 0)
+
     def test_folds_separate_namuh_cancellation_into_original_order(self):
         original = {"ord_no": "0035136", "ord_qty": "5", "cncl_yn": "N"}
         cancellation = {

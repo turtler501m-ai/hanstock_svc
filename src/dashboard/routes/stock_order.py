@@ -983,7 +983,11 @@ def _open_sell_order_from_history(api, symbol: str) -> dict | None:
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Namuh order history request failed: {exc}") from exc
     candidates = []
-    for row in history:
+    # A few NHPLUG responses contain null/metadata rows.  They are not orders
+    # and must never make retry/cancel-retry fail with ``None.get``.
+    for row in history or []:
+        if not isinstance(row, dict):
+            continue
         if _history_symbol(row) != str(symbol).strip():
             continue
         if _history_action(row) != "sell":
@@ -1172,7 +1176,15 @@ def retry_approval_order(approval_id: int):
                 f"(order {order_no}); use cancel-retry to prevent a duplicate sell"
             ),
         )
-    sellable_qty = _current_sellable_qty(symbol)
+    try:
+        sellable_qty = _current_sellable_qty(symbol)
+    except HTTPException:
+        raise
+    except (TypeError, ValueError, RuntimeError) as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"매도가능수량 조회 결과가 올바르지 않습니다: {exc}",
+        ) from exc
     if sellable_qty <= 0:
         raise HTTPException(
             status_code=409,

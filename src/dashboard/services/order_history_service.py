@@ -5,7 +5,9 @@ from src.dashboard.services.balance_service import to_int as _to_int
 from src.market_metadata import normalize_kr_order_symbol
 
 
-def _broker_order_id_from_history(row: dict) -> str:
+def _broker_order_id_from_history(row: dict | None) -> str:
+    if not isinstance(row, dict):
+        return ""
     for key in ("mkt_orr_no", "MKT_ORR_NO", "ODNO", "odno", "ord_no", "order_no", "itg_orr_no"):
         value = row.get(key)
         if value:
@@ -13,7 +15,9 @@ def _broker_order_id_from_history(row: dict) -> str:
     return ""
 
 
-def _history_int(row: dict, *keys: str) -> int:
+def _history_int(row: dict | None, *keys: str) -> int:
+    if not isinstance(row, dict):
+        return 0
     for key in keys:
         value = row.get(key)
         parsed = _to_int(value)
@@ -22,7 +26,7 @@ def _history_int(row: dict, *keys: str) -> int:
     return 0
 
 
-def _history_fill_price(row: dict) -> int:
+def _history_fill_price(row: dict | None) -> int:
     return _history_int(
         row,
         "avg_prvs",
@@ -36,7 +40,9 @@ def _history_fill_price(row: dict) -> int:
     )
 
 
-def _history_fill_qty(row: dict) -> int:
+def _history_fill_qty(row: dict | None) -> int:
+    if not isinstance(row, dict):
+        return 0
     for key in ("tot_ccld_qty", "ccld_qty", "cnqn", "cntr_qty", "tot_cntr_qty", "filled_qty"):
         value = row.get(key)
         if value is not None and str(value).strip():
@@ -44,11 +50,13 @@ def _history_fill_qty(row: dict) -> int:
     return 0
 
 
-def _history_requested_qty(row: dict) -> int:
+def _history_requested_qty(row: dict | None) -> int:
     return _history_int(row, "ord_qty", "requested_qty") or _history_fill_qty(row)
 
 
-def _history_remaining_qty(row: dict) -> int:
+def _history_remaining_qty(row: dict | None) -> int:
+    if not isinstance(row, dict):
+        return 0
     explicit = _history_int(
         row, "ord_remnq", "rmn_qty", "RMN_QTY", "ord_psbl_qty", "oso_qty", "remaining_qty"
     )
