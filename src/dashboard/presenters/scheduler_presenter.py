@@ -253,10 +253,7 @@ def _compact_scheduler_status_result(last_result: dict | None, item_limit: int =
             "approved_count": len(approved_items) + len(approval_errors),
             "success_count": approved_executed,
             "rejected_count": approved_rejected,
-            "failed_count": approved_failed + sum(
-                1 for item in approved_items
-                if isinstance(item, dict) and item.get("status") == "rejected"
-            ) + len(approval_errors) + len(run_errors),
+            "failed_count": approved_failed + len(approval_errors) + len(run_errors),
             "success_buy_count": approval_success_by_action["buy"],
             "success_sell_count": approval_success_by_action["sell"],
             "failed_buy_count": approval_failed_by_action["buy"],

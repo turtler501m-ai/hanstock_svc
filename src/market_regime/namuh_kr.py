@@ -84,11 +84,27 @@ class NamuhKrCollector:
                 indices[name] = build_index_features(code, self.broker.get_index_daily(code, n=260))
             except Exception as exc:
                 self.index_failures[name] = f"{type(exc).__name__}: {exc}"
+        index_session_dates = {
+            item.session_date for item in indices.values() if item.session_date
+        }
+        # Before the market opens Namuh can expose a provisional current-day
+        # equity bar while the index endpoint still correctly ends at the prior
+        # session.  Breadth and index features must use the same information
+        # boundary; otherwise the 08:43 preflight rejects an otherwise complete
+        # snapshot because of a synthetic date mismatch.
+        breadth_cutoff = (
+            min(index_session_dates) if len(index_session_dates) == 1 else None
+        )
         stats: list[tuple[bool, bool, bool, str]] = []
         failures: dict[str, str] = {}
         for symbol in self.universe:
             try:
                 rows = sorted(self.broker.fetch_daily_bars(symbol, count=80), key=lambda row: str(_value(row, "date")))
+                if breadth_cutoff:
+                    rows = [
+                        row for row in rows
+                        if _normalize_session_date(_value(row, "date")) <= breadth_cutoff
+                    ]
                 closes = [float(_value(row, "close" if isinstance(row, dict) else "close_price")) for row in rows]
                 if len(closes) < 60 or min(closes) <= 0:
                     raise ValueError("fewer than 60 valid bars")

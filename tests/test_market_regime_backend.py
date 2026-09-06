@@ -89,14 +89,40 @@ class MarketRegimeBackendTests(unittest.TestCase):
     def test_collector_normalizes_namuh_short_session_date(self):
         broker = FakeBroker()
 
+        def short_date_indices(code, n=90):
+            rows = index_rows(1.0 if code == "0001" else .8)
+            rows[-1]["date"] = "26/09/04"
+            return rows
+
         def short_date_bars(symbol, count=60):
             return [Bar("26/09/04", 100 + i) for i in range(80)]
 
+        broker.get_index_daily = short_date_indices
         broker.fetch_daily_bars = short_date_bars
         collector = NamuhKrCollector(broker, universe=("005930",))
         _, breadth = collector.collect()
         self.assertEqual(breadth.session_date, "2026-09-04")
         self.assertEqual(breadth.valid_count, 1)
+
+    def test_collector_aligns_provisional_breadth_bar_to_index_session(self):
+        broker = FakeBroker()
+        index_session = build_index_features("0001", index_rows()).session_date
+
+        def bars_with_provisional_current_day(symbol, count=60):
+            rows = [
+                Bar(f"2025{i // 28 + 1:02d}{i % 28 + 1:02d}", 100 + i)
+                for i in range(180, 260)
+            ]
+            rows.append(Bar("2025-10-09", 1.0))
+            return rows
+
+        broker.fetch_daily_bars = bars_with_provisional_current_day
+        collector = NamuhKrCollector(broker, universe=("005930",))
+        _, breadth = collector.collect()
+
+        self.assertEqual(breadth.session_date, index_session)
+        self.assertEqual(breadth.valid_count, 1)
+        self.assertEqual(breadth.advance_ratio, 1.0)
 
     def test_service_refresh_current_history_and_diagnostics(self):
         broker, repo = FakeBroker(), MemoryRepository()
