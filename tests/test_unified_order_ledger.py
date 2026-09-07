@@ -75,6 +75,24 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.repository.transition(order["id"], "approval_pending", "approved")
 
+    def test_order_list_and_detail_expose_execution_latency_fields(self):
+        order = self.repository.create(self.intent())
+        self.repository.transition(order["id"], "approval_pending", "approved")
+        self.repository.transition(order["id"], "approved", "submitting")
+        self.repository.transition(order["id"], "submitting", "submitted")
+
+        listed = self.repository.list_orders()[0]
+        detailed = self.repository.detail(order["id"])
+        for key in (
+            "approval_latency_seconds",
+            "approval_to_submit_seconds",
+            "submission_to_first_fill_seconds",
+            "cancel_latency_seconds",
+        ):
+            self.assertIn(key, listed)
+            self.assertIn(key, detailed)
+        self.assertGreaterEqual(listed["approval_latency_seconds"], 0)
+
     def test_reconciliation_materializes_only_fill_delta(self):
         order = self.repository.create(self.intent())
         self.repository.transition(order["id"], "approval_pending", "approved")

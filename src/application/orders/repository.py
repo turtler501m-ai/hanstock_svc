@@ -32,6 +32,51 @@ def _broker_cost(raw, keys: tuple[str, ...]) -> float | None:
     return None
 
 
+def _parse_event_time(value) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _elapsed_seconds(start: datetime | None, end: datetime | None) -> float | None:
+    if start is None or end is None:
+        return None
+    return round(max(0.0, (end - start).total_seconds()), 3)
+
+
+def _order_timing(events: list[dict]) -> dict[str, float | None]:
+    """Expose execution latency from immutable order events."""
+    created = approved = submitted = cancel_requested = canceled = first_fill = None
+    for event in events:
+        timestamp = _parse_event_time(event.get("created_at"))
+        event_type = str(event.get("event_type") or "")
+        if event_type == "created" and created is None:
+            created = timestamp
+        elif event_type == "approved" and approved is None:
+            approved = timestamp
+        elif event_type == "submitted" and submitted is None:
+            submitted = timestamp
+        elif event_type == "cancel_pending" and cancel_requested is None:
+            cancel_requested = timestamp
+        elif event_type == "canceled" and canceled is None:
+            canceled = timestamp
+        elif event_type == "broker_snapshot" and first_fill is None:
+            try:
+                payload = json.loads(event.get("payload_json") or "{}")
+            except (TypeError, ValueError, json.JSONDecodeError):
+                payload = {}
+            if float(payload.get("fill_delta") or 0) > 0:
+                first_fill = timestamp
+    return {
+        "approval_latency_seconds": _elapsed_seconds(created, approved),
+        "approval_to_submit_seconds": _elapsed_seconds(approved, submitted),
+        "submission_to_first_fill_seconds": _elapsed_seconds(submitted, first_fill),
+        "cancel_latency_seconds": _elapsed_seconds(cancel_requested, canceled),
+    }
+
+
 class OrderLedgerRepository:
     def __init__(self, connect):
         self._connect = connect
@@ -324,7 +369,14 @@ class OrderLedgerRepository:
                 rows = conn.execute(
                     "SELECT * FROM orders ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset)
                 ).fetchall()
-            return [dict(row) for row in rows]
+            orders = [dict(row) for row in rows]
+            for order in orders:
+                events = [dict(event) for event in conn.execute(
+                    "SELECT event_type,payload_json,created_at FROM order_events WHERE order_id=? ORDER BY id",
+                    (int(order["id"]),),
+                ).fetchall()]
+                order.update(_order_timing(events))
+            return orders
 
     def detail(self, order_id: int) -> dict | None:
         order = self.get(order_id)
@@ -338,6 +390,7 @@ class OrderLedgerRepository:
             order["fills"] = [dict(row) for row in conn.execute(
                 "SELECT * FROM fills WHERE order_id=? ORDER BY filled_at,id", (order_id,)
             ).fetchall()]
+            order.update(_order_timing(order["events"]))
         return order
 
     def list_positions(self, *, market: str | None = None) -> list[dict]:
