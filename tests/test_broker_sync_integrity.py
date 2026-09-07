@@ -12,6 +12,46 @@ from src.dashboard.services.balance_service import parse_balance
 
 
 class BrokerSyncIntegrityTests(unittest.TestCase):
+    def test_all_holdings_receive_dedicated_sellable_inquiry(self):
+        client = Mock(account="all-holdings-test")
+        rows = [{"iem_cd": f"{index:06d}", "ny_stl_qty": 10, "itg_bnc_qty": 0}
+                for index in range(1, 9)]
+        client.post.side_effect = [self.page(rows)] + [
+            self.page(summary={"sll_pbl_qty": 10}) for _ in rows
+        ]
+        broker = NHPlugBrokerAdapter(client)
+        broker._sellable_cache = {}
+        broker._sellable_retry_after = {}
+        parsed = parse_balance(broker.get_balance())
+        self.assertEqual(client.post.call_count, 9)
+        self.assertEqual([h["sellable_qty"] for h in parsed["holdings"]], [10] * 8)
+        self.assertTrue(all(h["sellable_status"] == "confirmed" for h in parsed["holdings"]))
+
+    def test_failed_inquiry_is_distinct_from_confirmed_zero_and_does_not_stop_other_rows(self):
+        client = Mock(account="unavailable-holdings-test")
+        rows = [{"iem_cd": f"{index:06d}", "itg_bnc_qty": 10} for index in range(1, 4)]
+        client.post.side_effect = [self.page(rows), NHPlugApiError("unavailable"),
+                                   self.page(summary={"sll_pbl_qty": 0}),
+                                   self.page(summary={"sll_pbl_qty": 7})]
+        broker = NHPlugBrokerAdapter(client)
+        broker._sellable_cache = {}
+        broker._sellable_retry_after = {}
+        holdings = parse_balance(broker.get_balance())["holdings"]
+        self.assertEqual([h["sellable_qty"] for h in holdings], [0, 0, 7])
+        self.assertEqual([h["sellable_status"] for h in holdings],
+                         ["unavailable", "confirmed", "confirmed"])
+
+    def test_malformed_sellable_quantity_is_not_cached_as_zero(self):
+        for value in (None, "", "invalid", -1):
+            with self.subTest(value=value):
+                client = Mock(account="malformed-sellable-test")
+                client.post.return_value = self.page(summary={"sll_pbl_qty": value})
+                broker = NHPlugBrokerAdapter(client)
+                broker._sellable_cache = {}
+                with self.assertRaises(ValueError):
+                    broker.fetch_sellable_quantity("005930")
+                self.assertEqual(broker._sellable_cache, {})
+
     def page(self, rows=(), *, cursor="", flag="", summary=None):
         return NHPlugPage({"Output_0": summary or {}, "Output_1": list(rows)},
                           {"cts": cursor, "cts_flag": flag})

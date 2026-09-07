@@ -255,7 +255,7 @@ class MarketRegimeDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn("HanstockDashboardHoldingSummaryScreen.render", APP_JS)
 
     def test_holdings_screen_isolated_from_app(self):
-        module_tag = '<script src="/static/js/dashboard-holdings-screen.js?v=3"></script>'
+        module_tag = '<script src="/static/js/dashboard-holdings-screen.js?v=4"></script>'
         app_tag = '<script src="/static/js/app.js?v=78"></script>'
         self.assertLess(TEMPLATE.index(module_tag), TEMPLATE.index(app_tag))
         self.assertIn("HanstockDashboardHoldingsScreen", HOLDINGS_SCREEN_JS)

@@ -33,6 +33,7 @@ class Holding:
     profit_loss_rate: float = 0.0
     daily_change_rate: float = 0.0
     raw: Mapping[str, Any] = field(default_factory=dict, compare=False)
+    sellable_status: str = "confirmed"
 
 
 @dataclass(frozen=True, slots=True)

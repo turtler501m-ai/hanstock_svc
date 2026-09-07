@@ -90,6 +90,7 @@ def parse_balance(balance_data: dict) -> dict:
             "name": str(stock.get("prdt_name") or symbol).strip(),
             "qty": qty,
             "sellable_qty": sellable_qty,
+            "sellable_status": stock.get("sellable_status", "confirmed"),
             "price": price,
             "rt": to_float(stock.get("evlu_pfls_rt")),
             "daily_change_pct": to_float(stock.get("fltt_rt")),

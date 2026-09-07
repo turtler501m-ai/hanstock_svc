@@ -92,7 +92,6 @@ class NHPlugBrokerAdapter:
     _sellable_cache: dict[tuple[str, str], tuple[float, int]] = {}
     _sellable_cache_lock = threading.Lock()
     _sellable_cache_ttl_seconds = 60.0
-    _sellable_refresh_limit_per_balance = 3
     _sellable_retry_after: dict[tuple[str, str], float] = {}
     _sellable_retry_cooldown_seconds = 30.0
 
@@ -151,28 +150,20 @@ class NHPlugBrokerAdapter:
         # endpoint.  Successful and zero results are cached to respect the
         # broker rate limit while still making every row converge on refresh.
         enriched = []
-        refreshed = 0
         for holding in holdings:
             cached = self._cached_sellable_quantity(holding.symbol)
             if cached is not None:
                 enriched.append(replace(holding, sellable_quantity=min(
                     holding.quantity, cached
-                )))
+                ), sellable_status="confirmed"))
                 continue
             retry_after = self._sellable_retry_after.get((self.account, holding.symbol), 0.0)
             if retry_after > time.monotonic():
                 enriched.append(holding)
                 continue
-            if refreshed >= self._sellable_refresh_limit_per_balance:
-                # Do not turn an unqueried row into a false zero.  The next
-                # balance refresh will continue the bounded reconciliation.
-                enriched.append(holding)
-                continue
             try:
                 sellable = self.fetch_sellable_quantity(holding.symbol, use_cache=True)
-                refreshed += 1
             except Exception as exc:
-                refreshed += 1
                 self._sellable_retry_after[(self.account, holding.symbol)] = (
                     time.monotonic() + self._sellable_retry_cooldown_seconds
                 )
@@ -180,10 +171,11 @@ class NHPlugBrokerAdapter:
                     "NHPLUG sellable quantity refresh failed symbol=%s: %s",
                     holding.symbol, exc,
                 )
-                sellable = holding.sellable_quantity
+                enriched.append(holding)
+                continue
             enriched.append(replace(holding, sellable_quantity=min(
                 holding.quantity, max(0, int(sellable))
-            )))
+            ), sellable_status="confirmed"))
         holdings = tuple(enriched)
         stock_value = sum(x.market_value for x in holdings)
         total = _num(summary.get("tot_aet_amt") or summary.get("tot_eal_amt"))
@@ -232,7 +224,14 @@ class NHPlugBrokerAdapter:
         row = _out(page)
         if isinstance(row, list):
             row = row[0] if row else {}
-        quantity = max(0, _int(row.get("sll_pbl_qty"))) if isinstance(row, Mapping) else 0
+        if not isinstance(row, Mapping) or row.get("sll_pbl_qty") in (None, ""):
+            raise ValueError("Broker sellable quantity is missing")
+        try:
+            quantity = int(str(row["sll_pbl_qty"]).replace(",", ""))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Broker sellable quantity is invalid") from exc
+        if quantity < 0:
+            raise ValueError("Broker sellable quantity is negative")
         with self._sellable_cache_lock:
             self._sellable_cache[cache_key] = (time.monotonic(), quantity)
         return quantity
@@ -245,16 +244,14 @@ class NHPlugBrokerAdapter:
             _int(row.get("ny_stl_qty")),
             _int(row.get("rsdl_qty")),
         )
-        # A numeric zero is authoritative.  In particular, mock accounts can
-        # report an unsettled next-day quantity while integrated balance is
-        # still zero; falling through with ``or`` falsely made it sellable and
-        # caused cashSell error 14780.
-        sellable_qty = min(qty, max(0, _int(row.get("itg_bnc_qty"))))
+        # Balance quantities do not establish cash-sell capacity. Keep it
+        # unavailable until the dedicated inquiry succeeds.
+        sellable_qty = 0
         price = _num(row.get("now_pr"))
         value = _num(row.get("eal_amt")) or qty * price
         return Holding(str(row.get("iem_cd") or ""), str(row.get("iem_nm") or ""), qty, sellable_qty,
                        _num(row.get("phs_pr")), price, value, _num(row.get("eal_pls_amt")),
-                       _num(row.get("pft_rt")), raw=row)
+                       _num(row.get("pft_rt")), raw=row, sellable_status="unavailable")
 
     def fetch_quote(self, symbol: str) -> Quote:
         try:
@@ -432,6 +429,7 @@ class NHPlugBrokerAdapter:
             "output1": [{
                 "pdno": h.symbol, "prdt_name": h.name, "hldg_qty": _whole(h.quantity),
                 "ord_psbl_qty": _whole(h.sellable_quantity), "pchs_avg_pric": _whole(h.average_price),
+                "sellable_status": h.sellable_status,
                 "prpr": _whole(h.current_price), "evlu_amt": _whole(h.market_value),
                 "evlu_pfls_amt": _whole(h.profit_loss), "evlu_pfls_rt": str(h.profit_loss_rate),
                 "fltt_rt": str(h.daily_change_rate),

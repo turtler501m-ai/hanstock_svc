@@ -19,13 +19,15 @@
             const pnlLabel = pnlStatus === 'loss' ? deps.labels.loss : (pnlStatus === 'profit' ? deps.labels.profit : deps.labels.flat);
             const allocations = holding.strategy_allocations || [];
             const qty = Number(holding.qty || 0);
-            const sellableQty = Number(holding.sellable_qty ?? holding.qty ?? 0);
+            const sellableKnown = !holding.sellable_status || holding.sellable_status === 'confirmed';
+            const sellableQty = sellableKnown ? Number(holding.sellable_qty ?? holding.qty ?? 0) : 0;
             const sellPending = Boolean(holding.sell_pending);
             const weight = Number(holding.hanstock_weight || 0);
             const maxWeight = Number(config?.max_single_weight || 0);
             const exceeded = maxWeight > 0 && weight > maxWeight + 0.000001;
             const canSell = sellableQty > 0 && !sellPending;
             let qtyText = sellableQty !== qty ? `${qty.toLocaleString()} <small class="time-muted">${deps.labels.sellable} ${sellableQty.toLocaleString()}</small>` : qty.toLocaleString();
+            if (!sellableKnown) qtyText = `${qty.toLocaleString()} <small class="time-muted">${deps.labels.sellable} 조회 실패</small>`;
             if (sellPending) qtyText += ` <small class="time-muted">${deps.labels.pending}</small>`;
             const allocationHtml = allocations.length ? allocations.map((item) => `<span class="holding-strategy-chip">${deps.escapeHtml(item.strategy_name || item.strategy_id)}<small>${deps.formatNumber(item.allocated_qty || 0)}${deps.labels.items}</small><button type="button" class="button-ghost strategy-attribution-sell" data-symbol="${deps.escapeHtml(holding.symbol)}" data-name="${deps.escapeHtml(holding.name)}" data-strategy-id="${deps.escapeHtml(item.strategy_id)}" data-strategy-name="${deps.escapeHtml(item.strategy_name || item.strategy_id)}" data-qty="${Number(item.allocated_qty || 0)}" ${(Number(item.allocated_qty || 0) > 0 && sellableQty > 0 && !sellPending) ? '' : 'disabled'}>${deps.labels.sell}</button></span>`).join('') : `<span class="time-muted">${deps.labels.unattributed}</span>`;
             const row = document.createElement('tr');
