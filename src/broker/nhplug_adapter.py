@@ -341,7 +341,7 @@ class NHPlugBrokerAdapter:
                 _int(raw.get("ny_stl_qty")),
                 _int(raw.get("rsdl_qty")),
             )
-            if settlement_qty >= _whole(holding.quantity):
+            if settlement_qty >= _int(holding.quantity):
                 return _int(holding.quantity)
             return sellable
 
