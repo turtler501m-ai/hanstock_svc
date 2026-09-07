@@ -28,6 +28,13 @@ def build_order_health(connect, *, stale_minutes: int = 10, include_runtime: boo
                  AND updated_at < ?""",
             (threshold,),
         ).fetchone()[0]
+        stale_side_rows = conn.execute(
+            """SELECT lower(COALESCE(side, '')), COUNT(*) FROM orders
+               WHERE status IN ('submitting','submitted','open','partial','cancel_pending')
+                 AND updated_at < ? GROUP BY lower(COALESCE(side, ''))""",
+            (threshold,),
+        ).fetchall()
+        stale_buy_count = sum(int(row[1]) for row in stale_side_rows if row[0] == "buy")
         reconciliation_count = conn.execute(
             "SELECT COUNT(*) FROM reconciliation_adjustments WHERE status='open'"
         ).fetchone()[0]
@@ -93,8 +100,6 @@ def build_order_health(connect, *, stale_minutes: int = 10, include_runtime: boo
     # is reconciled, but it must not freeze unrelated new orders.  Active,
     # stale, reconciliation, schema, and kill-switch invariants remain hard
     # blockers below.
-    if stale_count:
-        blockers.append({"code": "STALE_ACTIVE_ORDER", "count": stale_count})
     if reconciliation_count:
         blockers.append({"code": "RECONCILIATION_OPEN", "count": reconciliation_count})
     if unprotected_count:
@@ -106,6 +111,10 @@ def build_order_health(connect, *, stale_minutes: int = 10, include_runtime: boo
     if not schema_ready:
         blockers.append({"code": "SCHEMA_NOT_READY", "count": 1})
     warnings = []
+    if stale_count:
+        warnings.append({"code": "STALE_ACTIVE_ORDER", "count": int(stale_count)})
+    if stale_buy_count:
+        warnings.append({"code": "STALE_ACTIVE_BUY", "count": stale_buy_count})
     if unknown_count:
         warnings.append({"code": "BROKER_UNKNOWN", "count": unknown_count})
     if stale_pending_approval_count:
