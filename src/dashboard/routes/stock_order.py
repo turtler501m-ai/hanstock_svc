@@ -326,9 +326,27 @@ def cancel_unified_order(order_id: int):
     if not broker_order_id:
         raise HTTPException(status_code=409, detail="broker order id is not known")
     broker_order_id = _canonical_cancel_order_id(_get_api(), item, broker_order_id)
-    claimed = repository.transition(
-        order_id, current, "cancel_pending", actor="dashboard", reason="operator cancellation"
-    )
+    try:
+        claimed = repository.transition(
+            order_id, current, "cancel_pending", actor="dashboard", reason="operator cancellation"
+        )
+    except RuntimeError as exc:
+        # A broker-sync worker may have claimed the same order between the
+        # read above and this transition. Cancellation is idempotent from the
+        # operator's perspective; return the authoritative current state
+        # instead of leaking a 500 concurrency error.
+        latest = repository.get(order_id)
+        latest_status = str((latest or {}).get("status") or "")
+        if latest and latest_status in {"cancel_pending", "canceled", "filled", "broker_unknown"}:
+            return {
+                "order": latest,
+                "broker_result": {"success": True, "message": "cancellation already in progress or completed",
+                                   "broker_order_id": latest.get("broker_order_id") or "",
+                                   "status": latest_status},
+                "confirmation_started": latest_status == "cancel_pending",
+                "idempotent": True,
+            }
+        raise exc
     try:
         result = _get_api().submit_cancellation(CancelOrderRequest(
             order_id=broker_order_id,
@@ -2051,13 +2069,34 @@ def approve_order(approval_id: int):
         return _approve_pending_approval(approval_id, "수동승인")
     except NewRiskBlockedError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except HTTPException as exc:
+        if exc.status_code == 409 and "already executed" in str(exc.detail).lower():
+            with trader.connect_db() as conn:
+                row = conn.execute(
+                    "SELECT status,response_msg FROM approvals WHERE id=?", (approval_id,)
+                ).fetchone()
+            if row:
+                return {"id": approval_id, "status": str(row[0]),
+                        "response_msg": str(row[1] or ""), "idempotent": True}
+        raise
 
 
 
 
 @router.post("/api/approvals/{approval_id}/reject")
 def reject_order(approval_id: int):
-    item = _load_pending_approval(approval_id)
+    try:
+        item = _load_pending_approval(approval_id)
+    except HTTPException as exc:
+        if exc.status_code == 409 and "already executed" in str(exc.detail).lower():
+            with trader.connect_db() as conn:
+                row = conn.execute(
+                    "SELECT status,response_msg FROM approvals WHERE id=?", (approval_id,)
+                ).fetchone()
+            if row:
+                return {"id": approval_id, "status": str(row[0]),
+                        "response_msg": str(row[1] or ""), "idempotent": True}
+        raise
     if item.get("managed_order_id"):
         from src.strategy.autonomy.ai_stock_integration import (
             reject_managed_ai_stock_order,
