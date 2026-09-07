@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+import math
 from typing import Any
 
 
@@ -80,5 +81,11 @@ class OrderIntent:
             raise ValueError("client_order_key and correlation_id are required")
         if self.side not in {"buy", "sell"}:
             raise ValueError("side must be buy or sell")
-        if float(self.quantity) <= 0:
-            raise ValueError("quantity must be positive")
+        if isinstance(self.quantity, bool) or not float(self.quantity).is_integer() or int(self.quantity) <= 0:
+            raise ValueError("quantity must be a positive whole number")
+        if not str(self.symbol or "").strip():
+            raise ValueError("symbol is required")
+        if not math.isfinite(float(self.price)) or float(self.price) < 0:
+            raise ValueError("price must be finite and non-negative")
+        if str(self.time_in_force).upper() not in {"DAY", "IOC", "FOK", "GTC"}:
+            raise ValueError("unsupported time_in_force")

@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from src.config import config
+from src.broker.models import AccountBalance, Holding
 from src.strategy import router
 from src.db.connection import open_sqlite
 
@@ -62,7 +63,9 @@ class OrderRouterTests(unittest.TestCase):
 
         class FakeApi:
             def get_balance(self):
-                return {"output1": [{"pdno": "005930", "hldg_qty": "3"}]}
+                return {"output1": [{
+                    "pdno": "005930", "hldg_qty": "3", "ord_psbl_qty": "3",
+                }], "output2": [{"ord_psbl_cash": "0"}]}
 
             def place_order(self, symbol, action, price, qty):
                 return {"rt_cd": "0", "msg1": "accepted", "output": {"ODNO": "D98765"}}
@@ -108,7 +111,7 @@ class OrderRouterTests(unittest.TestCase):
                 self.calls = 0
 
             def get_balance(self):
-                return {"output1": []}
+                return {"output1": [], "output2": [{"ord_psbl_cash": "1000000"}]}
 
             def place_order(self, symbol, action, price, qty):
                 self.calls += 1
@@ -132,7 +135,7 @@ class OrderRouterTests(unittest.TestCase):
         self.assertEqual(saved[0][1]["response_msg"], "accepted")
         sleep_mock.assert_called_once_with(router._RATE_LIMIT_BACKOFF_SECONDS)
 
-    def test_buy_order_skips_pre_order_balance_lookup(self):
+    def test_buy_order_requires_fresh_orderable_cash(self):
         self._set_config(
             dry_run=False,
             trading_env="demo",
@@ -140,6 +143,7 @@ class OrderRouterTests(unittest.TestCase):
             require_approval=False,
         )
         api = Mock()
+        api.fetch_balance.return_value = AccountBalance(orderable_cash=1_000_000)
         api.place_order.return_value = {"rt_cd": "0", "msg1": "accepted"}
         order_router = router.OrderRouter(api)
 
@@ -147,7 +151,7 @@ class OrderRouterTests(unittest.TestCase):
             result = order_router.route("005930", "Samsung", "buy", 1, 70000, "test", {})
 
         self.assertTrue(result["ok"])
-        api.get_balance.assert_not_called()
+        api.fetch_balance.assert_called_once()
         self.assertEqual(save_trade.call_args.kwargs["pre_order_qty"], 0)
 
     def test_require_approval_returns_approval_id(self):

@@ -1,0 +1,26 @@
+{
+  "name": "AI 자동매매 내부 기능 현실화",
+  "target_pct": 95,
+  "items": [
+    {"id":"broker_contract","name":"증권사 표준 응답 모델","module":"src.broker.models","objects":["AccountBalance","Holding","OrderSnapshot"]},
+    {"id":"order_identity","name":"주문 멱등성과 추적 식별자","module":"src.application.orders.models","objects":["OrderIntent"]},
+    {"id":"order_state","name":"통합 주문 상태 머신","module":"src.application.orders.models","objects":["UnifiedOrderStatus","ALLOWED_TRANSITIONS"]},
+    {"id":"order_ledger","name":"통합 주문·이벤트 원장","module":"src.application.orders.repository","objects":["OrderLedgerRepository.create","OrderLedgerRepository.record_event"]},
+    {"id":"sell_capacity","name":"최신 매도가능수량 검사","module":"src.application.orders.preflight","objects":["evaluate_order_capacity","require_order_capacity"]},
+    {"id":"buy_capacity","name":"최신 주문가능현금 검사","module":"src.application.orders.preflight","objects":["OrderCapacityDecision"]},
+    {"id":"local_reservation","name":"제출 전 수량·현금 예약","module":"src.application.orders.preflight","objects":["_active_local_reservations"]},
+    {"id":"partial_fill","name":"부분체결 누적과 중복방지","module":"src.application.orders.repository","objects":["OrderLedgerRepository.reconcile_snapshot"]},
+    {"id":"fill_costs","name":"수수료·세금 현금흐름 반영","module":"src.application.orders.repository","objects":["_broker_cost"]},
+    {"id":"cancel_confirmation","name":"취소 결과 확인","module":"src.dashboard.routes.stock_order","objects":["_confirm_canceled_order"]},
+    {"id":"cancel_replace","name":"취소 후 잔량 재주문","module":"src.dashboard.routes.stock_order","objects":["_replace_with_market_after_cancel"]},
+    {"id":"ambiguous_outcome","name":"통신 장애 결과불명 처리","module":"src.application.orders.models","objects":["UnifiedOrderStatus.BROKER_UNKNOWN"]},
+    {"id":"startup_recovery","name":"재기동 주문 복구","module":"src.application.orders.recovery","objects":["run_startup_recovery"]},
+    {"id":"balance_reconciliation","name":"증권사 잔고 정합성 조정","module":"src.application.orders.position_reconciliation","objects":["apply_latest_open_reconciliation_issues"]},
+    {"id":"order_health","name":"주문 상태 이상 차단","module":"src.application.orders.health","objects":["build_order_health","assert_new_risk_allowed"]},
+    {"id":"data_freshness","name":"AI 데이터 신선도 차단","module":"src.ai_stock.freshness","objects":["is_stale"]},
+    {"id":"market_regime","name":"시장 국면 위험 조정","module":"src.market_regime.policy","objects":["evaluate_new_risk"]},
+    {"id":"risk_reservation","name":"AI 위험예산 예약","module":"src.db.ai_risk_repository","objects":["reserve_risk_budget","release_risk_reservation"]},
+    {"id":"backtest_reality","name":"거래비용·다음 봉 체결 백테스트","module":"src.strategy.technical_backtest","objects":["run_technical_walk_forward"],"paths":["src/strategy/portfolio_backtest.py"]},
+    {"id":"live_validation","name":"3개월 모의·소액 실거래 검증","validation_required":true,"required_for_target":false,"evidence":"운영 체결 데이터 3개월"}
+  ]
+}

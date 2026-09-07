@@ -524,22 +524,33 @@ def _approve_pending_approval_serialized(
     pre_order_qty = 0
     try:
         api = _get_api()
-        pre_order_qty = _dependency(
-            "_current_holding_qty_from_balance", _current_holding_qty_from_balance
-        )(api, item["symbol"])
-        if str(item.get("action") or "").lower() == "sell":
-            sellable_qty = _current_sellable_qty_from_balance(api, item["symbol"])
-            reserved_qty = _reserved_sell_qty_from_ledger(item["symbol"])
-            available_qty = max(0, sellable_qty - reserved_qty)
-            logger.info(
-                "sell capacity check approval_id={} symbol={} broker_sellable={} reserved={} available={} requested={}",
-                approval_id, item["symbol"], sellable_qty, reserved_qty, available_qty, int(item["qty"]),
+        from src.application.orders.identity import broker_account_scope_key
+        from src.application.orders.preflight import require_order_capacity
+
+        capacity = require_order_capacity(
+            api=api, connect=trader.connect_db,
+            account_key=broker_account_scope_key("KR"), market="KR",
+            symbol=item["symbol"], side=item["action"], quantity=int(item["qty"]),
+            price=int(item["price"]),
+            exclude_order_id=int(ledger_order["id"]) if ledger_order is not None else None,
+        )
+        pre_order_qty = int(capacity.evidence.get("holding_quantity") or 0)
+        if ledger_order is not None:
+            from src.application.orders.repository import OrderLedgerRepository
+
+            OrderLedgerRepository(trader.connect_db).record_event(
+                int(ledger_order["id"]), "capacity_confirmed", actor=approval_label,
+                reason=capacity.reason, payload={
+                    "requested_quantity": capacity.requested_quantity,
+                    "approved_quantity": capacity.approved_quantity,
+                    "broker_sellable_quantity": capacity.broker_sellable_quantity,
+                    "locally_reserved_quantity": capacity.locally_reserved_quantity,
+                    "broker_orderable_cash": capacity.broker_orderable_cash,
+                    "locally_reserved_cash": capacity.locally_reserved_cash,
+                    "estimated_order_value": capacity.estimated_order_value,
+                    "reference_price": capacity.reference_price,
+                },
             )
-            if available_qty < int(item["qty"]):
-                raise RuntimeError(
-                    f"증권사 매도가능수량 부족: 요청 {int(item['qty'])}주 / "
-                    f"최신 확인 {sellable_qty}주"
-                )
         submission_started = True
         result = api.place_order(item["symbol"], item["action"], item["price"], item["qty"])
         if result.get("rt_cd") != "0" and _is_tick_size_error(result):

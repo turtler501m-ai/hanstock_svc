@@ -98,6 +98,32 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
         self.assertEqual(10, position["quantity"])
         self.assertAlmostEqual(-699500, position["net_cash_flow"])
 
+    def test_broker_fee_and_tax_are_applied_as_cumulative_fill_deltas(self):
+        sell_intent = OrderIntent(
+            client_order_key="cost-order", correlation_id="cost-order",
+            symbol="005930", side="sell", quantity=10, price=70000,
+        )
+        order = self.repository.create(sell_intent, initial_status="approved")
+        self.repository.transition(order["id"], "approved", "submitting")
+        self.repository.transition(order["id"], "submitting", "submitted")
+        self.repository.reconcile_snapshot(
+            order["id"], status="partial", cumulative_filled_qty=4,
+            average_fill_price=70000, raw={"tot_cmsn_amt": "100", "tot_tax_amt": "200"},
+        )
+        self.repository.reconcile_snapshot(
+            order["id"], status="filled", cumulative_filled_qty=10,
+            average_fill_price=70000, raw={"tot_cmsn_amt": "250", "tot_tax_amt": "500"},
+        )
+
+        fills = self.repository.detail(order["id"])["fills"]
+        self.assertEqual([100, 150], [row["fee"] for row in fills])
+        self.assertEqual([200, 300], [row["tax"] for row in fills])
+        with self.connect() as conn:
+            position = conn.execute(
+                "SELECT net_cash_flow FROM positions WHERE market='KR' AND symbol='005930'"
+            ).fetchone()
+        self.assertEqual(699250, position["net_cash_flow"])
+
     def test_startup_recovery_moves_to_ready_when_invariants_are_clean(self):
         recovery = run_startup_recovery(self.connect)
         self.assertEqual("ready", recovery["state"])
@@ -145,7 +171,7 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
         mismatch = next(item for item in health["warnings"] if item["code"] == "RUNTIME_STATE_MISMATCH")
         self.assertEqual("ready", mismatch["computed_state"])
 
-    def test_stale_active_order_forces_reduce_only(self):
+    def test_stale_active_order_is_warning_only(self):
         order = self.repository.create(self.intent())
         self.repository.transition(order["id"], "approval_pending", "approved")
         self.repository.transition(order["id"], "approved", "submitting")
@@ -156,9 +182,11 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
                 (order["id"],),
             )
         recovery = run_startup_recovery(self.connect)
-        self.assertEqual("reduce_only", recovery["state"])
-        with self.assertRaises(NewRiskBlockedError):
-            assert_new_risk_allowed(self.connect)
+        self.assertEqual("ready", recovery["state"])
+        assert_new_risk_allowed(self.connect)
+        health = build_order_health(self.connect)
+        self.assertTrue(health["new_risk_allowed"])
+        self.assertIn("STALE_ACTIVE_ORDER", {item["code"] for item in health["warnings"]})
 
     def test_unknown_order_is_warning_but_does_not_block_new_risk(self):
         order = self.repository.create(self.intent())

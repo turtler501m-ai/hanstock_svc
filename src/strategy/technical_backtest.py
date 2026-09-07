@@ -39,8 +39,11 @@ def run_technical_walk_forward(
         fold_trades = []
         for index in range(fold_start, fold_end):
             current = float(prices[index])
-            history_prices = prices[:index + 1]
-            profile = profile_builder(history_prices, highs[:index + 1], volumes[:index + 1])
+            # A signal using today's close cannot also fill at that same close.
+            # Build the decision from the completed previous bar and execute at
+            # the next available bar supplied by ``current``.
+            history_prices = prices[:index]
+            profile = profile_builder(history_prices, highs[:index], volumes[:index])
             if position is None:
                 if float(profile.get("score") or 0) >= min_score:
                     entry = current * (1 + cost_rate)
@@ -112,4 +115,10 @@ def run_technical_walk_forward(
         "metrics": metrics,
         "folds": results,
         "costs": {"round_trip_bps": cost_bps * 2, "modeled": True},
+        "execution_model": {
+            "signal_lag_bars": 1,
+            "signal_source": "previous_completed_bar",
+            "fill_source": "next_available_bar",
+            "lookahead_protected": True,
+        },
     }

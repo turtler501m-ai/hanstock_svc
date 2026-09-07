@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import Mock, call, patch
 
+from src.broker.models import AccountBalance, Holding
 from src.dashboard.services import approval_service
 
 
@@ -11,6 +12,9 @@ class DashboardApprovalTickSizeTest(unittest.TestCase):
 
     def test_approval_retries_tick_size_error_with_adjusted_price(self):
         api = Mock()
+        api.fetch_balance.return_value = AccountBalance(holdings=(
+            Holding("204320", quantity=20, sellable_quantity=20),
+        ))
         api.place_order.side_effect = [
             {"rt_cd": "1", "msg1": "호가단위 오류"},
             {"rt_cd": "0", "msg1": "주문 접수", "output": {"ODNO": "123"}},

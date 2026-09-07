@@ -53,23 +53,6 @@ class OrderRouter:
             online_access_blocked=self.online_access_blocked,
         )
 
-    def _current_holding_qty(self, symbol: str) -> int:
-        try:
-            balance = self.api.fetch_balance()
-        except Exception:
-            try:
-                raw = self.api.get_balance()
-                for holding in raw.get("output1", []):
-                    if str(holding.get("pdno") or "") == str(symbol):
-                        return int(float(holding.get("hldg_qty") or 0))
-            except Exception:
-                pass
-            return 0
-        for holding in balance.holdings:
-            if str(holding.symbol) == str(symbol):
-                return int(holding.quantity)
-        return 0
-
     def _place_order_with_rate_limit_retries(
         self,
         symbol: str,
@@ -186,7 +169,35 @@ class OrderRouter:
             strategy_id=strategy_id, metadata={"reason": reason, "source": "strategy_router"},
         ), initial_status="approved")
         ledger.transition(order["id"], "approved", "submitting", actor="strategy_router")
-        pre_order_qty = self._current_holding_qty(symbol) if action == "sell" else 0
+        from src.application.orders.preflight import require_order_capacity
+
+        try:
+            capacity = require_order_capacity(
+                api=self.api, connect=connect_db,
+                account_key=broker_account_scope_key("KR"), market="KR",
+                symbol=symbol, side=action, quantity=qty, price=price,
+                exclude_order_id=int(order["id"]),
+            )
+            ledger.record_event(
+                int(order["id"]), "capacity_confirmed", actor="strategy_router",
+                reason=capacity.reason, payload={
+                    "requested_quantity": capacity.requested_quantity,
+                    "approved_quantity": capacity.approved_quantity,
+                    "broker_sellable_quantity": capacity.broker_sellable_quantity,
+                    "locally_reserved_quantity": capacity.locally_reserved_quantity,
+                    "broker_orderable_cash": capacity.broker_orderable_cash,
+                    "locally_reserved_cash": capacity.locally_reserved_cash,
+                    "estimated_order_value": capacity.estimated_order_value,
+                    "reference_price": capacity.reference_price,
+                },
+            )
+        except Exception as exc:
+            ledger.transition(
+                int(order["id"]), "submitting", "rejected",
+                actor="capacity_preflight", reason=str(exc),
+            )
+            return {"ok": False, "msg": str(exc), "status": "rejected", "order_id": order["id"]}
+        pre_order_qty = int(capacity.evidence.get("holding_quantity") or 0) if action == "sell" else 0
         try:
             result = self._place_order_with_rate_limit_retries(symbol, action, price, qty)
         except Exception as exc:

@@ -10,6 +10,28 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _broker_cost(raw, keys: tuple[str, ...]) -> float | None:
+    """Find a non-negative cumulative broker cost in a nested snapshot."""
+    if not isinstance(raw, dict):
+        return None
+    normalized = {str(key).lower(): value for key, value in raw.items()}
+    for key in keys:
+        if key.lower() not in normalized:
+            continue
+        try:
+            value = float(str(normalized[key.lower()] or "0").replace(",", ""))
+        except (TypeError, ValueError):
+            continue
+        if value >= 0:
+            return value
+    for value in raw.values():
+        if isinstance(value, dict):
+            found = _broker_cost(value, keys)
+            if found is not None:
+                return found
+    return None
+
+
 class OrderLedgerRepository:
     def __init__(self, connect):
         self._connect = connect
@@ -205,17 +227,41 @@ class OrderLedgerRepository:
                 cumulative_value = incoming * float(average_fill_price or 0)
                 previous_value = old_filled * float(current.get("average_fill_price") or 0)
                 delta_price = max(0.0, (cumulative_value - previous_value) / delta)
+                cumulative_fee = _broker_cost(
+                    raw, ("fee", "fees", "commission", "cmsn_amt", "tot_cmsn_amt", "수수료")
+                )
+                cumulative_tax = _broker_cost(
+                    raw, ("tax", "tax_amt", "tot_tax_amt", "stt_tax", "제세금")
+                )
+                previous_costs = conn.execute(
+                    """SELECT COALESCE(SUM(fee),0),COALESCE(SUM(tax),0)
+                       FROM fills WHERE order_id=?""",
+                    (order_id,),
+                ).fetchone()
+                delta_fee = (
+                    max(0.0, cumulative_fee - float(previous_costs[0] or 0))
+                    if cumulative_fee is not None else None
+                )
+                delta_tax = (
+                    max(0.0, cumulative_tax - float(previous_costs[1] or 0))
+                    if cumulative_tax is not None else None
+                )
+                cost_source = "broker" if cumulative_fee is not None or cumulative_tax is not None else "unavailable"
                 conn.execute(
                     """INSERT INTO fills
-                       (fill_key,order_id,quantity,price,cost_source,filled_at,raw_json)
-                       VALUES(?,?,?,?,?,?,?) ON CONFLICT(fill_key) DO NOTHING""",
+                       (fill_key,order_id,quantity,price,fee,tax,cost_source,filled_at,raw_json)
+                       VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(fill_key) DO NOTHING""",
                     (
-                        fill_key, order_id, delta, delta_price,
-                        "unavailable", now, json.dumps(raw or {}, ensure_ascii=False),
+                        fill_key, order_id, delta, delta_price, delta_fee, delta_tax,
+                        cost_source, now, json.dumps(raw or {}, ensure_ascii=False),
                     ),
                 )
                 signed_quantity = "CASE WHEN o.side='buy' THEN f.quantity ELSE -f.quantity END"
-                signed_cash = "CASE WHEN o.side='buy' THEN -(f.quantity*f.price) ELSE (f.quantity*f.price) END"
+                signed_cash = (
+                    "CASE WHEN o.side='buy' "
+                    "THEN -(f.quantity*f.price+COALESCE(f.fee,0)+COALESCE(f.tax,0)) "
+                    "ELSE (f.quantity*f.price-COALESCE(f.fee,0)-COALESCE(f.tax,0)) END"
+                )
                 projection = conn.execute(
                     f"""SELECT COALESCE(SUM({signed_quantity}),0), COALESCE(SUM({signed_cash}),0)
                         FROM fills f JOIN orders o ON o.id=f.order_id

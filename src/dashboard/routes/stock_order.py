@@ -375,7 +375,30 @@ def _replace_with_market_after_cancel(order_id: int) -> None:
     )
     repository.transition(replacement["id"], "approved", "submitting", actor="dashboard")
     try:
-        result = _get_api().submit_order(OrderRequest(
+        api = _get_api()
+        from src.application.orders.preflight import require_order_capacity
+
+        capacity = require_order_capacity(
+            api=api, connect=trader.connect_db,
+            account_key=str(replacement.get("account_key") or broker_account_scope_key("KR")),
+            market=str(replacement.get("market") or "KR"),
+            symbol=str(original["symbol"]), side=str(original["side"]),
+            quantity=quantity, price=0, exclude_order_id=int(replacement["id"]),
+        )
+        repository.record_event(
+            int(replacement["id"]), "capacity_confirmed", actor="dashboard",
+            reason=capacity.reason, payload={
+                "requested_quantity": capacity.requested_quantity,
+                "approved_quantity": capacity.approved_quantity,
+                "broker_sellable_quantity": capacity.broker_sellable_quantity,
+                "locally_reserved_quantity": capacity.locally_reserved_quantity,
+                "broker_orderable_cash": capacity.broker_orderable_cash,
+                "locally_reserved_cash": capacity.locally_reserved_cash,
+                "estimated_order_value": capacity.estimated_order_value,
+                "reference_price": capacity.reference_price,
+            },
+        )
+        result = api.submit_order(OrderRequest(
             symbol=str(original["symbol"]), side=OrderSide(str(original["side"])),
             quantity=quantity, price=0,
         ))
@@ -386,8 +409,13 @@ def _replace_with_market_after_cancel(order_id: int) -> None:
             or (raw.get("output") or {}).get("odno") or (raw.get("output") or {}).get("ODNO") or ""
         )
         repository.bind_broker_result(replacement["id"], broker_order_id, message=result.message)
+        target_status = (
+            "submitted" if result.success and broker_order_id
+            else "broker_unknown" if result.success
+            else "rejected"
+        )
         repository.transition(
-            replacement["id"], "submitting", "submitted" if result.success and broker_order_id else "broker_unknown",
+            replacement["id"], "submitting", target_status,
             actor="broker", reason=result.message, payload=raw,
         )
         repository.record_event(
@@ -396,7 +424,18 @@ def _replace_with_market_after_cancel(order_id: int) -> None:
                      "success": bool(result.success)},
         )
     except Exception as exc:
-        repository.transition(replacement["id"], "submitting", "broker_unknown", actor="broker", reason=str(exc))
+        # Capacity failures occur before any broker call and are conclusively
+        # rejected. Only transport/submission failures have an unknown outcome.
+        event_types = {
+            str(event.get("event_type") or "")
+            for event in (repository.detail(int(replacement["id"])) or {}).get("events", [])
+        }
+        target = "broker_unknown" if "capacity_confirmed" in event_types else "rejected"
+        repository.transition(
+            replacement["id"], "submitting", target,
+            actor="broker" if target == "broker_unknown" else "capacity_preflight",
+            reason=str(exc),
+        )
         repository.record_event(
             order_id, "market_replacement_exception", actor="broker", reason=str(exc),
             payload={"replacement_order_id": replacement["id"], "quantity": quantity},
@@ -538,6 +577,15 @@ def unified_order_health():
     from src.application.orders.health import build_order_health
 
     return build_order_health(trader.connect_db)
+
+
+@router.get("/api/operations/internal-realism-readiness")
+def internal_trading_realism_readiness():
+    from src.application.orders.realism_readiness import (
+        build_internal_trading_realism_readiness,
+    )
+
+    return build_internal_trading_realism_readiness()
 
 
 @router.get("/api/operations/health")

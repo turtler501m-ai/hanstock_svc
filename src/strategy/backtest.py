@@ -58,9 +58,13 @@ def run_historical_backtest(strategy_profile: dict, days: int = 250) -> dict:
     returns_by_day = []
     
     # Run loop
-    for step in range(len(backtest_dates) - 1):
+    # Signals are computed after ``curr_date`` closes. They become executable
+    # at the next session open and remain invested until the following open.
+    # This removes the prior impossible same-close signal/fill assumption.
+    for step in range(len(backtest_dates) - 2):
         curr_date = backtest_dates[step]
         next_date = backtest_dates[step + 1]
+        following_date = backtest_dates[step + 2]
         
         # Step 1: Calculate scores for each ticker
         scores = {}
@@ -147,17 +151,17 @@ def run_historical_backtest(strategy_profile: dict, days: int = 250) -> dict:
             raw_w = target_weights.get(s, 0.0)
             normalized_w[s] = min(max_single_weight, investable * (raw_w / w_sum if w_sum > 0 else 0.0))
             
-        # Step 3: Build executable close-to-close returns for the simulator.
+        # Step 3: Build next-open-to-following-open executable returns.
         period_returns = {}
         for s in symbols:
             yf_s = f"{s}.KS"
             try:
                 if yf_s not in data.columns.get_level_values(0):
                     continue
-                curr_price = float(data[yf_s].loc[curr_date, "Close"])
-                next_price = float(data[yf_s].loc[next_date, "Close"])
-                if curr_price > 0:
-                    period_returns[s] = (next_price / curr_price) - 1.0
+                entry_price = float(data[yf_s].loc[next_date, "Open"])
+                exit_price = float(data[yf_s].loc[following_date, "Open"])
+                if entry_price > 0:
+                    period_returns[s] = (exit_price / entry_price) - 1.0
             except KeyError:
                 pass
         target_weights_by_day.append(normalized_w)
@@ -228,5 +232,12 @@ def run_historical_backtest(strategy_profile: dict, days: int = 250) -> dict:
         "equity_curve": simulation["equity_curve"],
         "dates": [d.strftime("%Y-%m-%d") for d in backtest_dates],
         "technical_walk_forward": walk_forward,
+        "execution_model": {
+            "signal_source": "completed_close",
+            "fill_source": "next_session_open",
+            "holding_period": "next_open_to_following_open",
+            "signal_lag_bars": 1,
+            "lookahead_protected": True,
+        },
         "message": "Cost-adjusted historical backtest completed using adjusted watchlist prices",
     }
