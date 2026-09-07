@@ -168,7 +168,7 @@ def _current_sellable_qty_from_balance(api, symbol: str) -> int:
     # parsing the balance snapshot because mock balance rows can contain
     # itg_bnc_qty=0 even when the broker accepts a cash sell.
     fetch_sellable = getattr(api, "fetch_sellable_quantity", None)
-    if callable(fetch_sellable) and getattr(api, "broker_name", "") != "namuh":
+    if callable(fetch_sellable):
         try:
             return max(0, _to_int(fetch_sellable(symbol)))
         except (DashboardOperationError, RuntimeError, TypeError, ValueError):

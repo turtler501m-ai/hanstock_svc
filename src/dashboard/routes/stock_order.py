@@ -1755,7 +1755,7 @@ def _cancel_open_buy_orders_before_liquidation(api) -> list[dict]:
 def _enrich_sellable_quantities(api, parsed: dict) -> dict:
     """Replace balance-row sellability with NHPLUG's authoritative value."""
     fetch_sellable = getattr(api, "fetch_sellable_quantity", None)
-    if not callable(fetch_sellable) or getattr(api, "broker_name", "") == "namuh":
+    if not callable(fetch_sellable):
         return parsed
     for holding in parsed.get("holdings", []):
         symbol = str(holding.get("symbol") or "").strip()

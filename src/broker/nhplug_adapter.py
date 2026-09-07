@@ -1,7 +1,6 @@
 """Normalize official NHPLUG domestic-stock responses to broker models."""
 
 from datetime import date, datetime, timedelta
-from dataclasses import replace
 import logging
 from typing import Any, Mapping
 
@@ -133,24 +132,6 @@ class NHPlugBrokerAdapter:
                 _int(row.get("rsdl_qty")),
             ) > 0
         )
-        enriched = []
-        for holding in holdings:
-            if holding.sellable_quantity > 0:
-                enriched.append(holding)
-                continue
-            try:
-                sellable = self.fetch_sellable_quantity(holding.symbol)
-            except Exception as exc:
-                logging.getLogger(__name__).warning(
-                    "[SELLABLE_QTY] dedicated query failed symbol=%s error=%s",
-                    holding.symbol, exc,
-                )
-                sellable = 0
-            enriched.append(replace(
-                holding,
-                sellable_quantity=min(holding.quantity, max(0, int(sellable))),
-            ))
-        holdings = tuple(enriched)
         stock_value = sum(x.market_value for x in holdings)
         total = _num(summary.get("tot_aet_amt") or summary.get("tot_eal_amt"))
         # dca is the gross deposit figure in the mock response.  nxt2_dd_dca
