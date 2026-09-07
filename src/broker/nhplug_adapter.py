@@ -1,7 +1,10 @@
 """Normalize official NHPLUG domestic-stock responses to broker models."""
 
 from datetime import date, datetime, timedelta
+from dataclasses import replace
 import logging
+import threading
+import time
 from typing import Any, Mapping
 
 from src.broker.models import (AccountBalance, CancelOrderRequest, DailyBar, Holding,
@@ -82,6 +85,13 @@ class _QuietYahooLogs:
 
 class NHPlugBrokerAdapter:
     broker_name = "namuh"
+    # The balance API can report ``itg_bnc_qty=0`` for a mock account even
+    # when the dedicated sellable-quantity API accepts the position.  Keep a
+    # short account/symbol cache so the dashboard can reconcile every holding
+    # without issuing a burst of identical NHPLUG requests on every refresh.
+    _sellable_cache: dict[tuple[str, str], tuple[float, int]] = {}
+    _sellable_cache_lock = threading.Lock()
+    _sellable_cache_ttl_seconds = 60.0
 
     def __init__(self, client: Any, *, account: str = "", order_submission_enabled: bool = False,
                  read_fallback: Any | None = None) -> None:
@@ -132,6 +142,24 @@ class NHPlugBrokerAdapter:
                 _int(row.get("rsdl_qty")),
             ) > 0
         )
+        # ``itg_bnc_qty`` is not a reliable sellable quantity in mock
+        # accounts.  Enrich the complete snapshot from the broker-authoritative
+        # endpoint.  Successful and zero results are cached to respect the
+        # broker rate limit while still making every row converge on refresh.
+        enriched = []
+        for holding in holdings:
+            try:
+                sellable = self.fetch_sellable_quantity(holding.symbol)
+            except Exception as exc:
+                logging.getLogger(__name__).warning(
+                    "NHPLUG sellable quantity refresh failed symbol=%s: %s",
+                    holding.symbol, exc,
+                )
+                sellable = holding.sellable_quantity
+            enriched.append(replace(holding, sellable_quantity=min(
+                holding.quantity, max(0, int(sellable))
+            )))
+        holdings = tuple(enriched)
         stock_value = sum(x.market_value for x in holdings)
         total = _num(summary.get("tot_aet_amt") or summary.get("tot_eal_amt"))
         # dca is the gross deposit figure in the mock response.  nxt2_dd_dca
@@ -153,6 +181,12 @@ class NHPlugBrokerAdapter:
         symbol = str(symbol or "").strip()
         if not symbol:
             return 0
+        cache_key = (self.account, symbol)
+        now = time.monotonic()
+        with self._sellable_cache_lock:
+            cached = self._sellable_cache.get(cache_key)
+            if cached and now - cached[0] < self._sellable_cache_ttl_seconds:
+                return cached[1]
         page = self.client.post(
             "/krstock/inquiry/v1/sellableQuantity",
             {"act_no": self.account, "iem_cd": symbol, "cfd_lon_cd": "00"},
@@ -160,9 +194,10 @@ class NHPlugBrokerAdapter:
         row = _out(page)
         if isinstance(row, list):
             row = row[0] if row else {}
-        if not isinstance(row, Mapping):
-            return 0
-        return max(0, _int(row.get("sll_pbl_qty")))
+        quantity = max(0, _int(row.get("sll_pbl_qty"))) if isinstance(row, Mapping) else 0
+        with self._sellable_cache_lock:
+            self._sellable_cache[cache_key] = (time.monotonic(), quantity)
+        return quantity
 
     @staticmethod
     def _holding(row: Mapping[str, Any]) -> Holding:

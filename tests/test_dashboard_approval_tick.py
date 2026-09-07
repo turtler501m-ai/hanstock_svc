@@ -15,6 +15,7 @@ class DashboardApprovalTickSizeTest(unittest.TestCase):
         api.fetch_balance.return_value = AccountBalance(holdings=(
             Holding("204320", quantity=20, sellable_quantity=20),
         ))
+        api.fetch_sellable_quantity.return_value = 20
         api.place_order.side_effect = [
             {"rt_cd": "1", "msg1": "호가단위 오류"},
             {"rt_cd": "0", "msg1": "주문 접수", "output": {"ODNO": "123"}},

@@ -11,6 +11,9 @@ from src.broker.nhplug_client import NHPlugApiError, NHPlugPage, NHPlugRestClien
 
 
 class BrokerContractTests(unittest.TestCase):
+    def setUp(self):
+        NHPlugBrokerAdapter._sellable_cache.clear()
+
     def test_factory_defaults_to_namuh(self):
         broker = create_domestic_stock_broker(client=Mock())
         self.assertIsInstance(broker, NHPlugBrokerAdapter)
@@ -165,6 +168,27 @@ class BrokerContractTests(unittest.TestCase):
             "/krstock/inquiry/v1/sellableQuantity",
             {"act_no": "demo", "iem_cd": "005930", "cfd_lon_cd": "00"},
         )
+
+    def test_namuh_balance_enriches_zero_integrated_quantity(self):
+        client = Mock()
+        client.account = "demo-hite"
+        balance_page = type("Page", (), {"data": {
+            "Output_0": {"tot_aet_amt": 800000},
+            "Output_1": [{
+                "iem_cd": "000080", "iem_nm": "HiteJinro", "itg_bnc_qty": 0,
+                "ny_stl_qty": 10, "rsdl_qty": 10, "now_pr": 20000,
+                "eal_amt": 200000,
+            }],
+        }})()
+        sellable_page = type("Page", (), {"data": {
+            "Output_0": {"iem_cd": "000080", "bnc_qty": 10, "sll_pbl_qty": 10},
+        }})()
+        client.post.side_effect = [balance_page, sellable_page]
+
+        balance = NHPlugBrokerAdapter(client, account="demo-hite").fetch_balance()
+
+        self.assertEqual(balance.holdings[0].quantity, 10)
+        self.assertEqual(balance.holdings[0].sellable_quantity, 10)
 
     def test_namuh_legacy_balance_serializes_whole_numeric_strings(self):
         client = Mock()
