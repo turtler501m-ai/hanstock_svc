@@ -4,6 +4,7 @@ import yfinance as yf
 from src.utils.logger import logger
 from src.db.repository import load_watchlist_data
 from src.strategy.portfolio_backtest import simulate_target_portfolio
+from src.strategy.execution_simulator import ExecutionConfig
 
 def run_historical_backtest(strategy_profile: dict, days: int = 250) -> dict:
     from src.online_access import require_online_access
@@ -56,6 +57,7 @@ def run_historical_backtest(strategy_profile: dict, days: int = 250) -> dict:
     
     target_weights_by_day = []
     returns_by_day = []
+    market_data_by_day = []
     
     # Run loop
     # Signals are computed after ``curr_date`` closes. They become executable
@@ -153,6 +155,7 @@ def run_historical_backtest(strategy_profile: dict, days: int = 250) -> dict:
             
         # Step 3: Build next-open-to-following-open executable returns.
         period_returns = {}
+        period_market_data = {}
         for s in symbols:
             yf_s = f"{s}.KS"
             try:
@@ -162,25 +165,51 @@ def run_historical_backtest(strategy_profile: dict, days: int = 250) -> dict:
                 exit_price = float(data[yf_s].loc[following_date, "Open"])
                 if entry_price > 0:
                     period_returns[s] = (exit_price / entry_price) - 1.0
+                    row = data[yf_s].loc[next_date]
+                    period_market_data[s] = {
+                        "open": entry_price,
+                        "high": float(row.get("High", entry_price) or entry_price),
+                        "low": float(row.get("Low", entry_price) or entry_price),
+                        "close": float(row.get("Close", entry_price) or entry_price),
+                        "volume": float(row.get("Volume", 0) or 0),
+                        "order_type": "market",
+                    }
             except KeyError:
                 pass
         target_weights_by_day.append(normalized_w)
         returns_by_day.append(period_returns)
+        market_data_by_day.append(period_market_data)
 
     backtest_config = (
         strategy_profile.get("backtest")
         if isinstance(strategy_profile.get("backtest"), dict)
         else {}
     )
+    execution_config = ExecutionConfig(
+        commission_bps=float(backtest_config.get("commission_bps", 3.0)),
+        sell_tax_bps=float(backtest_config.get("sell_tax_bps", 18.0)),
+        base_slippage_bps=float(backtest_config.get("slippage_bps", 5.0)),
+        spread_bps=float(backtest_config.get("spread_bps", 8.0)),
+        market_impact_bps=float(backtest_config.get("market_impact_bps", 2.0)),
+        max_participation_rate=float(backtest_config.get("max_participation_rate", 0.10)),
+        minimum_order_value=float(backtest_config.get("minimum_order_value", 0.0)),
+        order_failure_rate=float(backtest_config.get("order_failure_rate", 0.0)),
+        timeout_rate=float(backtest_config.get("timeout_rate", 0.0)),
+        cancel_failure_rate=float(backtest_config.get("cancel_failure_rate", 0.0)),
+        cancel_unfilled=bool(backtest_config.get("cancel_unfilled", True)),
+        seed=int(backtest_config.get("execution_seed", 42)),
+    )
     simulation = simulate_target_portfolio(
         target_weights_by_day,
         returns_by_day,
         initial_capital=initial_capital,
-        commission_bps=float(backtest_config.get("commission_bps", 3.0)),
-        slippage_bps=float(backtest_config.get("slippage_bps", 5.0)),
-        market_impact_bps=float(backtest_config.get("market_impact_bps", 2.0)),
-        sell_tax_bps=float(backtest_config.get("sell_tax_bps", 18.0)),
+        commission_bps=execution_config.commission_bps,
+        slippage_bps=execution_config.base_slippage_bps,
+        market_impact_bps=execution_config.market_impact_bps,
+        sell_tax_bps=execution_config.sell_tax_bps,
         rebalance_threshold=float(backtest_config.get("rebalance_threshold", 0.02)),
+        market_data_by_day=market_data_by_day,
+        execution_config=execution_config,
     )
     metrics = simulation["metrics"]
     criteria = {
@@ -209,7 +238,9 @@ def run_historical_backtest(strategy_profile: dict, days: int = 250) -> dict:
             continue
         frame = data[yf_symbol]
         closes = frame["Close"].dropna().tolist()
+        opens = frame["Open"].dropna().tolist()
         highs = frame["High"].dropna().tolist()
+        lows = frame["Low"].dropna().tolist()
         volumes = frame["Volume"].dropna().tolist()
         walk_forward[symbol] = run_technical_walk_forward(
             closes,
@@ -220,6 +251,12 @@ def run_historical_backtest(strategy_profile: dict, days: int = 250) -> dict:
             stop_loss_pct=abs(float(strategy_profile.get("stop_loss_pct", 10))),
             trailing_activation_pct=float(strategy_profile.get("trailing_stop_activation_pct", 10)),
             trailing_stop_pct=float(strategy_profile.get("trailing_stop_pct", 6)),
+            opens=opens,
+            lows=lows,
+            take_profit_pct=(
+                float(strategy_profile["take_profit_pct"])
+                if strategy_profile.get("take_profit_pct") is not None else None
+            ),
         )
 
     return {

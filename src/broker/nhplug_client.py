@@ -147,13 +147,18 @@ class NHPlugRestClient:
                     self._tokens[self._cache_key()] = cached
                 return self._token
 
-            response = self._session.post(
-                f"{AUTH_BASE_URL}/oauth2/token",
-                data={"appkey": self.app_key, "appsecretkey": self._app_secret,
-                      "grant_type": "client_credentials", "scope": "oob"},
-                headers={"content-type": "application/x-www-form-urlencoded"},
-                timeout=self.timeout,
-            )
+            try:
+                response = self._session.post(
+                    f"{AUTH_BASE_URL}/oauth2/token",
+                    data={"appkey": self.app_key, "appsecretkey": self._app_secret,
+                          "grant_type": "client_credentials", "scope": "oob"},
+                    headers={"content-type": "application/x-www-form-urlencoded"},
+                    timeout=self.timeout,
+                )
+            except requests.Timeout as exc:
+                raise NHPlugApiError("NHPLUG token request timeout") from exc
+            except requests.RequestException as exc:
+                raise NHPlugApiError(f"NHPLUG token transport error: {type(exc).__name__}") from exc
             payload = self._decode(response, "token")
             token = str(payload.get("access_token") or payload.get("token") or "")
             if not token:
@@ -186,8 +191,19 @@ class NHPlugRestClient:
         if cts_flag:
             headers["cts_flag"] = str(cts_flag)
         payload = {"Input_0": dict(body or {})}
-        response = self._session.post(f"{self.base_url}/{path.lstrip('/')}",
-                                      json=payload, headers=headers, timeout=self.timeout)
+        try:
+            response = self._session.post(f"{self.base_url}/{path.lstrip('/')}",
+                                          json=payload, headers=headers, timeout=self.timeout)
+        except requests.Timeout as exc:
+            outcome = "order outcome unknown" if request_kind == "order" else "retryable query"
+            raise NHPlugApiError(
+                f"NHPLUG {path} transport timeout ({outcome})"
+            ) from exc
+        except requests.RequestException as exc:
+            outcome = "order outcome unknown" if request_kind == "order" else "query failed"
+            raise NHPlugApiError(
+                f"NHPLUG {path} transport error ({outcome}): {type(exc).__name__}"
+            ) from exc
         try:
             data = self._decode(
                 response, path,
@@ -209,8 +225,15 @@ class NHPlugRestClient:
                 except (OSError, ValueError, TypeError, json.JSONDecodeError):
                     pass
                 headers["Authorization"] = f"Bearer {self.access_token()}"
-                response = self._session.post(f"{self.base_url}/{path.lstrip('/')}",
-                                              json=payload, headers=headers, timeout=self.timeout)
+                try:
+                    response = self._session.post(f"{self.base_url}/{path.lstrip('/')}",
+                                                  json=payload, headers=headers, timeout=self.timeout)
+                except requests.Timeout as exc:
+                    raise NHPlugApiError(f"NHPLUG {path} retry timeout") from exc
+                except requests.RequestException as exc:
+                    raise NHPlugApiError(
+                        f"NHPLUG {path} retry transport error: {type(exc).__name__}"
+                    ) from exc
                 return NHPlugPage(self._decode(response, path), {
                     "cts": response.headers.get("cts", ""),
                     "cts_flag": response.headers.get("cts_flag", ""),

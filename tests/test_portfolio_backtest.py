@@ -63,6 +63,25 @@ class PortfolioBacktestTests(unittest.TestCase):
         self.assertEqual(result["metrics"]["profit_factor"], 0.0)
         self.assertEqual(result["metrics"]["trade_count"], 0)
 
+    def test_microstructure_execution_reports_partial_and_realistic_metrics(self):
+        result = simulate_target_portfolio(
+            [{"AAA": 1.0}, {}],
+            [{"AAA": 0.05}, {}],
+            initial_capital=100_000,
+            commission_bps=3,
+            slippage_bps=5,
+            market_impact_bps=2,
+            market_data_by_day=[
+                {"AAA": {"open": 100, "bid": 99, "ask": 101, "volume": 10}},
+                {},
+            ],
+        )
+
+        self.assertEqual(result["costs"]["execution_model"], "microstructure")
+        self.assertGreater(result["costs"]["execution_counts"]["partial"], 0)
+        self.assertIn("sharpe_ratio", result["metrics"])
+        self.assertIn("expectancy_pct", result["metrics"])
+
 
 if __name__ == "__main__":
     unittest.main()

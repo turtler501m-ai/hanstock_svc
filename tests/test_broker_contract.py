@@ -7,7 +7,7 @@ from src.broker.base import DomesticStockBroker
 from src.broker.factory import create_domestic_stock_broker, selected_domestic_stock_broker
 from src.broker.nhplug_adapter import NHPlugBrokerAdapter, _volume_rank_from_frame
 from src.broker.models import CancelOrderRequest, OrderRequest, OrderSide, OrderStatus
-from src.broker.nhplug_client import NHPlugRestClient
+from src.broker.nhplug_client import NHPlugApiError, NHPlugRestClient
 
 
 class BrokerContractTests(unittest.TestCase):
@@ -196,6 +196,16 @@ class BrokerContractTests(unittest.TestCase):
             second = NHPlugRestClient("app", "secret", session=session)
             self.assertEqual(second.access_token(), "persisted-token")
             session.post.assert_called_once()
+
+    def test_order_timeout_is_explicitly_outcome_unknown(self):
+        import requests
+
+        session = Mock()
+        session.post.side_effect = requests.Timeout("timed out")
+        client = NHPlugRestClient("app", "secret", session=session)
+        with patch.object(client, "access_token", return_value="token"):
+            with self.assertRaisesRegex(NHPlugApiError, "order outcome unknown"):
+                client.post("/krstock/order/v1/cashBuy", {"iem_cd": "005930"}, request_kind="order")
 
 
 if __name__ == "__main__":
