@@ -455,7 +455,7 @@ def get_mock_trading_trades(limit: int = 200):
 
 
 @router.get("/api/balance")
-def get_balance():
+def get_balance(refresh: bool = False):
     from src.online_access import is_online_access_blocked
 
     if is_online_access_blocked():
@@ -476,7 +476,10 @@ def get_balance():
 
     try:
         api = _get_api()
-        balance_data = _get_balance_data(api)
+        # Normal dashboard navigation may use the short snapshot cache, but
+        # an explicit refresh must query the broker again.  Otherwise stale
+        # sellable quantities survive repeated synchronization clicks.
+        balance_data = _get_balance_data(api, allow_cache=not refresh)
         parsed = _parse_balance(balance_data)
         _hide_active_sell_approval_holdings(parsed)
         _attach_holding_strategies(parsed)

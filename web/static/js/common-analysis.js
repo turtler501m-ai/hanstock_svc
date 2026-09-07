@@ -156,7 +156,7 @@ function getActiveDashboardTab() {
 async function refreshCommonDashboardTab(target, options = {}) {
     const force = Boolean(options.force);
     const refresh = (key, task, maxAgeMs = 15000) => (
-        runCommonTabRefresh(key, task, { force, maxAgeMs })
+        runCommonTabRefresh(key, () => task(force), { force, maxAgeMs })
     );
 
     if (target === 'overview' || target === 'portfolio') return refresh('balance', renderBalance);

@@ -700,10 +700,10 @@ function bindHoldingSortHeaders() {
     updateHoldingSortHeaders();
 }
 
-async function renderBalance() {
+async function renderBalance(force = false) {
     try {
         const [balance, perf] = await Promise.all([
-            fetchJson('/api/balance', 30000),
+            fetchJson(`/api/balance${force ? '?refresh=true' : ''}`, 30000),
             fetchJson('/api/performance').catch(() => ({ realized_pnl: 0 }))
         ]);
         const holdingValue = (balance.holdings || []).reduce((sum, holding) => {
