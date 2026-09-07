@@ -318,12 +318,34 @@ class NHPlugBrokerAdapter:
     # independent of the NHPLUG field names.
     def get_balance(self) -> dict[str, Any]:
         value = self.fetch_balance()
+        # NHPLUG demo balances expose the position in settlement fields while
+        # leaving the legacy integrated-balance field at zero.  That makes a
+        # demo account look entirely unsellable even though the mock broker
+        # accepts liquidation orders.  Keep the real-account contract strict;
+        # apply this compatibility fallback only to an explicitly demo client.
+        demo_client = str(getattr(self.client, "account", "") or "").lower() in {
+            "demo", "paper", "mock",
+        }
+
+        def serialized_sellable(holding: Holding) -> int:
+            sellable = _int(holding.sellable_quantity)
+            if sellable > 0 or not demo_client:
+                return sellable
+            raw = holding.raw if isinstance(holding.raw, Mapping) else {}
+            settlement_qty = max(
+                _int(raw.get("ny_stl_qty")),
+                _int(raw.get("rsdl_qty")),
+            )
+            if settlement_qty >= _whole(holding.quantity):
+                return _int(holding.quantity)
+            return sellable
+
         return {
             "rsp_cd": "00000",
             "rsp_msg": "완료",
             "output1": [{
                 "pdno": h.symbol, "prdt_name": h.name, "hldg_qty": _whole(h.quantity),
-                "ord_psbl_qty": _whole(h.sellable_quantity), "pchs_avg_pric": _whole(h.average_price),
+                "ord_psbl_qty": serialized_sellable(h), "pchs_avg_pric": _whole(h.average_price),
                 "prpr": _whole(h.current_price), "evlu_amt": _whole(h.market_value),
                 "evlu_pfls_amt": _whole(h.profit_loss), "evlu_pfls_rt": str(h.profit_loss_rate),
                 "fltt_rt": str(h.daily_change_rate),
