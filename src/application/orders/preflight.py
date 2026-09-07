@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import json
 import math
 import os
@@ -107,6 +107,35 @@ def _fetch_balance(api: Any) -> AccountBalance:
     if hasattr(api, "fetch_balance"):
         balance = api.fetch_balance()
         if isinstance(balance, AccountBalance):
+            # The NHPLUG demo account can expose the whole position through
+            # settlement fields while its integrated balance quantity is zero.
+            # The dashboard adapter applies the same compatibility rule; the
+            # submission preflight must use it too or every sell is rejected
+            # after the UI has shown it as sellable. Never enable this for a
+            # normal/live broker response.
+            demo_response = "모의투자" in str(
+                (balance.raw or {}).get("rsp_msg")
+                or (balance.raw or {}).get("response_msg")
+                or ""
+            )
+            if demo_response:
+                holdings = []
+                for holding in balance.holdings:
+                    if holding.sellable_quantity > 0:
+                        holdings.append(holding)
+                        continue
+                    raw = holding.raw if isinstance(holding.raw, dict) else {}
+                    settlement_qty = max(
+                        _positive_int(raw.get("ny_stl_qty")),
+                        _positive_int(raw.get("rsdl_qty")),
+                    )
+                    if settlement_qty >= _positive_int(holding.quantity):
+                        holdings.append(replace(
+                            holding, sellable_quantity=_positive_int(holding.quantity)
+                        ))
+                    else:
+                        holdings.append(holding)
+                balance = replace(balance, holdings=tuple(holdings))
             return balance
     if not hasattr(api, "get_balance"):
         raise RuntimeError("broker adapter does not provide a fresh balance")
