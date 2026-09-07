@@ -125,7 +125,12 @@ class NHPlugBrokerAdapter:
             self._holding(row)
             for row in rows
             if str(row.get("iem_cd") or "").strip()
-            and _int(row.get("itg_bnc_qty") or row.get("ny_stl_qty") or row.get("rsdl_qty")) > 0
+            and max(
+                0,
+                _int(row.get("itg_bnc_qty")),
+                _int(row.get("ny_stl_qty")),
+                _int(row.get("rsdl_qty")),
+            ) > 0
         )
         stock_value = sum(x.market_value for x in holdings)
         total = _num(summary.get("tot_aet_amt") or summary.get("tot_eal_amt"))
@@ -139,8 +144,17 @@ class NHPlugBrokerAdapter:
 
     @staticmethod
     def _holding(row: Mapping[str, Any]) -> Holding:
-        qty = _int(row.get("itg_bnc_qty") or row.get("ny_stl_qty") or row.get("rsdl_qty"))
-        sellable_qty = _int(row.get("itg_bnc_qty") or row.get("ny_stl_qty") or row.get("rsdl_qty"))
+        qty = max(
+            0,
+            _int(row.get("itg_bnc_qty")),
+            _int(row.get("ny_stl_qty")),
+            _int(row.get("rsdl_qty")),
+        )
+        # A numeric zero is authoritative.  In particular, mock accounts can
+        # report an unsettled next-day quantity while integrated balance is
+        # still zero; falling through with ``or`` falsely made it sellable and
+        # caused cashSell error 14780.
+        sellable_qty = min(qty, max(0, _int(row.get("itg_bnc_qty"))))
         price = _num(row.get("now_pr"))
         value = _num(row.get("eal_amt")) or qty * price
         return Holding(str(row.get("iem_cd") or ""), str(row.get("iem_nm") or ""), qty, sellable_qty,

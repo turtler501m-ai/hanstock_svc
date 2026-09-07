@@ -149,6 +149,7 @@ class BrokerContractTests(unittest.TestCase):
         self.assertEqual(balance.total_equity, 499936330)
         self.assertEqual(balance.stock_value, 710000)
         self.assertEqual(balance.holdings[0].quantity, 10)
+        self.assertEqual(balance.holdings[0].sellable_quantity, 0)
         self.assertEqual(balance.orderable_cash, 453384370)
 
     def test_namuh_legacy_balance_serializes_whole_numeric_strings(self):
