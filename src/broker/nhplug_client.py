@@ -27,6 +27,7 @@ class NHPlugApiError(RuntimeError):
 class NHPlugPage:
     data: Mapping[str, Any]
     continuation: Mapping[str, Any] | None = None
+    latency_ms: float = 0.0
 
 
 class NHPlugRestClient:
@@ -175,6 +176,7 @@ class NHPlugRestClient:
              *, request_kind: str = "query", cts: str = "", cts_flag: str = "") -> NHPlugPage:
         if request_kind not in {"query", "order"}:
             raise ValueError("request_kind must be 'query' or 'order'")
+        started = time.monotonic()
         with self._throttle_lock:
             delay = self.min_interval - (time.monotonic() - self._last_call)
             if delay > 0:
@@ -237,12 +239,12 @@ class NHPlugRestClient:
                 return NHPlugPage(self._decode(response, path), {
                     "cts": response.headers.get("cts", ""),
                     "cts_flag": response.headers.get("cts_flag", ""),
-                })
+                }, round((time.monotonic() - started) * 1000, 3))
             raise
         return NHPlugPage(data, {
             "cts": response.headers.get("cts", ""),
             "cts_flag": response.headers.get("cts_flag", ""),
-        })
+        }, round((time.monotonic() - started) * 1000, 3))
 
     @staticmethod
     def _decode(response: Any, operation: str, *, allow_continuation: bool = False) -> Mapping[str, Any]:

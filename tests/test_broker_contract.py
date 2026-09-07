@@ -7,7 +7,7 @@ from src.broker.base import DomesticStockBroker
 from src.broker.factory import create_domestic_stock_broker, selected_domestic_stock_broker
 from src.broker.nhplug_adapter import NHPlugBrokerAdapter, _volume_rank_from_frame
 from src.broker.models import CancelOrderRequest, OrderRequest, OrderSide, OrderStatus
-from src.broker.nhplug_client import NHPlugApiError, NHPlugRestClient
+from src.broker.nhplug_client import NHPlugApiError, NHPlugPage, NHPlugRestClient
 
 
 class BrokerContractTests(unittest.TestCase):
@@ -206,6 +206,10 @@ class BrokerContractTests(unittest.TestCase):
         with patch.object(client, "access_token", return_value="token"):
             with self.assertRaisesRegex(NHPlugApiError, "order outcome unknown"):
                 client.post("/krstock/order/v1/cashBuy", {"iem_cd": "005930"}, request_kind="order")
+
+    def test_nhplug_page_carries_transport_latency(self):
+        page = NHPlugPage({"rsp_cd": "00000"}, latency_ms=12.5)
+        self.assertEqual(page.latency_ms, 12.5)
 
 
 if __name__ == "__main__":

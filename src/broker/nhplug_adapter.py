@@ -263,7 +263,10 @@ class NHPlugBrokerAdapter:
             body = {"act_no": self.account, "org_mkt_orr_no": cancel_order_id,
                     "all_pat_dit_cd": "1", "iem_cd": request.symbol}
         page = self.client.post(path, body, request_kind="order")
-        data = getattr(page, "data", page); output = data.get("Output_0") or {}
+        data = dict(getattr(page, "data", page)); output = data.get("Output_0") or {}
+        latency_ms = float(getattr(page, "latency_ms", 0.0) or 0.0)
+        if latency_ms > 0:
+            data["_transport_latency_ms"] = latency_ms
         order_id = str(output.get("mkt_orr_no") or output.get("itg_orr_no") or "")
         success = broker_order_accepted(data)
         return OrderResult(success, str(data.get("rsp_msg") or data.get("message") or ""), order_id,
