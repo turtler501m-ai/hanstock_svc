@@ -326,6 +326,11 @@ class NHPlugBrokerAdapter:
         demo_client = str(getattr(self.client, "account", "") or "").lower() in {
             "demo", "paper", "mock",
         }
+        raw_response = value.raw if isinstance(value.raw, Mapping) else {}
+        demo_response = "모의투자" in str(
+            raw_response.get("rsp_msg") or raw_response.get("response_msg") or ""
+        )
+        demo_client = demo_client or demo_response
 
         def serialized_sellable(holding: Holding) -> int:
             sellable = _int(holding.sellable_quantity)
