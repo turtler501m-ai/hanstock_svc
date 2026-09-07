@@ -2736,6 +2736,21 @@ async function resolveUnknownOpenOrder(button) {
     }
 }
 
+async function reconcileOpenOrder(button) {
+    const orderId = Number(button.dataset.id || 0);
+    const symbolName = button.dataset.name || button.dataset.symbol || `주문 #${orderId}`;
+    if (!orderId) return;
+    setButtonBusy(button, true);
+    try {
+        const result = await postJson(`/api/orders/${orderId}/reconcile`, {});
+        setStatus(`${symbolName} 증권사 주문 상태를 다시 확인했습니다: ${orderStatusLabel(result.status)}`, true);
+        await Promise.all([renderOpenOrders(), renderApprovals(), renderBalance()]);
+    } catch (err) {
+        setStatus(`${symbolName} 주문 상태 확인 실패: ${err.message}`);
+        button.disabled = false;
+    }
+}
+
 async function waitForCanceledOrder(orderId, symbolName, attempts = 20) {
     let latest = { status: 'cancel_pending' };
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -2764,6 +2779,7 @@ async function renderOpenOrders() {
         cancelOpenOrder,
         cancelReplaceMarketOrder,
         resolveUnknownOpenOrder,
+        reconcileOpenOrder,
         activeStatuses: ACTIVE_ORDER_STATUSES,
         labels: {
             orders: '\ubbf8\uccb4\uacb0 \uc8fc\ubb38',
@@ -2775,6 +2791,7 @@ async function renderOpenOrders() {
             remaining: '\uc794\ub7c9',
             marketPrice: '\uc2dc\uc7a5\uac00',
             cancel: '\uc8fc\ubb38 \ucde8\uc18c',
+            reconcile: '\uc99d\uad8c\uc0ac \uc0c1\ud0dc \ud655\uc778',
             marketReplace: '\ucde8\uc18c \ud6c4 \uc2dc\uc7a5\uac00 \uc7ac\uc811\uc218',
             resolve: '\ubbf8\ud655\uc778 \uc885\ub8cc',
             noAction: '\uc870\uce58 \ud544\uc694 \uc5c6\uc74c',

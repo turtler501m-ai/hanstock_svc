@@ -24,10 +24,17 @@
                     && Boolean(row.broker_order_id) && remainingQty > 0;
                 const resolvableUnknown = status === 'broker_unknown'
                     && !row.broker_order_id && remainingQty > 0;
+                const canReconcile = ['cancel_pending', 'broker_unknown'].includes(status)
+                    && Boolean(row.broker_order_id);
+                const reconcileButton = canReconcile
+                    ? `<button type="button" class="button-ghost compact-button reconcile-open-order" data-id="${deps.escapeHtml(row.id)}" data-symbol="${deps.escapeHtml(row.symbol || '')}" data-name="${deps.escapeHtml(row.name || row.symbol || '')}">${deps.labels.reconcile}</button>`
+                    : '';
                 const side = row.side === 'buy' ? deps.labels.buy : deps.labels.sell;
                 const sideKind = row.side === 'buy' ? 'buy' : 'sell';
                 const action = cancellable
                     ? `<div class="button-row"><button type="button" class="button-danger compact-button cancel-open-order" data-id="${deps.escapeHtml(row.id)}" data-symbol="${deps.escapeHtml(row.symbol || '')}" data-name="${deps.escapeHtml(row.name || row.symbol || '')}" data-side="${deps.escapeHtml(row.side || '')}">${deps.labels.cancel}</button><button type="button" class="button-primary compact-button market-replace-open-order" data-id="${deps.escapeHtml(row.id)}" data-symbol="${deps.escapeHtml(row.symbol || '')}" data-name="${deps.escapeHtml(row.name || row.symbol || '')}" data-side="${deps.escapeHtml(row.side || '')}">${deps.labels.marketReplace}</button></div>`
+                    : canReconcile
+                        ? reconcileButton
                     : resolvableUnknown
                         ? `<button type="button" class="button-danger compact-button resolve-unknown-order" data-id="${deps.escapeHtml(row.id)}" data-symbol="${deps.escapeHtml(row.symbol || '')}" data-name="${deps.escapeHtml(row.name || row.symbol || '')}">${deps.labels.resolve}</button>`
                         : `<span class="time-muted">${deps.labels.noAction}</span>`;
@@ -41,6 +48,9 @@
             });
             tbody.querySelectorAll('.resolve-unknown-order').forEach((button) => {
                 button.addEventListener('click', () => deps.resolveUnknownOpenOrder(button));
+            });
+            tbody.querySelectorAll('.reconcile-open-order').forEach((button) => {
+                button.addEventListener('click', () => deps.reconcileOpenOrder(button));
             });
         } catch (error) {
             deps.setTableMessage('#table-open-orders tbody', 10, error.message);
