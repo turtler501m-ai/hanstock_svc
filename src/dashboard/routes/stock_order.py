@@ -2380,6 +2380,102 @@ def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
     }
 
 
+def _reconcile_unified_unknown_orders_from_balance(current_holdings: dict) -> dict:
+    """Infer fills for unified unknown orders when the broker balance proves them.
+
+    NHPLUG's demo account can accept an order and reflect it in balance before
+    the daily execution inquiry exposes the same order number.  Do not mark an
+    unknown order filled from balance alone unless the quantity gap exactly
+    equals the total remaining quantity of the matching unknown orders.
+    """
+    from src.application.orders.repository import OrderLedgerRepository
+
+    ledger = OrderLedgerRepository(trader.connect_db)
+    unknown = ledger.list_orders(statuses=("broker_unknown",), limit=500, offset=0)
+    positions = {
+        str(row.get("symbol") or ""): _to_int(row.get("quantity"))
+        for row in ledger.list_positions(market="KR")
+    }
+    grouped: dict[tuple[str, str], list[dict]] = {}
+    for order in unknown:
+        remaining = max(
+            0,
+            _to_int(order.get("requested_qty")) - _to_int(order.get("filled_qty")),
+        )
+        if remaining > 0:
+            grouped.setdefault(
+                (str(order.get("symbol") or ""), str(order.get("side") or "").lower()),
+                [],
+            ).append(order)
+
+    items = []
+    for (symbol, side), orders in grouped.items():
+        holding = current_holdings.get(symbol) or {}
+        broker_qty = _to_int(holding.get("qty"))
+        local_qty = positions.get(symbol, 0)
+        gap = broker_qty - local_qty if side == "buy" else local_qty - broker_qty
+        requested = sum(
+            max(0, _to_int(row.get("requested_qty")) - _to_int(row.get("filled_qty")))
+            for row in orders
+        )
+        if gap <= 0 or gap != requested:
+            continue
+        raw = holding.get("_raw") or {}
+        average_price = _to_int(
+            raw.get("pchs_avg_pric")
+            or raw.get("phs_pr")
+            or holding.get("price")
+        )
+        for order in sorted(orders, key=lambda row: int(row.get("id") or 0)):
+            quantity = max(
+                0,
+                _to_int(order.get("requested_qty")) - _to_int(order.get("filled_qty")),
+            )
+            if not quantity:
+                continue
+            try:
+                reconciled = ledger.reconcile_snapshot(
+                    int(order["id"]),
+                    status="filled",
+                    cumulative_filled_qty=_to_int(order.get("requested_qty")),
+                    average_fill_price=float(average_price or 0),
+                    broker_order_id=str(order.get("broker_order_id") or ""),
+                    broker_order_date=str(order.get("broker_order_date") or ""),
+                    raw={
+                        "source": "balance_inferred_fill",
+                        "broker_balance_quantity": broker_qty,
+                        "verified_local_quantity_before": local_qty,
+                        "quantity_gap": gap,
+                    },
+                )
+            except (RuntimeError, ValueError) as exc:
+                logger.warning(
+                    "[RECONCILIATION] unified balance inference skipped order_id=%s: %s",
+                    order.get("id"), exc,
+                )
+                continue
+            ledger.record_event(
+                int(order["id"]),
+                "balance_inferred_fill",
+                actor="reconciliation",
+                reason="broker balance quantity exactly matched unknown order remainder",
+                payload={"broker_balance_quantity": broker_qty, "quantity_gap": gap},
+            )
+            items.append({
+                "sync_type": "balance",
+                "sync_result": "unified_unknown_reconciled",
+                "order_id": int(reconciled["id"]),
+                "symbol": symbol,
+                "action": side,
+                "qty": quantity,
+                "price": average_price,
+                "broker_order_id": reconciled.get("broker_order_id") or "",
+                "order_status": reconciled.get("status"),
+            })
+
+    return {"ok": True, "reconciled_count": len(items), "items": items}
+
+
 def _remove_non_broker_trade_rows() -> dict:
     """Remove local-only rows that must not survive a broker-authoritative sync."""
     removable_statuses = (
@@ -2659,6 +2755,9 @@ def _execute_trade_sync(*, days: int, run_id: str, started_at: str) -> dict:
         response_loss_reconciliation = _reconcile_ambiguous_orders_from_balance(
             current_holdings
         )
+        unified_balance_reconciliation = _reconcile_unified_unknown_orders_from_balance(
+            current_holdings
+        )
         cleanup = _remove_non_broker_trade_rows()
 
         # Reconstruct current holdings from DB and Cloud
@@ -2794,7 +2893,8 @@ def _execute_trade_sync(*, days: int, run_id: str, started_at: str) -> dict:
             for item in ((order_status_sync or {}).get("orders") or [])
         ]
         response_loss_items = list(response_loss_reconciliation.get("items") or [])
-        sync_items = history_items + order_status_items + response_loss_items + balance_sync_items + list(cleanup.get("items") or [])
+        unified_balance_items = list(unified_balance_reconciliation.get("items") or [])
+        sync_items = history_items + order_status_items + response_loss_items + balance_sync_items + unified_balance_items + list(cleanup.get("items") or [])
         outcome = _classify_trade_sync_outcome(
             sync_items=sync_items,
             history_sync=history_sync,
@@ -2812,6 +2912,7 @@ def _execute_trade_sync(*, days: int, run_id: str, started_at: str) -> dict:
             "history_imported_count": imported_count,
             "history_updated_count": updated_count,
             "response_loss_reconciled_count": response_loss_reconciliation["reconciled_count"],
+            "unified_balance_reconciled_count": unified_balance_reconciliation["reconciled_count"],
             "reconciliation_closed_count": response_loss_reconciliation.get("closed_issue_count", 0),
             "history_sync": history_sync,
             "history_error": history_error,
