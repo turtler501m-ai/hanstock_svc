@@ -92,6 +92,7 @@ class NHPlugBrokerAdapter:
     _sellable_cache: dict[tuple[str, str], tuple[float, int]] = {}
     _sellable_cache_lock = threading.Lock()
     _sellable_cache_ttl_seconds = 60.0
+    _sellable_refresh_limit_per_balance = 3
 
     def __init__(self, client: Any, *, account: str = "", order_submission_enabled: bool = False,
                  read_fallback: Any | None = None) -> None:
@@ -147,10 +148,24 @@ class NHPlugBrokerAdapter:
         # endpoint.  Successful and zero results are cached to respect the
         # broker rate limit while still making every row converge on refresh.
         enriched = []
+        refreshed = 0
         for holding in holdings:
+            cached = self._cached_sellable_quantity(holding.symbol)
+            if cached is not None:
+                enriched.append(replace(holding, sellable_quantity=min(
+                    holding.quantity, cached
+                )))
+                continue
+            if refreshed >= self._sellable_refresh_limit_per_balance:
+                # Do not turn an unqueried row into a false zero.  The next
+                # balance refresh will continue the bounded reconciliation.
+                enriched.append(holding)
+                continue
             try:
                 sellable = self.fetch_sellable_quantity(holding.symbol)
+                refreshed += 1
             except Exception as exc:
+                refreshed += 1
                 logging.getLogger(__name__).warning(
                     "NHPLUG sellable quantity refresh failed symbol=%s: %s",
                     holding.symbol, exc,
@@ -170,6 +185,16 @@ class NHPlugBrokerAdapter:
         return AccountBalance(holdings, cash, orderable_cash, total or cash + stock_value,
                               stock_value, _num(summary.get("tot_eal_pls")), raw=dict(getattr(page, "data", page)))
 
+    def _cached_sellable_quantity(self, symbol: str) -> int | None:
+        cache_key = (self.account, str(symbol or "").strip())
+        if not cache_key[1]:
+            return None
+        with self._sellable_cache_lock:
+            cached = self._sellable_cache.get(cache_key)
+        if cached and time.monotonic() - cached[0] < self._sellable_cache_ttl_seconds:
+            return cached[1]
+        return None
+
     def fetch_sellable_quantity(self, symbol: str) -> int:
         """Return the broker-authoritative sellable quantity for one symbol.
 
@@ -182,11 +207,9 @@ class NHPlugBrokerAdapter:
         if not symbol:
             return 0
         cache_key = (self.account, symbol)
-        now = time.monotonic()
-        with self._sellable_cache_lock:
-            cached = self._sellable_cache.get(cache_key)
-            if cached and now - cached[0] < self._sellable_cache_ttl_seconds:
-                return cached[1]
+        cached = self._cached_sellable_quantity(symbol)
+        if cached is not None:
+            return cached
         page = self.client.post(
             "/krstock/inquiry/v1/sellableQuantity",
             {"act_no": self.account, "iem_cd": symbol, "cfd_lon_cd": "00"},
