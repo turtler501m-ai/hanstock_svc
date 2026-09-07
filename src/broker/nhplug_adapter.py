@@ -93,6 +93,8 @@ class NHPlugBrokerAdapter:
     _sellable_cache_lock = threading.Lock()
     _sellable_cache_ttl_seconds = 60.0
     _sellable_refresh_limit_per_balance = 3
+    _sellable_retry_after: dict[tuple[str, str], float] = {}
+    _sellable_retry_cooldown_seconds = 30.0
 
     def __init__(self, client: Any, *, account: str = "", order_submission_enabled: bool = False,
                  read_fallback: Any | None = None) -> None:
@@ -156,6 +158,10 @@ class NHPlugBrokerAdapter:
                     holding.quantity, cached
                 )))
                 continue
+            retry_after = self._sellable_retry_after.get((self.account, holding.symbol), 0.0)
+            if retry_after > time.monotonic():
+                enriched.append(holding)
+                continue
             if refreshed >= self._sellable_refresh_limit_per_balance:
                 # Do not turn an unqueried row into a false zero.  The next
                 # balance refresh will continue the bounded reconciliation.
@@ -166,6 +172,9 @@ class NHPlugBrokerAdapter:
                 refreshed += 1
             except Exception as exc:
                 refreshed += 1
+                self._sellable_retry_after[(self.account, holding.symbol)] = (
+                    time.monotonic() + self._sellable_retry_cooldown_seconds
+                )
                 logging.getLogger(__name__).warning(
                     "NHPLUG sellable quantity refresh failed symbol=%s: %s",
                     holding.symbol, exc,
