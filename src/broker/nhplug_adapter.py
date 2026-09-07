@@ -89,7 +89,7 @@ class NHPlugBrokerAdapter:
     # when the dedicated sellable-quantity API accepts the position.  Keep a
     # short account/symbol cache so the dashboard can reconcile every holding
     # without issuing a burst of identical NHPLUG requests on every refresh.
-    _sellable_cache: dict[tuple[str, str], tuple[float, int]] = {}
+    _sellable_cache: dict[tuple[str, str], tuple[float, int, int | None]] = {}
     _sellable_cache_lock = threading.Lock()
     _sellable_cache_ttl_seconds = 60.0
     _sellable_retry_after: dict[tuple[str, str], float] = {}
@@ -153,9 +153,7 @@ class NHPlugBrokerAdapter:
         for holding in holdings:
             cached = self._cached_sellable_quantity(holding.symbol)
             if cached is not None:
-                enriched.append(replace(holding, sellable_quantity=min(
-                    holding.quantity, cached
-                ), sellable_status="confirmed"))
+                enriched.append(self._apply_sellable_snapshot(holding, cached))
                 continue
             retry_after = self._sellable_retry_after.get((self.account, holding.symbol), 0.0)
             if retry_after > time.monotonic():
@@ -173,10 +171,8 @@ class NHPlugBrokerAdapter:
                 )
                 enriched.append(holding)
                 continue
-            enriched.append(replace(holding, sellable_quantity=min(
-                holding.quantity, max(0, int(sellable))
-            ), sellable_status="confirmed"))
-        holdings = tuple(enriched)
+            enriched.append(self._apply_sellable_snapshot(holding, sellable))
+        holdings = tuple(holding for holding in enriched if holding.quantity > 0)
         stock_value = sum(x.market_value for x in holdings)
         total = _num(summary.get("tot_aet_amt") or summary.get("tot_eal_amt"))
         # dca is the gross deposit figure in the mock response.  nxt2_dd_dca
@@ -191,6 +187,25 @@ class NHPlugBrokerAdapter:
             raw["Output_1"] = rows
         return AccountBalance(holdings, cash, orderable_cash, total or cash + stock_value,
                               stock_value, _num(summary.get("tot_eal_pls")), raw=raw)
+
+    def _apply_sellable_snapshot(self, holding: Holding, sellable: int) -> Holding:
+        with self._sellable_cache_lock:
+            snapshot = self._sellable_cache.get((self.account, holding.symbol))
+        quantity = holding.quantity
+        if (snapshot and time.monotonic() - snapshot[0] < self._sellable_cache_ttl_seconds
+                and snapshot[2] is not None):
+            quantity = snapshot[2]
+        changes = {}
+        if quantity != holding.quantity:
+            # The dedicated inquiry reports current holdings independently of
+            # sellability; settlement activity is not a current position.
+            changes = {
+                "market_value": quantity * holding.current_price,
+                "profit_loss": quantity * (holding.current_price - holding.average_price),
+            }
+        return replace(holding, quantity=quantity,
+                       sellable_quantity=min(quantity, max(0, int(sellable))),
+                       sellable_status="confirmed", **changes)
 
     def _cached_sellable_quantity(self, symbol: str) -> int | None:
         cache_key = (self.account, str(symbol or "").strip())
@@ -232,8 +247,16 @@ class NHPlugBrokerAdapter:
             raise ValueError("Broker sellable quantity is invalid") from exc
         if quantity < 0:
             raise ValueError("Broker sellable quantity is negative")
+        holding_quantity = None
+        if row.get("bnc_qty") not in (None, ""):
+            try:
+                holding_quantity = int(str(row["bnc_qty"]).replace(",", ""))
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Broker holding quantity is invalid") from exc
+            if holding_quantity < quantity:
+                raise ValueError("Broker holding quantity is below sellable quantity")
         with self._sellable_cache_lock:
-            self._sellable_cache[cache_key] = (time.monotonic(), quantity)
+            self._sellable_cache[cache_key] = (time.monotonic(), quantity, holding_quantity)
         return quantity
 
     @staticmethod

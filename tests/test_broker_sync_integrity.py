@@ -12,6 +12,25 @@ from src.dashboard.services.balance_service import parse_balance
 
 
 class BrokerSyncIntegrityTests(unittest.TestCase):
+    def test_current_holdings_replace_settlement_activity_without_hiding_reserved_positions(self):
+        client = Mock(account="current-holdings-test")
+        rows = [{"iem_cd": f"{index:06d}", "ny_stl_qty": 100, "now_pr": 20,
+                 "phs_pr": 10, "eal_amt": 2000} for index in range(1, 4)]
+        client.post.side_effect = [self.page(rows)] + [
+            self.page(summary={"bnc_qty": qty, "sll_pbl_qty": sellable})
+            for qty, sellable in ((0, 0), (10, 0), (30, 25))
+        ] + [self.page(rows)]
+        broker = NHPlugBrokerAdapter(client)
+        broker._sellable_cache = {}
+        broker._sellable_retry_after = {}
+        for _ in range(2):
+            holdings = parse_balance(broker.get_balance())["holdings"]
+            self.assertEqual([h["symbol"] for h in holdings], ["000002", "000003"])
+            self.assertEqual([h["qty"] for h in holdings], [10, 30])
+            self.assertEqual([h["sellable_qty"] for h in holdings], [0, 25])
+            self.assertEqual([h["value"] for h in holdings], [200, 600])
+        self.assertEqual(client.post.call_count, 5)
+
     def test_all_holdings_receive_dedicated_sellable_inquiry(self):
         client = Mock(account="all-holdings-test")
         rows = [{"iem_cd": f"{index:06d}", "ny_stl_qty": 10, "itg_bnc_qty": 0}

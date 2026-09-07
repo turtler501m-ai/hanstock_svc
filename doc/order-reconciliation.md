@@ -33,6 +33,12 @@
 
 ## 기존 데이터 호환성
 
+보유종목은 매도가능 전용 조회의 `bnc_qty`(보유수량)를 우선 반영한다.
+`sll_pbl_qty`(매도가능수량)가 0이어도 `bnc_qty`가 양수이면 표시하며,
+`bnc_qty`가 0으로 확인된 종목만 현재 보유목록에서 제외한다.
+조회 실패나 보유수량 필드 누락은 보유수량 0으로 간주하지 않는다.
+필드 구분은 [NHPLUG 공식 SDK 예제](https://github.com/PLUG-OpenAPI/nhplug-sdk/blob/main/snippets/krstock/sellable_quantity/chk_sellable_quantity.py)를 따른다.
+
 새 거래는 계좌·환경·시장에 따른 계좌 키를 저장한다. 계좌를 구분하지 못하는
 과거 환경 전용 키/빈 키 기록은 현재 계좌에 임의 배정하지 않는다. 현재 계좌의
 통합 주문과 승인 ID 또는 명시적인 거래 ID로 연결된 기록만 자동 대사한다.
