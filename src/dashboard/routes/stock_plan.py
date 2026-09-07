@@ -10,6 +10,36 @@ _refresh_legacy_dependencies()
 router = _CompatRouter(
     namespace=globals(), dependencies=(_stock,), tags=["stock", "stock-plan"]
 )
+
+
+def _analyze_scheduler_failure(message: object, status: str = "failed") -> dict:
+    raw = str(message or "").strip() or "상세 오류가 기록되지 않았습니다."
+    normalized = raw.lower()
+    rules = (
+        (("market regime", "장세", "insufficient_data"), "MARKET_DATA", "장세 데이터 부족", "지수와 종목 데이터의 기준일 또는 수집 품질이 주문 기준을 충족하지 못했습니다.", "장세 데이터 기준일과 수집 성공 종목 수를 확인한 뒤 다시 수집하세요."),
+        (("주문가능금액", "insufficient fund", "buying cash", "budget"), "BUYING_POWER", "주문 가능 금액 부족", "주문 금액이 현재 주문 가능 현금 또는 전략 배정 한도를 초과했습니다.", "주문 수량과 전략 예산, 미체결 예약 금액을 확인하세요."),
+        (("rate limit", "초당 거래", "too many request", "429"), "BROKER_RATE_LIMIT", "증권사 호출 제한", "나무 API 호출 빈도가 허용 범위를 초과했습니다.", "자동 재시도 결과를 확인하고 반복되면 실행 간격을 늘리세요."),
+        (("timeout", "timed out", "시간 초과", "connection reset", "remote disconnected"), "BROKER_NETWORK", "증권사 통신 실패", "나무 API 응답 지연 또는 연결 중단으로 결과를 확정하지 못했습니다.", "주문내역 동기화로 접수 여부를 먼저 확인한 뒤 재실행하세요."),
+        (("not owned", "sellable", "보유", "수량"), "POSITION_STATE", "보유수량 또는 소유권 불일치", "전략 보유수량과 증권사 매도 가능 수량이 일치하지 않습니다.", "잔고·체결내역 동기화 후 전략 소유수량을 확인하세요."),
+        (("policy", "blocked", "차단", "approval"), "SAFETY_POLICY", "안전 정책 차단", "승인, 자동화 단계 또는 위험 제한 정책이 실행을 차단했습니다.", "스케줄 모드와 자동화 정책을 함께 확인하세요."),
+    )
+    code, title = "UNKNOWN", "분류되지 않은 실행 오류"
+    cause = "저장된 오류만으로 원인을 자동 분류하지 못했습니다."
+    action = "표시된 원문과 같은 시각의 서버 로그를 확인하세요."
+    for markers, rule_code, rule_title, rule_cause, rule_action in rules:
+        if any(marker in normalized for marker in markers):
+            code, title, cause, action = rule_code, rule_title, rule_cause, rule_action
+            break
+    return {
+        "code": code,
+        "title": title,
+        "cause": cause,
+        "recommended_action": action,
+        "message": raw,
+        "status": status,
+    }
+
+
 @router.get("/api/risk/status")
 def get_risk_status():
     def _build():
@@ -258,7 +288,11 @@ def get_scheduler_status(
             run_errors = []
             message = str(run.get("message") or "").strip()
             if message and status in {"failed", "partial", "blocked"}:
-                run_errors.insert(0, {"symbol": None, "action": None, "message": message})
+                run_errors.insert(0, {
+                    "symbol": None,
+                    "action": None,
+                    **_analyze_scheduler_failure(message, status),
+                })
             return {
                 "last_status": status,
                 "last_ok": status in {"success", "completed", "skipped"},

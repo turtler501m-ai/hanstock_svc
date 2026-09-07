@@ -20,7 +20,10 @@
                 : strategy.lastStatus === 'partial' ? '부분 실패' : '실행 기록 없음';
             const errorText = strategy.lastErrors.map((item) => {
                 const target = [item.symbol, item.action ? toKorAction(item.action) : ''].filter(Boolean).join(' ');
-                return `${target ? `${target}: ` : ''}${item.message || '내용 없는 오류'}`;
+                const title = item.title ? `[${item.title}] ` : '';
+                const cause = item.cause ? `\n원인: ${item.cause}` : '';
+                const action = item.recommended_action ? `\n조치: ${item.recommended_action}` : '';
+                return `${target ? `${target}: ` : ''}${title}${item.message || '상세 오류 없음'}${cause}${action}`;
             }).join('\n');
             const statusClass = ['failed', 'partial', 'blocked'].includes(strategy.lastStatus) ? 'is-error' : 'time-muted';
             return `<label class="scheduler-strategy-option"><input type="checkbox" class="scheduler-strategy-checkbox" value="${escapeHtml(strategy.id)}" ${checked ? 'checked' : ''}><span>${escapeHtml(strategyDisplayName(strategy))}<small class="${statusClass}" style="display:block;margin-top:3px;white-space:pre-wrap;">${escapeHtml(statusLabel)} · ${escapeHtml(formatKstTime(strategy.lastResultAt))}${errorText ? `\n${escapeHtml(errorText)}` : ''}</small></span></label>`;

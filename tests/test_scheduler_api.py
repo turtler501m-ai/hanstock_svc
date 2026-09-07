@@ -675,5 +675,18 @@ class SchedulerApiTests(unittest.TestCase):
         
         self.assertEqual(ctx.exception.status_code, 409)
 
+class SchedulerFailureAnalysisTests(unittest.TestCase):
+    def test_classifies_broker_timeout_with_guidance(self):
+        from src.dashboard.routes.stock_plan import _analyze_scheduler_failure
+
+        detail = _analyze_scheduler_failure(
+            "Namuh ReadTimeout while submitting order"
+        )
+
+        self.assertEqual(detail["code"], "BROKER_NETWORK")
+        self.assertEqual(detail["title"], "증권사 통신 실패")
+        self.assertIn("주문내역 동기화", detail["recommended_action"])
+
+
 if __name__ == "__main__":
     unittest.main()
