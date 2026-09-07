@@ -120,6 +120,62 @@ class OrderCancelConfirmationTests(unittest.TestCase):
         finally:
             stock_order.trader.config.trade_db_path = original_db_path
 
+    def test_demo_cancel_success_then_not_found_is_terminal_canceled(self):
+        original_db_path = stock_order.trader.config.trade_db_path
+        original_env = stock_order.trader.config.trading_env
+        original_live = stock_order.trader.config.enable_live_trading
+        try:
+            with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp_dir:
+                stock_order.trader.config.trade_db_path = f"{temp_dir}/trades.sqlite"
+                stock_order.trader.config.trading_env = "demo"
+                stock_order.trader.config.enable_live_trading = False
+                stock_order.trader.init_db()
+                repository = OrderLedgerRepository(stock_order.trader.connect_db)
+                order = repository.create(OrderIntent(
+                    client_order_key="demo-cancel-not-found-test",
+                    correlation_id="demo-cancel-not-found-correlation",
+                    symbol="005930",
+                    side="buy",
+                    quantity=1,
+                    broker_order_id="0000000123",
+                    broker_order_date="2026-09-07",
+                ), initial_status="submitted")
+                repository.transition(order["id"], "submitted", "cancel_pending")
+                repository.record_event(
+                    order["id"], "broker_cancel_response", actor="broker",
+                    payload={"success": True},
+                )
+
+                class FakeBroker:
+                    def fetch_order_snapshot(self, order_id, order_date=""):
+                        return OrderSnapshot(
+                            broker_order_id=order_id,
+                            status=OrderStatus.UNKNOWN,
+                            requested_quantity=1,
+                            remaining_quantity=1,
+                            message="Order not found",
+                            outcome_unknown=True,
+                        )
+
+                with patch.object(stock_order, "_get_api", return_value=FakeBroker()), patch.object(
+                    stock_order, "_clear_balance_cache"
+                ):
+                    stock_order._confirm_canceled_order(
+                        order["id"], attempts=2, interval_seconds=0
+                    )
+
+                detail = repository.detail(order["id"])
+                self.assertEqual(detail["status"], "canceled")
+                self.assertEqual(detail["events"][-1]["event_type"], "cancel_confirmed")
+                self.assertIn(
+                    "NHPLUG demo accepted cancellation",
+                    detail["events"][-1]["reason"],
+                )
+        finally:
+            stock_order.trader.config.trade_db_path = original_db_path
+            stock_order.trader.config.trading_env = original_env
+            stock_order.trader.config.enable_live_trading = original_live
+
 
 if __name__ == "__main__":
     unittest.main()

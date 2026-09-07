@@ -1,5 +1,6 @@
 """Order and trade HTTP handlers extracted from the legacy stock route module."""
 
+import json
 import threading
 import time
 import uuid
@@ -188,7 +189,49 @@ def _confirm_canceled_order(order_id: int, *, attempts: int = 8, interval_second
             time.sleep(max(0.0, interval_seconds))
 
     item = repository.get(order_id)
-    if item and str(item.get("status") or "") == "cancel_pending":
+    current_status = str((item or {}).get("status") or "")
+    # NHPLUG mock removes a successfully canceled order from the single-order
+    # inquiry immediately.  The live environment must remain fail-closed, but
+    # in demo a recorded successful cancel response plus repeated "not found"
+    # snapshots is the broker's terminal cancellation evidence.
+    demo_cancel_not_found = False
+    if (
+        item
+        and current_status in {"cancel_pending", "broker_unknown"}
+        and "not found" in last_message.lower()
+        and str(getattr(trader.config, "trading_env", "") or "").lower() == "demo"
+        and not bool(getattr(trader.config, "enable_live_trading", False))
+    ):
+        detail = repository.detail(order_id) or {}
+        for event in reversed(detail.get("events") or []):
+            if str(event.get("event_type") or "") != "broker_cancel_response":
+                continue
+            try:
+                payload = json.loads(event.get("payload_json") or "{}")
+            except (TypeError, ValueError, json.JSONDecodeError):
+                payload = {}
+            demo_cancel_not_found = payload.get("success") is True
+            break
+    if demo_cancel_not_found:
+        repository.reconcile_snapshot(
+            order_id,
+            status="canceled",
+            cumulative_filled_qty=int(item.get("filled_qty") or 0),
+            average_fill_price=float(item.get("average_fill_price") or 0),
+            broker_order_id=str(item.get("broker_order_id") or ""),
+            broker_order_date=str(item.get("broker_order_date") or ""),
+            raw={"demo_cancel_not_found": True, "attempts": attempts},
+        )
+        repository.record_event(
+            order_id,
+            "cancel_confirmed",
+            actor="broker_poll",
+            reason="NHPLUG demo accepted cancellation and removed order from inquiry",
+            payload={"status": "canceled", "confirmation": "not_found_after_cancel"},
+        )
+        _clear_balance_cache()
+        return
+    if item and current_status == "cancel_pending":
         repository.transition(
             order_id,
             "cancel_pending",
@@ -294,6 +337,33 @@ def cancel_unified_order(order_id: int):
         ))
     except Exception as exc:
         message = str(exc)
+        already_canceled = (
+            "[14330]" in message
+            and str(getattr(trader.config, "trading_env", "") or "").lower() == "demo"
+            and not bool(getattr(trader.config, "enable_live_trading", False))
+        )
+        if already_canceled:
+            reconciled = repository.reconcile_snapshot(
+                order_id,
+                status="canceled",
+                cumulative_filled_qty=int(item.get("filled_qty") or 0),
+                average_fill_price=float(item.get("average_fill_price") or 0),
+                broker_order_id=str(item.get("broker_order_id") or broker_order_id),
+                broker_order_date=str(item.get("broker_order_date") or ""),
+                raw={"code": "14330", "cancel_already_completed": True},
+            )
+            repository.record_event(
+                order_id,
+                "broker_cancel_already_completed",
+                actor="broker",
+                reason=message,
+                payload={"remaining_qty": max(0, int(item["requested_qty"]) - int(item["filled_qty"]))},
+            )
+            _clear_balance_cache()
+            return {"order": reconciled, "broker_result": {
+                "success": True, "message": "broker already reports cancellation completed",
+                "broker_order_id": broker_order_id, "status": "canceled",
+            }, "confirmation_started": False}
         repository.record_event(
             order_id,
             "broker_cancel_exception",
@@ -352,6 +422,14 @@ def _replace_with_market_after_cancel(order_id: int) -> None:
     _confirm_canceled_order(order_id, attempts=8, interval_seconds=2.0)
     original = repository.get(order_id)
     if not original or str(original.get("status") or "") != "canceled":
+        if original:
+            repository.record_event(
+                order_id,
+                "market_replacement_waiting_for_cancel_confirmation",
+                actor="dashboard_worker",
+                reason="broker cancellation was not confirmed; market replacement was not submitted",
+                payload={"status": original.get("status")},
+            )
         return
     quantity = max(0, int(original.get("requested_qty") or 0) - int(original.get("filled_qty") or 0))
     if quantity <= 0:
