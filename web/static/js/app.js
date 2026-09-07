@@ -709,9 +709,13 @@ async function renderBalance() {
         const holdingValue = (balance.holdings || []).reduce((sum, holding) => {
             return sum + Number(holding.value || (Number(holding.qty || 0) * Number(holding.price || 0)));
         }, 0);
-        const displayTotal = holdingValue > 0 && Number(balance.total_eval || 0) < Math.max(Number(balance.cash || 0), holdingValue)
-            ? Number(balance.cash || 0) + holdingValue
-            : Number(balance.total_eval || 0);
+        // The broker total already includes cash and stock evaluation. Do not
+        // rebuild it from the locally attributed holdings, which can contain
+        // stale/manual positions and would double-count stock value.
+        const brokerTotal = Number(balance.broker_total_eval || balance.total_eval || 0);
+        const displayTotal = brokerTotal > 0
+            ? brokerTotal
+            : Number(balance.cash || 0) + holdingValue;
 
         const principal = Number(latestConfig?.account_initial_capital || latestConfig?.total_capital || 0);
         const accountPnl = displayTotal - principal;
