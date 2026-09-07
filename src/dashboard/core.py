@@ -176,7 +176,12 @@ BALANCE_CACHE_TTL_SECONDS = int(os.environ.get("BALANCE_CACHE_TTL_SECONDS", "30"
 # 대시보드 탭 read-through 스냅샷의 기본 신선도 TTL(초). 이 시간 안에는 API를
 # 호출하지 않고 DB 스냅샷을 그대로 돌려준다. 만료되면 builder(API)로 재생성한다.
 DASHBOARD_SNAPSHOT_TTL_SECONDS = int(os.environ.get("DASHBOARD_SNAPSHOT_TTL_SECONDS", "20"))
-BALANCE_FETCH_TIMEOUT_SECONDS = float(os.environ.get("BALANCE_FETCH_TIMEOUT_SECONDS", "25"))
+# A complete Namuh balance refresh performs one rate-limited sellable-quantity
+# inquiry per reported row. Demo accounts can retain settlement rows, so a
+# valid refresh may exceed the former 25-second deadline.
+BALANCE_FETCH_TIMEOUT_SECONDS = max(
+    50.0, float(os.environ.get("BALANCE_FETCH_TIMEOUT_SECONDS", "50"))
+)
 GIT_FETCH_TIMEOUT_SECONDS = float(os.environ.get("GIT_FETCH_TIMEOUT_SECONDS", "3"))
 MIN_ORDER_HISTORY_SYNC_DAYS = 30
 _balance_fetch_lock = threading.Lock()

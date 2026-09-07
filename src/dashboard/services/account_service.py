@@ -33,13 +33,15 @@ def get_balance_data(
     recoverable_errors: tuple[type[BaseException], ...] = (Exception,),
 ) -> dict:
     """Fetch an account balance with a short-lived cache and stale fallback."""
-    cached = load_cache() if allow_cache else None
+    # Explicit refresh bypasses a fresh-cache return, but the last valid
+    # snapshot remains a safe fallback if the complete broker inquiry times out.
+    cached = load_cache()
 
     def fresh(value):
         age = cache_age(value)
         return age is not None and age < balance_cache_ttl_seconds
 
-    if cached is not None and fresh(cached):
+    if allow_cache and cached is not None and fresh(cached):
         return mark_cache_fresh(cached)
 
     with cache_lock:

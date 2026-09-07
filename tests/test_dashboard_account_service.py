@@ -1,11 +1,34 @@
 import threading
 import unittest
+import concurrent.futures
 from unittest.mock import Mock
 
 from src.dashboard.services.account_service import get_balance_data
 
 
 class DashboardAccountServiceTests(unittest.TestCase):
+    def test_explicit_refresh_uses_stale_cache_only_after_timeout(self):
+        api = Mock()
+        cached = {"cached": True}
+        run_timeout = Mock(side_effect=concurrent.futures.TimeoutError)
+
+        result = get_balance_data(
+            api,
+            allow_cache=False,
+            balance_cache_ttl_seconds=30,
+            fetch_timeout_seconds=50,
+            cache_lock=threading.Lock(),
+            load_cache=lambda: cached,
+            cache_age=lambda _: 2,
+            mark_cache_fresh=Mock(),
+            parse_balance=Mock(),
+            save_cache=Mock(),
+            run_timeout=run_timeout,
+        )
+
+        self.assertIs(result, cached)
+        run_timeout.assert_called_once_with(api.get_balance, 50)
+
     def test_fresh_cache_skips_broker_and_marks_cache_fresh(self):
         api = Mock()
         cached = {"cached": True}
