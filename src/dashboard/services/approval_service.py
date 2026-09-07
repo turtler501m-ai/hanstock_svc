@@ -164,6 +164,15 @@ def _current_holding_qty_from_balance(api, symbol: str) -> int:
 
 def _current_sellable_qty_from_balance(api, symbol: str) -> int:
     """Read sellable quantity from a fresh broker balance snapshot."""
+    # NHPLUG exposes sellability through a dedicated endpoint.  Do this before
+    # parsing the balance snapshot because mock balance rows can contain
+    # itg_bnc_qty=0 even when the broker accepts a cash sell.
+    fetch_sellable = getattr(api, "fetch_sellable_quantity", None)
+    if callable(fetch_sellable) and getattr(api, "broker_name", "") != "namuh":
+        try:
+            return max(0, _to_int(fetch_sellable(symbol)))
+        except (DashboardOperationError, RuntimeError, TypeError, ValueError):
+            pass
     try:
         _clear_balance_cache()
         parsed = _parse_balance(_get_balance_data(api, allow_cache=False))

@@ -1,6 +1,7 @@
 """Normalize official NHPLUG domestic-stock responses to broker models."""
 
 from datetime import date, datetime, timedelta
+from dataclasses import replace
 import logging
 from typing import Any, Mapping
 
@@ -132,6 +133,24 @@ class NHPlugBrokerAdapter:
                 _int(row.get("rsdl_qty")),
             ) > 0
         )
+        enriched = []
+        for holding in holdings:
+            if holding.sellable_quantity > 0:
+                enriched.append(holding)
+                continue
+            try:
+                sellable = self.fetch_sellable_quantity(holding.symbol)
+            except Exception as exc:
+                logging.getLogger(__name__).warning(
+                    "[SELLABLE_QTY] dedicated query failed symbol=%s error=%s",
+                    holding.symbol, exc,
+                )
+                sellable = 0
+            enriched.append(replace(
+                holding,
+                sellable_quantity=min(holding.quantity, max(0, int(sellable))),
+            ))
+        holdings = tuple(enriched)
         stock_value = sum(x.market_value for x in holdings)
         total = _num(summary.get("tot_aet_amt") or summary.get("tot_eal_amt"))
         # dca is the gross deposit figure in the mock response.  nxt2_dd_dca
@@ -141,6 +160,28 @@ class NHPlugBrokerAdapter:
         orderable_cash = _num(summary.get("orr_pbl_amt1") or summary.get("orr_pbl_amt"))
         return AccountBalance(holdings, cash, orderable_cash, total or cash + stock_value,
                               stock_value, _num(summary.get("tot_eal_pls")), raw=dict(getattr(page, "data", page)))
+
+    def fetch_sellable_quantity(self, symbol: str) -> int:
+        """Return the broker-authoritative sellable quantity for one symbol.
+
+        NHPLUG's balance response and its sellable-quantity response are not
+        interchangeable.  In particular, mock accounts may report
+        ``itg_bnc_qty=0`` in the balance snapshot while the dedicated
+        endpoint still returns the quantity accepted for cash selling.
+        """
+        symbol = str(symbol or "").strip()
+        if not symbol:
+            return 0
+        page = self.client.post(
+            "/krstock/inquiry/v1/sellableQuantity",
+            {"act_no": self.account, "iem_cd": symbol, "cfd_lon_cd": "00"},
+        )
+        row = _out(page)
+        if isinstance(row, list):
+            row = row[0] if row else {}
+        if not isinstance(row, Mapping):
+            return 0
+        return max(0, _int(row.get("sll_pbl_qty")))
 
     @staticmethod
     def _holding(row: Mapping[str, Any]) -> Holding:

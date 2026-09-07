@@ -152,6 +152,20 @@ class BrokerContractTests(unittest.TestCase):
         self.assertEqual(balance.holdings[0].sellable_quantity, 0)
         self.assertEqual(balance.orderable_cash, 453384370)
 
+    def test_namuh_sellable_quantity_uses_dedicated_endpoint(self):
+        client = Mock()
+        client.account = "demo"
+        client.post.return_value = type("Page", (), {"data": {
+            "Output_0": {"iem_cd": "005930", "sll_pbl_qty": "10", "bnc_qty": "10"},
+        }})()
+        broker = NHPlugBrokerAdapter(client, account="demo")
+
+        self.assertEqual(broker.fetch_sellable_quantity("005930"), 10)
+        client.post.assert_called_once_with(
+            "/krstock/inquiry/v1/sellableQuantity",
+            {"act_no": "demo", "iem_cd": "005930", "cfd_lon_cd": "00"},
+        )
+
     def test_namuh_legacy_balance_serializes_whole_numeric_strings(self):
         client = Mock()
         client.account = "demo"

@@ -1752,6 +1752,24 @@ def _cancel_open_buy_orders_before_liquidation(api) -> list[dict]:
     return results
 
 
+def _enrich_sellable_quantities(api, parsed: dict) -> dict:
+    """Replace balance-row sellability with NHPLUG's authoritative value."""
+    fetch_sellable = getattr(api, "fetch_sellable_quantity", None)
+    if not callable(fetch_sellable) or getattr(api, "broker_name", "") == "namuh":
+        return parsed
+    for holding in parsed.get("holdings", []):
+        symbol = str(holding.get("symbol") or "").strip()
+        if not symbol:
+            continue
+        try:
+            holding["sellable_qty"] = max(0, _to_int(fetch_sellable(symbol)))
+        except Exception as exc:
+            # Keep the fail-closed balance value when the dedicated query is
+            # unavailable; never infer sellability from settlement fields.
+            logger.warning("[SELLABLE_QTY] dedicated query failed symbol=%s error=%s", symbol, exc)
+    return parsed
+
+
 
 
 @router.post("/api/holdings/sell-all")
@@ -1772,6 +1790,7 @@ def sell_all_holdings(payload: dict | None = Body(default=None)):
             else []
         )
         parsed = _parse_balance(_get_balance_data(api, allow_cache=False))
+        parsed = _enrich_sellable_quantities(api, parsed)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Namuh balance API request failed: {e}") from e
 
