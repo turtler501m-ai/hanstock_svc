@@ -18,8 +18,6 @@ def _refresh_dependencies() -> None:
         "_reserved_sell_qty_from_ledger",
         "_is_approval_already_claimed", "_auto_approve_pending_approvals",
         "_approve_pending_approval", "_approve_pending_approval_serialized",
-        "_buy_approval_capacity_decision", "_enforce_buy_position_limit",
-        "_additional_buy_strategy_id",
         "_schedule_submitted_order_sync", "_run_submitted_order_sync",
     }}
     globals().update({name: value for name, value in vars(core).items() if name not in protected})
@@ -198,144 +196,6 @@ def _reserved_sell_qty_from_ledger(symbol: str) -> int:
     return sum(max(0, _to_int(row[0]) - _to_int(row[1])) for row in rows)
 
 
-def _buy_approval_capacity_decision(
-    *,
-    approval_id: int,
-    symbol: str,
-    held_symbols: set[str],
-    active_buy_symbols: set[str],
-    pending_buys: list[tuple[int, str]],
-    max_positions: int,
-) -> tuple[bool, str]:
-    target = str(symbol or "").strip()
-    occupied = {str(value) for value in held_symbols | active_buy_symbols if str(value)}
-    if target in occupied:
-        return False, f"duplicate buy exposure already exists for {target}"
-    available_slots = max(0, int(max_positions) - len(occupied))
-    if available_slots <= 0:
-        return False, f"maximum positions reached ({len(occupied)}/{max_positions})"
-
-    eligible_ids: list[int] = []
-    seen = set(occupied)
-    for pending_id, pending_symbol in pending_buys:
-        normalized = str(pending_symbol or "").strip()
-        if not normalized or normalized in seen:
-            continue
-        seen.add(normalized)
-        eligible_ids.append(int(pending_id))
-        if len(eligible_ids) >= available_slots:
-            break
-    if int(approval_id) not in eligible_ids:
-        return False, f"buy approval exceeds remaining position slots ({available_slots})"
-    return True, ""
-
-
-_ADDITIONAL_BUY_STRATEGIES = {"ai_rebalance", "rsi_limit_strategy"}
-
-
-def _additional_buy_strategy_id(pending: dict) -> str | None:
-    """Return the opt-in strategy allowed to add to an existing holding."""
-    strategy_id = str(pending.get("strategy_id") or "").strip()
-    if not strategy_id and str(pending.get("source") or "").strip() == "ai-allocation":
-        strategy_id = "ai_rebalance"
-    return strategy_id if strategy_id in _ADDITIONAL_BUY_STRATEGIES else None
-
-
-def _enforce_buy_position_limit(approval_id: int, pending: dict) -> None:
-    api = _get_api()
-    parsed = (
-        _parse_balance(_get_balance_data(api, allow_cache=True))
-        if hasattr(api, "get_balance")
-        else {"holdings": []}
-    )
-    held_symbols = {
-        str(row.get("symbol") or "").strip()
-        for row in parsed.get("holdings", [])
-        if str(row.get("symbol") or "").strip()
-    }
-    today = trader.datetime.now(trader.KST).strftime("%Y-%m-%d")
-    with trader.connect_db() as conn:
-        active_buy_symbols = {
-            str(row[0])
-            for row in conn.execute(
-                """
-                SELECT DISTINCT symbol FROM trades
-                WHERE action = 'buy'
-                  AND order_status IN ('submitted', 'open', 'partial')
-                  AND ts >= ?
-                  AND NOT EXISTS (
-                      SELECT 1 FROM orders o
-                      WHERE o.approval_id = trades.source_approval_id
-                        AND o.status IN ('rejected', 'canceled', 'expired', 'failed')
-                  )
-                """,
-                (today,),
-            ).fetchall()
-            if str(row[0] or "")
-        }
-        pending_buys = [
-            (int(row[0]), str(row[1] or ""))
-            for row in conn.execute(
-                """
-                SELECT id, symbol FROM approvals
-                WHERE action = 'buy'
-                  AND status IN ('pending', 'executing')
-                  AND created_at >= ?
-                ORDER BY id ASC
-                """,
-                (today,),
-            ).fetchall()
-        ]
-
-    target = str(pending.get("symbol") or "").strip()
-    additional_buy_strategy = _additional_buy_strategy_id(pending)
-    if additional_buy_strategy and target in held_symbols:
-        # Scale-ins do not consume another position slot. Limit each strategy
-        # to one outstanding add-on order per symbol; monetary exposure is
-        # capped by the strategy-specific sizing policy when the order is built.
-        earlier_pending_same_symbol = any(
-            int(pending_id) < int(approval_id)
-            and str(pending_symbol or "").strip() == target
-            for pending_id, pending_symbol in pending_buys
-        )
-        if target not in active_buy_symbols and not earlier_pending_same_symbol:
-            return
-        reason = (
-            f"{additional_buy_strategy} additional buy rejected: "
-            f"an outstanding buy already exists for {target}"
-        )
-        now = trader.datetime.now(trader.KST).strftime("%Y-%m-%d %H:%M:%S")
-        with trader.connect_db() as conn:
-            conn.execute(
-                "UPDATE approvals SET status = 'rejected', response_msg = ?, updated_at = ? "
-                "WHERE id = ? AND status = 'pending'",
-                (reason, now, approval_id),
-            )
-        raise HTTPException(status_code=409, detail=reason)
-
-    allowed, reason = _buy_approval_capacity_decision(
-        approval_id=approval_id,
-        symbol=str(pending.get("symbol") or ""),
-        held_symbols=held_symbols,
-        active_buy_symbols=active_buy_symbols,
-        pending_buys=pending_buys,
-        max_positions=int(getattr(trader.get_settings(), "max_positions", 0)),
-    )
-    if allowed:
-        return
-    now = trader.datetime.now(trader.KST).strftime("%Y-%m-%d %H:%M:%S")
-    message = f"리스크 제한으로 매수 거절: {reason}"
-    with trader.connect_db() as conn:
-        conn.execute(
-            """
-            UPDATE approvals SET status = 'rejected', response_msg = ?, updated_at = ?
-            WHERE id = ? AND status = 'pending'
-            """,
-            (message, now, approval_id),
-        )
-    raise HTTPException(status_code=409, detail=message)
-
-
 def _pending_approval_ids(limit: int = 200, *, exclude_sources: set[str] | None = None) -> list[int]:
     _init_approval_db()
     with trader.connect_db() as conn:
@@ -492,7 +352,6 @@ def _approve_pending_approval_serialized(
 
         if not _demo_new_risk_block_bypass():
             assert_new_risk_allowed(trader.connect_db)
-        _enforce_buy_position_limit(approval_id, pending)
     if pending.get("managed_order_id"):
         from src.strategy.autonomy.ai_stock_integration import (
             approve_managed_ai_stock_order,
