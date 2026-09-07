@@ -3,10 +3,12 @@
     function renderHoldings(rows, config, deps) {
         const tbody = document.querySelector('#table-holdings tbody');
         if (!tbody) return;
-        // A holding is removed only when the broker-confirmed position is
-        // actually zero.  A positive holding with sellable_qty=0 remains
-        // visible and is explicitly shown as not currently sellable.
-        const visibleRows = (rows || []).filter((holding) => Number(holding.qty || 0) > 0);
+        // This screen is the actionable holdings view: hide positions that
+        // cannot currently be sold. Account totals and broker reconciliation
+        // still use the complete broker-confirmed holdings payload.
+        const visibleRows = (rows || []).filter((holding) => (
+            Number(holding.qty || 0) > 0 && Number(holding.sellable_qty || 0) > 0
+        ));
         tbody.innerHTML = '';
         if (!visibleRows.length) {
             deps.setTableMessage('#table-holdings tbody', 10, deps.labels.empty);
