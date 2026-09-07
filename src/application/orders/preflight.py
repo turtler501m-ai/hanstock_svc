@@ -118,6 +118,12 @@ def _fetch_balance(api: Any) -> AccountBalance:
                 or (balance.raw or {}).get("response_msg")
                 or ""
             )
+            demo_response = demo_response or (
+                str(os.environ.get("TRADING_ENV", "demo") or "demo").lower()
+                in {"demo", "paper", "mock"}
+                and str(os.environ.get("ENABLE_LIVE_TRADING", "false")).lower()
+                not in {"1", "true", "yes", "on"}
+            )
             if demo_response:
                 holdings = []
                 for holding in balance.holdings:
