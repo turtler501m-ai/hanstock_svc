@@ -3,13 +3,17 @@
     function renderHoldings(rows, config, deps) {
         const tbody = document.querySelector('#table-holdings tbody');
         if (!tbody) return;
+        // A holding is removed only when the broker-confirmed position is
+        // actually zero.  A positive holding with sellable_qty=0 remains
+        // visible and is explicitly shown as not currently sellable.
+        const visibleRows = (rows || []).filter((holding) => Number(holding.qty || 0) > 0);
         tbody.innerHTML = '';
-        if (!rows.length) {
+        if (!visibleRows.length) {
             deps.setTableMessage('#table-holdings tbody', 10, deps.labels.empty);
             deps.updateHeaders();
             return;
         }
-        rows.forEach((holding) => {
+        visibleRows.forEach((holding) => {
             const rtClass = Number(holding.rt || 0) >= 0 ? 'text-success' : 'text-danger';
             const pnlStatus = deps.pnlStatus(holding);
             const pnlLabel = pnlStatus === 'loss' ? deps.labels.loss : (pnlStatus === 'profit' ? deps.labels.profit : deps.labels.flat);
