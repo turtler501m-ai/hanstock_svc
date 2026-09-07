@@ -179,7 +179,10 @@ def evaluate_order_capacity(
         fetch_sellable = getattr(api, "fetch_sellable_quantity", None)
         if callable(fetch_sellable):
             try:
-                broker_sellable = _positive_int(fetch_sellable(symbol))
+                try:
+                    broker_sellable = _positive_int(fetch_sellable(symbol, use_cache=False))
+                except TypeError:
+                    broker_sellable = _positive_int(fetch_sellable(symbol))
             except Exception:
                 # Preserve fail-closed behavior when the broker query fails.
                 broker_sellable = 0

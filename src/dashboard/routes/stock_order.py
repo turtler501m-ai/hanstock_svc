@@ -1762,7 +1762,10 @@ def _enrich_sellable_quantities(api, parsed: dict) -> dict:
         if not symbol:
             continue
         try:
-            holding["sellable_qty"] = max(0, _to_int(fetch_sellable(symbol)))
+            try:
+                holding["sellable_qty"] = max(0, _to_int(fetch_sellable(symbol, use_cache=False)))
+            except TypeError:
+                holding["sellable_qty"] = max(0, _to_int(fetch_sellable(symbol)))
         except Exception as exc:
             # Keep the fail-closed balance value when the dedicated query is
             # unavailable; never infer sellability from settlement fields.

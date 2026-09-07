@@ -162,7 +162,7 @@ class NHPlugBrokerAdapter:
                 enriched.append(holding)
                 continue
             try:
-                sellable = self.fetch_sellable_quantity(holding.symbol)
+                sellable = self.fetch_sellable_quantity(holding.symbol, use_cache=True)
                 refreshed += 1
             except Exception as exc:
                 refreshed += 1
@@ -195,7 +195,7 @@ class NHPlugBrokerAdapter:
             return cached[1]
         return None
 
-    def fetch_sellable_quantity(self, symbol: str) -> int:
+    def fetch_sellable_quantity(self, symbol: str, *, use_cache: bool = False) -> int:
         """Return the broker-authoritative sellable quantity for one symbol.
 
         NHPLUG's balance response and its sellable-quantity response are not
@@ -207,7 +207,7 @@ class NHPlugBrokerAdapter:
         if not symbol:
             return 0
         cache_key = (self.account, symbol)
-        cached = self._cached_sellable_quantity(symbol)
+        cached = self._cached_sellable_quantity(symbol) if use_cache else None
         if cached is not None:
             return cached
         page = self.client.post(

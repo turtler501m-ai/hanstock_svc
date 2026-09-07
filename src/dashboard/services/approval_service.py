@@ -170,7 +170,10 @@ def _current_sellable_qty_from_balance(api, symbol: str) -> int:
     fetch_sellable = getattr(api, "fetch_sellable_quantity", None)
     if callable(fetch_sellable):
         try:
-            return max(0, _to_int(fetch_sellable(symbol)))
+            try:
+                return max(0, _to_int(fetch_sellable(symbol, use_cache=False)))
+            except TypeError:
+                return max(0, _to_int(fetch_sellable(symbol)))
         except (DashboardOperationError, RuntimeError, TypeError, ValueError):
             pass
     try:
