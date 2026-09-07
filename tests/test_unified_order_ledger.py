@@ -262,7 +262,7 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
         )
         self.assertEqual("open", self.repository.get(order["id"])["status"])
 
-    def test_startup_closes_only_prior_session_legacy_day_orders(self):
+    def test_startup_requires_verification_for_prior_session_legacy_orders(self):
         with self.connect() as conn:
             conn.execute(
                 """CREATE TABLE trades (
@@ -283,10 +283,10 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
         self.assertEqual(1, closed)
         with self.connect() as conn:
             rows = conn.execute("SELECT id,order_status,filled_qty FROM trades ORDER BY id").fetchall()
-        self.assertEqual((1, "canceled", 2), tuple(rows[0]))
+        self.assertEqual((1, "broker_unknown", 2), tuple(rows[0]))
         self.assertEqual((2, "open", 0), tuple(rows[1]))
 
-    def test_startup_closes_prior_session_unified_day_order_remainder(self):
+    def test_startup_preserves_prior_session_order_for_late_fills(self):
         order = self.repository.create(self.intent(), initial_status="approved")
         self.repository.transition(order["id"], "approved", "submitting")
         self.repository.transition(order["id"], "submitting", "submitted")
@@ -301,9 +301,15 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
         )
         self.assertEqual(1, closed)
         result = self.repository.detail(order["id"])
-        self.assertEqual("canceled", result["status"])
+        self.assertEqual("broker_unknown", result["status"])
         self.assertEqual(2, result["filled_qty"])
-        self.assertEqual("expired_day_order", result["events"][-1]["event_type"])
+        self.assertEqual("prior_session_verification_required", result["events"][-1]["event_type"])
+        self.assertIsNone(result["completed_at"])
+        result = self.repository.reconcile_snapshot(
+            order["id"], status="filled", cumulative_filled_qty=10,
+            average_fill_price=70000, broker_order_date="2026-08-28",
+        )
+        self.assertEqual("filled", result["status"])
 
     def test_broker_balance_adjustment_is_audited_and_preserved_by_later_fills(self):
         order = self.repository.create(self.intent(), initial_status="approved")
@@ -339,6 +345,17 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
         position = self.repository.list_positions(market="KR")[0]
         self.assertEqual(9, position["quantity"])
 
+    def test_recovery_reopens_only_previous_local_expiry_cancellations(self):
+        order = self.repository.create(self.intent(), initial_status="canceled")
+        with self.connect() as conn:
+            conn.execute("UPDATE orders SET broker_order_date='2026-08-28' WHERE id=?", (order["id"],))
+        current = datetime(2026, 8, 31, 9, 5, tzinfo=timezone(timedelta(hours=9)))
+        self.assertEqual(close_expired_unified_day_orders(self.connect, now=current), 0)
+        self.repository.record_event(order["id"], "expired_day_order", actor="startup_recovery")
+        self.assertEqual(close_expired_unified_day_orders(self.connect, now=current), 1)
+        self.assertEqual(self.repository.get(order["id"])["status"], "broker_unknown")
+        self.assertEqual(close_expired_unified_day_orders(self.connect, now=current), 0)
+
     def test_unknown_order_recovers_from_unique_verified_legacy_fill(self):
         order = self.repository.create(self.intent(), initial_status="approved")
         self.repository.transition(order["id"], "approved", "submitting")
@@ -348,7 +365,7 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
                 """CREATE TABLE trades (
                     id INTEGER PRIMARY KEY,ts TEXT,symbol TEXT,action TEXT,qty INTEGER,
                     price REAL,filled_qty INTEGER,filled_price REAL,
-                    order_status TEXT,broker_order_id TEXT
+                    order_status TEXT,broker_order_id TEXT,account_key TEXT
                 )"""
             )
             conn.execute(
@@ -358,7 +375,7 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
             conn.execute(
                 """INSERT INTO trades VALUES
                    (1,'2026-08-31 09:09:23','005930','buy',10,70000,10,70100,
-                    'filled','0018447')"""
+                    'filled','0018447','')"""
             )
         self.assertEqual(1, reconcile_unknown_orders_from_legacy_fills(self.connect))
         recovered = self.repository.get(order["id"])
@@ -375,7 +392,7 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
                 """CREATE TABLE trades (
                     id INTEGER PRIMARY KEY,ts TEXT,symbol TEXT,action TEXT,qty INTEGER,
                     price REAL,filled_qty INTEGER,filled_price REAL,
-                    order_status TEXT,broker_order_id TEXT
+                    order_status TEXT,broker_order_id TEXT,account_key TEXT
                 )"""
             )
             conn.execute(
@@ -385,7 +402,7 @@ class UnifiedOrderLedgerTests(unittest.TestCase):
             conn.execute(
                 """INSERT INTO trades VALUES
                    (1,'2026-09-02 15:09:15','005930','buy',10,70000,0,0,
-                    'canceled','0139396')"""
+                    'canceled','0139396','')"""
             )
         self.assertEqual(1, reconcile_unknown_orders_from_legacy_fills(self.connect))
         recovered = self.repository.get(order["id"])

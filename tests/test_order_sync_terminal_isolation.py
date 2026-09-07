@@ -40,6 +40,8 @@ class OrderSyncTerminalIsolationTests(unittest.TestCase):
                     filled_qty=0,
                 )
 
+                with dashboard.trader.connect_db() as conn:
+                    conn.execute("UPDATE trades SET ts='2026-08-31 10:00:00' WHERE broker_order_id='C12345'")
                 result = dashboard._sync_filled_trades_from_history(_FakeAPI(), days=1)
 
                 with closing(sqlite3.connect(dashboard.trader.config.trade_db_path)) as conn:

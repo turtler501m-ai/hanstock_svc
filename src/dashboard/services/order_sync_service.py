@@ -9,6 +9,26 @@ MIN_ORDER_HISTORY_SYNC_DAYS = 30
 TERMINAL_ORDER_STATUSES = frozenset({"filled", "canceled", "failed", "rejected", "expired"})
 
 
+def _scoped_local_trades() -> list[dict]:
+    from src.application.orders.identity import broker_account_scope_key
+
+    account_key = broker_account_scope_key("KR")
+    with trader.connect_db() as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """SELECT t.* FROM trades t
+               WHERE t.env=? AND (
+                 t.account_key=? OR EXISTS (
+                   SELECT 1 FROM orders o WHERE o.account_key=? AND o.market='KR'
+                   AND ((t.source_approval_id IS NOT NULL AND o.approval_id=t.source_approval_id)
+                        OR json_extract(o.metadata_json,'$.legacy_trade_id')=t.id)
+                 )
+               ) ORDER BY t.ts,t.id""",
+            (trader.runtime_flags().trading_env, account_key, account_key),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def _mirror_trade_to_unified_ledger(trade: dict, stored: dict | None = None) -> None:
     """Project a normalized broker history row into the unified ledger."""
     _refresh_dependencies()
@@ -17,7 +37,10 @@ def _mirror_trade_to_unified_ledger(trade: dict, stored: dict | None = None) -> 
     repository = OrderLedgerRepository(trader.connect_db)
     source = stored or trade
     approval_id = _to_int(source.get("source_approval_id"))
-    order = repository.get_by_approval(approval_id) if approval_id else None
+    unified_id = _to_int(source.get("_unified_order_id"))
+    order = repository.get(unified_id) if unified_id else (
+        repository.get_by_approval(approval_id) if approval_id else None
+    )
     if order is None:
         from src.application.orders.identity import broker_account_scope_key
 
@@ -26,8 +49,26 @@ def _mirror_trade_to_unified_ledger(trade: dict, stored: dict | None = None) -> 
             broker_order_date=str(trade.get("ts") or "")[:10],
             account_key=broker_account_scope_key("KR"), market="KR",
         )
+    from src.application.orders.identity import broker_account_scope_key
     if order is None:
-        return
+        from src.application.orders.models import OrderIntent
+
+        broker_id = str(trade.get("broker_order_id") or "").strip()
+        broker_date = str(trade.get("ts") or "")[:10]
+        if not broker_id or not broker_date:
+            raise ValueError("broker history requires a dated order identity")
+        account_key = broker_account_scope_key("KR")
+        order = repository.create(OrderIntent(
+            client_order_key=f"history:{account_key}:KR:{broker_date}:{broker_id}",
+            correlation_id=f"history:{account_key}:{broker_date}:{broker_id}",
+            account_key=account_key, market="KR", symbol=str(trade["symbol"]),
+            name=str(trade.get("name") or trade["symbol"]), side=str(trade["action"]),
+            quantity=_to_int(source.get("qty") or trade.get("qty")),
+            price=0, broker_order_id=broker_id, broker_order_date=broker_date,
+            metadata={"source": "broker_history", "legacy_trade_id": source.get("id")},
+        ), initial_status="approved")
+    if order.get("account_key") != broker_account_scope_key("KR") or order.get("market") != "KR":
+        raise ValueError("broker history cannot update an order from another account")
     # Some legacy executions predate the point where the unified order was
     # advanced past approval.  A broker order number in broker history proves
     # submission, so reconstruct the missing lifecycle before applying the
@@ -53,6 +94,10 @@ def _mirror_trade_to_unified_ledger(trade: dict, stored: dict | None = None) -> 
                 int(order["id"]), "submitting", "submitted",
                 actor="reconciliation", reason="broker history confirms submission",
             )
+    raw = trade.get("broker_result") or {}
+    if isinstance(raw, str):
+        import json
+        raw = json.loads(raw)
     repository.reconcile_snapshot(
         int(order["id"]),
         status=str(trade.get("order_status") or "open"),
@@ -60,7 +105,7 @@ def _mirror_trade_to_unified_ledger(trade: dict, stored: dict | None = None) -> 
         average_fill_price=float(trade.get("filled_price") or 0),
         broker_order_id=str(trade.get("broker_order_id") or ""),
         broker_order_date=str(trade.get("ts") or "")[:10],
-        raw=trade.get("broker_result") if isinstance(trade.get("broker_result"), dict) else {},
+        raw=raw if isinstance(raw, dict) else {},
     )
 
 def _refresh_dependencies() -> None:
@@ -80,14 +125,17 @@ def _sync_filled_trades_from_history(
     history: list[dict] | None = None,
 ) -> dict:
     _refresh_dependencies()
-    from src.db.performance_repository import account_scope_key
+    from src.application.orders.identity import broker_account_scope_key
+    account_key = broker_account_scope_key("KR")
     start_date, end_date = _order_history_window(days)
     if history is None:
         history = api.get_trade_history(start_date, end_date)
     history = _normalize_history_cancellations(history)
     trader.init_db()
 
-    merged_trades = _load_merged_trades()
+    # History belongs to exactly one account. Unscoped legacy rows must first
+    # be linked through their unified order, never through a reused order number.
+    merged_trades = _scoped_local_trades()
     existing = {_history_trade_key(item): item for item in merged_trades}
     def broker_history_key(item: dict) -> tuple[str, str, str, str, str]:
         return (
@@ -102,34 +150,6 @@ def _sync_filled_trades_from_history(
         broker_history_key(item): item
         for item in merged_trades
         if str(item.get("broker_order_id") or "").strip()
-    }
-    identity_candidates: dict[tuple[str, str, str, str], list[dict]] = {}
-    for item in merged_trades:
-        broker_order_id = str(item.get("broker_order_id") or "").strip()
-        if not broker_order_id:
-            continue
-        identity = (
-            str(item.get("env") or trader.runtime_flags().trading_env),
-            broker_order_id,
-            str(item.get("symbol") or ""),
-            str(item.get("action") or ""),
-        )
-        identity_candidates.setdefault(identity, []).append(item)
-    unique_by_broker_identity = {
-        identity: candidates[0]
-        for identity, candidates in identity_candidates.items()
-        if len(candidates) == 1
-    }
-    active_by_broker_order_id = {
-        (
-            str(item.get("env") or trader.runtime_flags().trading_env),
-            str(item.get("broker_order_id") or "").strip(),
-            str(item.get("symbol") or ""),
-            str(item.get("action") or ""),
-        ): item
-        for item in merged_trades
-        if str(item.get("broker_order_id") or "").strip()
-        and str(item.get("order_status") or "") in {"submitted", "open", "partial"}
     }
     imported_count = 0
     skipped_count = 0
@@ -159,29 +179,19 @@ def _sync_filled_trades_from_history(
                 })
                 continue
 
+            if _to_int(trade.get("filled_qty")) > 0 and _to_int(trade.get("filled_price")) <= 0:
+                skipped_count += 1
+                items.append({
+                    "sync_type": "history", "sync_result": "review_required",
+                    "symbol": trade["symbol"], "broker_order_id": trade["broker_order_id"],
+                    "message": "Broker execution price is missing; fill was not applied",
+                })
+                continue
             key = _history_trade_key(trade)
             broker_order_id = str(trade.get("broker_order_id") or "").strip()
             stored = existing.get(key) or existing_by_broker_order_id.get(
                 broker_history_key(trade)
             )
-            if stored is None:
-                stored = active_by_broker_order_id.get((
-                    str(trade.get("env") or trader.runtime_flags().trading_env),
-                    broker_order_id,
-                    str(trade.get("symbol") or ""),
-                    str(trade.get("action") or ""),
-                ))
-            if stored is None:
-                # Some legacy rows were saved with the local receipt date rather
-                # than the broker order date. Match across dates only when the
-                # complete broker identity is unique, so daily order-number reuse
-                # cannot mutate an unrelated terminal row.
-                stored = unique_by_broker_identity.get((
-                    str(trade.get("env") or trader.runtime_flags().trading_env),
-                    broker_order_id,
-                    str(trade.get("symbol") or ""),
-                    str(trade.get("action") or ""),
-                ))
             if stored is not None:
                 item_result = "skipped"
                 item_message = "이미 저장된 체결 기록"
@@ -278,7 +288,7 @@ def _sync_filled_trades_from_history(
                             trade["filled_price"],
                             trade["response_msg"],
                             trade["broker_result"],
-                            account_scope_key(),
+                            account_key,
                             *where_values,
                         ),
                     )
@@ -341,7 +351,7 @@ def _sync_filled_trades_from_history(
                     0,
                     trade["response_msg"],
                     trade["broker_result"],
-                    account_scope_key(),
+                    account_key,
                     None,
                     None,
                     "unavailable",
@@ -400,7 +410,7 @@ def _sync_filled_trades_from_history(
             )
 
     return {
-        "ok": True,
+        "ok": not any(item.get("sync_result") == "review_required" for item in items),
         "start_date": start_date,
         "end_date": end_date,
         "history_count": len(history),
@@ -416,7 +426,7 @@ def _sync_filled_trades_from_history(
 def _order_history_window(days: int = MIN_ORDER_HISTORY_SYNC_DAYS) -> tuple[str, str]:
     _refresh_dependencies()
     end = trader.datetime.now(trader.KST)
-    start = end - trader.timedelta(days=max(MIN_ORDER_HISTORY_SYNC_DAYS, days))
+    start = end - trader.timedelta(days=max(1, int(days)) - 1)
     return start.strftime("%Y%m%d"), end.strftime("%Y%m%d")
 
 
@@ -433,19 +443,55 @@ def _load_trackable_order_trades(days: int = MIN_ORDER_HISTORY_SYNC_DAYS) -> lis
             WHERE broker_order_id IS NOT NULL
               AND broker_order_id != ''
               AND (
-                    COALESCE(order_status, '') IN ('submitted', 'partial', 'open')
+                    COALESCE(order_status, '') IN ('submitted', 'partial', 'open', 'broker_unknown')
                     OR (
                         COALESCE(order_status, '') = 'filled'
                         AND action = 'sell'
                         AND source_approval_id IS NOT NULL
                     )
                   )
-              AND substr(COALESCE(ts, ''), 1, 10) >= ?
+              AND (COALESCE(order_status, '') IN ('submitted', 'partial', 'open', 'broker_unknown')
+                   OR substr(COALESCE(ts, ''), 1, 10) >= ?)
             ORDER BY ts ASC
             """,
             (cutoff,),
         ).fetchall()
-    return [dict(row) for row in rows]
+    scoped_ids = {int(row["id"]) for row in _scoped_local_trades()}
+    tracked = [dict(row) for row in rows if int(row["id"]) in scoped_ids]
+    from src.application.orders.identity import broker_account_scope_key
+    from src.application.orders.repository import OrderLedgerRepository
+
+    repository = OrderLedgerRepository(trader.connect_db)
+    account_key = broker_account_scope_key("KR")
+    offset = 0
+    while True:
+        batch = repository.list_orders(
+            statuses=("submitted", "open", "partial", "cancel_pending", "broker_unknown"),
+            account_key=account_key, market="KR", limit=500, offset=offset,
+        )
+        for order in batch:
+            if not order.get("broker_order_id"):
+                continue
+            identity = (str(order["broker_order_id"]), str(order["broker_order_date"])[:10])
+            existing = next((trade for trade in tracked if (
+                str(trade.get("broker_order_id") or ""), str(trade.get("ts") or "")[:10]
+            ) == identity and trade.get("symbol") == order["symbol"]
+                and trade.get("action") == order["side"]), None)
+            if existing is not None:
+                existing["_unified_order_id"] = int(order["id"])
+                continue
+            tracked.append({
+                "_unified_order_id": int(order["id"]), "_unified_only": True,
+                "broker_order_id": order["broker_order_id"],
+                "ts": order["broker_order_date"], "symbol": order["symbol"],
+                "name": order["name"], "action": order["side"],
+                "qty": order["requested_qty"], "order_status": order["status"],
+                "filled_qty": order["filled_qty"], "filled_price": order["average_fill_price"],
+            })
+        if len(batch) < 500:
+            break
+        offset += len(batch)
+    return tracked
 
 
 def _sync_order_status_from_history(
@@ -462,7 +508,13 @@ def _sync_order_status_from_history(
     start_date, end_date = _order_history_window(days)
     if history is None:
         try:
-            history = api.get_trade_history(start_date, end_date)
+            dates = {str(trade.get("ts") or "")[:10].replace("-", "") for trade in tracked}
+            dates.add(end_date)
+            history = []
+            for order_date in sorted(dates):
+                if len(order_date) != 8 or not order_date.isdigit():
+                    raise ValueError("tracked order has no valid broker date")
+                history.extend(api.get_trade_history(order_date, order_date))
         except DashboardOperationError as exc:
             fallback = _sync_order_status_from_balance(api, tracked, reason=str(exc))
             return {
@@ -488,6 +540,16 @@ def _sync_order_status_from_history(
         filled_qty = _history_fill_qty(row)
         filled_price = _history_fill_price(row)
         remaining_qty = _history_remaining_qty(row)
+        if filled_qty > 0 and filled_price <= 0:
+            orders.append({
+                "broker_order_id": order_id, "symbol": trade.get("symbol", ""),
+                "order_status": trade.get("order_status", ""),
+                "filled_qty": _to_int(trade.get("filled_qty")),
+                "filled_price": _to_int(trade.get("filled_price")),
+                "sync_result": "review_required", "balance_confirmed": False,
+                "message": "Broker execution price is missing; fill was not applied",
+            })
+            continue
         if _history_order_is_canceled(row) or _history_order_is_expired_with_remainder(row):
             order_status = "canceled"
         elif _history_order_is_rejected(row) and filled_qty <= 0:
@@ -555,7 +617,7 @@ def _sync_order_status_from_history(
         quantity_changed = _to_int(trade.get("filled_qty")) != filled_qty
         price_changed = filled_price > 0 and _to_int(trade.get("filled_price")) != filled_price
         if status_changed or quantity_changed or price_changed:
-            updated_count += trader.update_trade_order_status(
+            updated_count += 1 if trade.get("_unified_only") else trader.update_trade_order_status(
                 order_id,
                 trade_id=_to_int(trade.get("id")) or None,
                 order_status=order_status,
@@ -584,7 +646,9 @@ def _sync_order_status_from_history(
     orders.extend(balance_sync.get("orders", []) or [])
 
     return {
-        "ok": bool(balance_sync.get("ok", True)),
+        "ok": bool(balance_sync.get("ok", True)) and not any(
+            item.get("sync_result") == "review_required" for item in orders
+        ),
         "checked_count": len(tracked),
         "updated_count": updated_count,
         "history_count": len(history),
@@ -615,143 +679,23 @@ def _sync_order_status_from_balance(
             "history_error": reason,
         }
 
+    # Balance is account-level evidence, not an execution receipt. Other orders
+    # and external trades can produce the same quantity change.
     holdings = {str(item.get("symbol") or ""): item for item in parsed.get("holdings", [])}
-    orders = []
-    updated_count = 0
-    for trade in tracked:
-        order_id = str(trade.get("broker_order_id") or "")
-        symbol = str(trade.get("symbol") or "")
-        action = str(trade.get("action") or "").lower()
-        requested_qty = _to_int(trade.get("qty"))
-        pre_order_qty = _to_int(trade.get("pre_order_qty"))
-        current = holdings.get(symbol, {})
-        current_qty = _to_int(current.get("qty"))
-        sellable_qty = _to_int(current.get("sellable_qty"))
-        current_price = _to_int(current.get("price")) or _to_int(trade.get("price"))
-
-        filled = False
-        if action == "buy" and requested_qty > 0:
-            filled = current_qty >= pre_order_qty + requested_qty
-        elif action == "sell" and requested_qty > 0:
-            filled = current_qty <= max(0, pre_order_qty - requested_qty)
-
-        if not filled:
-            inferred_filled_qty = (
-                min(requested_qty, max(_to_int(trade.get("filled_qty")), pre_order_qty - current_qty))
-                if action == "sell"
-                else _to_int(trade.get("filled_qty"))
-            )
-            sell_is_unreserved = (
-                close_unreserved_sells
-                and action == "sell"
-                and bool(current)
-                and current_qty > 0
-                and sellable_qty >= current_qty
-            )
-            if sell_is_unreserved:
-                order_status = "partial" if inferred_filled_qty > 0 else "canceled"
-                response_msg = f"Balance reconciliation: {order_status} (no active sell reservation)"
-                updated_count += trader.update_trade_order_status(
-                    order_id,
-                    trade_id=_to_int(trade.get("id")) or None,
-                    order_status=order_status,
-                    filled_qty=inferred_filled_qty,
-                    filled_price=current_price if inferred_filled_qty > 0 else 0,
-                    response_msg=response_msg,
-                    broker_result={
-                        "fallback": "balance",
-                        "history_error": reason,
-                        "pre_order_qty": pre_order_qty,
-                        "current_qty": current_qty,
-                        "sellable_qty": sellable_qty,
-                    },
-                )
-                _mirror_trade_to_unified_ledger(
-                    {
-                        **trade,
-                        "order_status": order_status,
-                        "filled_qty": inferred_filled_qty,
-                        "filled_price": current_price if inferred_filled_qty > 0 else 0,
-                        "broker_result": {
-                            "fallback": "balance",
-                            "history_error": reason,
-                            "pre_order_qty": pre_order_qty,
-                            "current_qty": current_qty,
-                            "sellable_qty": sellable_qty,
-                        },
-                    },
-                    trade,
-                )
-                orders.append({
-                    "broker_order_id": order_id,
-                    "symbol": symbol,
-                    "name": trade.get("name", ""),
-                    "action": action,
-                    "order_status": order_status,
-                    "filled_qty": inferred_filled_qty,
-                    "filled_price": current_price if inferred_filled_qty > 0 else 0,
-                    "balance_confirmed": True,
-                    "sell_reservation_active": False,
-                })
-                continue
-            orders.append({
-                "broker_order_id": order_id,
-                "symbol": symbol,
-                "name": trade.get("name", ""),
-                "action": action,
-                "order_status": trade.get("order_status") or "submitted",
-                "balance_confirmed": False,
-            })
-            continue
-
-        response_msg = "Balance fallback sync: filled"
-        updated_count += trader.update_trade_order_status(
-            order_id,
-            trade_id=_to_int(trade.get("id")) or None,
-            order_status="filled",
-            filled_qty=requested_qty,
-            filled_price=current_price,
-            response_msg=response_msg,
-            broker_result={
-                "fallback": "balance",
-                "history_error": reason,
-                "pre_order_qty": pre_order_qty,
-                "current_qty": current_qty,
-            },
-        )
-        _mirror_trade_to_unified_ledger(
-            {
-                **trade,
-                "order_status": "filled",
-                "filled_qty": requested_qty,
-                "filled_price": current_price,
-                "broker_result": {
-                    "fallback": "balance",
-                    "history_error": reason,
-                    "pre_order_qty": pre_order_qty,
-                    "current_qty": current_qty,
-                },
-            },
-            trade,
-        )
-        orders.append({
-            "broker_order_id": order_id,
-            "symbol": symbol,
-            "name": trade.get("name", ""),
-            "action": action,
-            "order_status": "filled",
-            "filled_qty": requested_qty,
-            "filled_price": current_price,
-            "balance_confirmed": True,
-        })
-
+    orders = [{
+        "broker_order_id": str(trade.get("broker_order_id") or ""),
+        "symbol": str(trade.get("symbol") or ""),
+        "name": trade.get("name", ""),
+        "action": trade.get("action", ""),
+        "order_status": trade.get("order_status") or "submitted",
+        "filled_qty": _to_int(trade.get("filled_qty")),
+        "filled_price": _to_int(trade.get("filled_price")),
+        "balance_confirmed": False,
+        "sync_result": "review_required",
+        "broker_qty": _to_int(holdings.get(str(trade.get("symbol") or ""), {}).get("qty")),
+        "message": "Broker execution evidence unavailable; balance cannot confirm an order",
+    } for trade in tracked]
     return {
-        "ok": True,
-        "checked_count": len(tracked),
-        "updated_count": updated_count,
-        "orders": orders,
+        "ok": not bool(tracked), "checked_count": len(tracked),
+        "updated_count": 0, "review_required_count": len(tracked), "orders": orders,
     }
-
-
-
-# =============================================================================

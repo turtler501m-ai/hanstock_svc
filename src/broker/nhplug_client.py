@@ -209,7 +209,9 @@ class NHPlugRestClient:
         try:
             data = self._decode(
                 response, path,
-                allow_continuation=(path.rstrip("/") == "/krstock/inquiry/v1/balance"),
+                allow_continuation=path.rstrip("/") in {
+                    "/krstock/inquiry/v1/balance", "/krstock/inquiry/v1/dailyOrderExecution",
+                },
             )
         except NHPlugApiError as exc:
             if request_kind == "query" and (
@@ -220,10 +222,10 @@ class NHPlugRestClient:
                 with self._lock:
                     self._tokens.pop(self._cache_key(), None)
                 try:
-                    payload = json.loads(self._token_cache_path.read_text(encoding="utf-8"))
-                    if isinstance(payload, dict):
-                        payload.pop(self._persistent_cache_key(), None)
-                        self._token_cache_path.write_text(json.dumps(payload, ensure_ascii=True), encoding="utf-8")
+                    token_cache = json.loads(self._token_cache_path.read_text(encoding="utf-8"))
+                    if isinstance(token_cache, dict):
+                        token_cache.pop(self._persistent_cache_key(), None)
+                        self._token_cache_path.write_text(json.dumps(token_cache, ensure_ascii=True), encoding="utf-8")
                 except (OSError, ValueError, TypeError, json.JSONDecodeError):
                     pass
                 headers["Authorization"] = f"Bearer {self.access_token()}"
@@ -236,7 +238,9 @@ class NHPlugRestClient:
                     raise NHPlugApiError(
                         f"NHPLUG {path} retry transport error: {type(exc).__name__}"
                     ) from exc
-                return NHPlugPage(self._decode(response, path), {
+                return NHPlugPage(self._decode(response, path, allow_continuation=path.rstrip("/") in {
+                    "/krstock/inquiry/v1/balance", "/krstock/inquiry/v1/dailyOrderExecution",
+                }), {
                     "cts": response.headers.get("cts", ""),
                     "cts_flag": response.headers.get("cts_flag", ""),
                 }, round((time.monotonic() - started) * 1000, 3))

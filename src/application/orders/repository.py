@@ -354,21 +354,25 @@ class OrderLedgerRepository:
             raise RuntimeError("order disappeared after reconciliation")
         return result
 
-    def list_orders(self, *, statuses=(), limit=100, offset=0) -> list[dict]:
+    def list_orders(self, *, statuses=(), limit=100, offset=0,
+                    account_key: str | None = None, market: str | None = None) -> list[dict]:
         limit = min(500, max(1, int(limit)))
         offset = max(0, int(offset))
         with self._connect() as conn:
             conn.row_factory = __import__("sqlite3").Row
+            clauses, params = [], []
             if statuses:
-                placeholders = ",".join("?" for _ in statuses)
-                rows = conn.execute(
-                    f"SELECT * FROM orders WHERE status IN ({placeholders}) ORDER BY id DESC LIMIT ? OFFSET ?",
-                    (*statuses, limit, offset),
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    "SELECT * FROM orders ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset)
-                ).fetchall()
+                clauses.append("status IN (" + ",".join("?" for _ in statuses) + ")")
+                params.extend(statuses)
+            for column, value in (("account_key", account_key), ("market", market)):
+                if value is not None:
+                    clauses.append(f"{column}=?")
+                    params.append(value)
+            where = " WHERE " + " AND ".join(clauses) if clauses else ""
+            rows = conn.execute(
+                f"SELECT * FROM orders{where} ORDER BY id DESC LIMIT ? OFFSET ?",
+                (*params, limit, offset),
+            ).fetchall()
             orders = [dict(row) for row in rows]
             for order in orders:
                 events = [dict(event) for event in conn.execute(

@@ -29,6 +29,7 @@ def _history_int(row: dict | None, *keys: str) -> int:
 def _history_fill_price(row: dict | None) -> int:
     return _history_int(
         row,
+        "cns_avg_uit_pr",
         "avg_prvs",
         "avg_pric",
         "avg_ccld_pric",
@@ -36,14 +37,13 @@ def _history_fill_price(row: dict | None) -> int:
         "cntr_uv",
         "cntr_pric",
         "ccld_unpr",
-        "ord_unpr",
     )
 
 
 def _history_fill_qty(row: dict | None) -> int:
     if not isinstance(row, dict):
         return 0
-    for key in ("tot_ccld_qty", "ccld_qty", "cnqn", "cntr_qty", "tot_cntr_qty", "filled_qty"):
+    for key in ("tot_cns_qty", "tot_ccld_qty", "ccld_qty", "cnqn", "cntr_qty", "tot_cntr_qty", "filled_qty"):
         value = row.get(key)
         if value is not None and str(value).strip():
             return _to_int(value)
@@ -51,7 +51,7 @@ def _history_fill_qty(row: dict | None) -> int:
 
 
 def _history_requested_qty(row: dict | None) -> int:
-    return _history_int(row, "ord_qty", "requested_qty") or _history_fill_qty(row)
+    return _history_int(row, "orr_qty", "ord_qty", "requested_qty") or _history_fill_qty(row)
 
 
 def _history_remaining_qty(row: dict | None) -> int:
@@ -66,6 +66,8 @@ def _history_remaining_qty(row: dict | None) -> int:
 
 
 def _history_order_is_canceled(row: dict) -> bool:
+    if "취소" in str(row.get("cor_can_dit_cd_nm") or ""):
+        return True
     value = _history_text(
         row,
         "cncl_yn",
@@ -81,6 +83,7 @@ def _history_order_is_canceled(row: dict) -> bool:
 def _history_original_order_id(row: dict) -> str:
     return _history_text(
         row,
+        "org_mkt_orr_no",
         "orig_ord_no", "orig_odno", "ORIG_ORD_NO", "ORIG_ODNO",
         "orgn_ord_no", "original_order_no", "ori_ord", "ORI_ORD",
     )
@@ -89,7 +92,7 @@ def _history_original_order_id(row: dict) -> str:
 def _normalize_history_cancellations(history: list[dict]) -> list[dict]:
     """Fold Namuh's separate cancellation rows into their original orders."""
     canceled_original_ids = {
-        _history_original_order_id(row)
+        (_history_timestamp(row)[:10], _history_original_order_id(row))
         for row in history
         if _history_original_order_id(row) and _history_order_is_canceled(row)
     }
@@ -102,7 +105,7 @@ def _normalize_history_cancellations(history: list[dict]) -> list[dict]:
         if original_order_id and _history_order_is_canceled(row):
             continue
         order_id = _broker_order_id_from_history(row)
-        if order_id in canceled_original_ids and not _history_order_is_canceled(row):
+        if (_history_timestamp(row)[:10], order_id) in canceled_original_ids and not _history_order_is_canceled(row):
             row = {**row, "cncl_yn": "Y"}
         normalized.append(row)
     return normalized
@@ -128,14 +131,14 @@ def _history_text(row: dict, *keys: str) -> str:
 
 def _history_symbol(row: dict) -> str:
     symbol = normalize_kr_order_symbol(_history_text(
-        row, "pdno", "PDNO", "isu_no", "mksc_shrn_iscd", "stk_cd", "symbol"
+        row, "iem_cd", "pdno", "PDNO", "isu_no", "mksc_shrn_iscd", "stk_cd", "symbol"
     ))
     return symbol[1:] if len(symbol) == 7 and symbol[:1].upper() == "A" and symbol[1:].isdigit() else symbol
 
 
 def _history_name(row: dict) -> str:
     return _history_text(
-        row, "prdt_name", "PRDT_NAME", "itm_name", "item_name", "stk_nm", "stock_name"
+        row, "iem_nm", "prdt_name", "PRDT_NAME", "itm_name", "item_name", "stk_nm", "stock_name"
     ) or _history_symbol(row)
 
 
@@ -147,7 +150,7 @@ def _history_action(row: dict) -> str:
         return "buy"
 
     label = _history_text(
-        row, "sll_buy_dvsn_name", "trad_dvsn_name", "buy_sell_name", "io_tp_nm", "io_tp", "side"
+        row, "sby_dit_cd_nm", "sll_buy_dvsn_name", "trad_dvsn_name", "buy_sell_name", "io_tp_nm", "io_tp", "side"
     ).lower()
     if "sell" in label or "매도" in label:
         return "sell"
@@ -157,9 +160,9 @@ def _history_action(row: dict) -> str:
 
 
 def _history_timestamp(row: dict) -> str:
-    raw_date = _history_text(row, "ord_dt", "ORD_DT", "ccld_dt", "CCLD_DT", "trad_dt")
+    raw_date = _history_text(row, "orr_dt", "ord_dt", "ORD_DT", "ccld_dt", "CCLD_DT", "trad_dt")
     raw_time = _history_text(
-        row, "ord_tmd", "ORD_TMD", "ord_tm", "ccld_tmd", "CCLD_TMD", "cntr_tm", "trad_tmd"
+        row, "orr_tm", "ord_tmd", "ORD_TMD", "ord_tm", "ccld_tmd", "CCLD_TMD", "cntr_tm", "trad_tmd"
     )
     digits_date = "".join(char for char in raw_date if char.isdigit())
     digits_time = "".join(char for char in raw_time if char.isdigit())

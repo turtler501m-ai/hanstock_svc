@@ -230,6 +230,10 @@ def _dispatch_due_schedules_unlocked() -> list[str]:
 
 
 def dispatch_due_schedules() -> list[str]:
+    from pathlib import Path
+    if Path(".runtime/order-maintenance").exists():
+        logger.warning("[dispatch] order maintenance is active")
+        return []
     from src.utils.process_lock import ProcessLock
 
     with ProcessLock("strategy-schedule-dispatch") as acquired:

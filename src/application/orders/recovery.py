@@ -45,10 +45,9 @@ def get_runtime_state(connect) -> dict:
 
 
 def close_expired_legacy_day_orders(connect, *, now: datetime | None = None) -> int:
-    """Close domestic legacy DAY orders whose KRX order date has ended.
+    """Flag prior-session orders for broker verification without assuming fills.
 
-    Imported partial fills remain intact; only the impossible remainder is
-    released. Current-session orders and outcome-unknown rows are untouched.
+    Session expiry alone cannot prove the final executed quantity.
     """
     kst = timezone(timedelta(hours=9))
     current = now or datetime.now(kst)
@@ -57,13 +56,15 @@ def close_expired_legacy_day_orders(connect, *, now: datetime | None = None) -> 
         try:
             cursor = conn.execute(
                 """UPDATE trades
-                   SET order_status='canceled',
+                   SET order_status='broker_unknown',
                        response_msg=CASE
                          WHEN COALESCE(response_msg,'')='' THEN
-                           'Startup recovery: prior-session DAY order expired'
-                         ELSE response_msg || '; startup recovery: prior-session DAY order expired'
+                           'Startup recovery: prior-session order requires broker verification'
+                         ELSE response_msg || '; startup recovery: prior-session order requires broker verification'
                        END
-                   WHERE order_status IN ('submitted','open','partial')
+                   WHERE (order_status IN ('submitted','open','partial')
+                          OR (order_status='canceled' AND lower(response_msg) LIKE
+                              '%startup recovery: prior-session day order expired%'))
                      AND substr(COALESCE(ts,''),1,10) <> ''
                      AND substr(ts,1,10) < ?""",
                 (cutoff,),
@@ -76,7 +77,7 @@ def close_expired_legacy_day_orders(connect, *, now: datetime | None = None) -> 
 
 
 def close_expired_unified_day_orders(connect, *, now: datetime | None = None) -> int:
-    """Close non-ambiguous unified DAY orders from completed sessions."""
+    """Require final broker evidence for DAY orders from completed sessions."""
     kst = timezone(timedelta(hours=9))
     current = now or datetime.now(kst)
     cutoff = current.astimezone(kst).strftime("%Y-%m-%d")
@@ -87,7 +88,11 @@ def close_expired_unified_day_orders(connect, *, now: datetime | None = None) ->
                WHERE time_in_force='DAY'
                  AND market<>'US'
                  AND broker_order_date<>'' AND broker_order_date<?
-                 AND status IN ('submitted','open','partial','cancel_pending')""",
+                 AND (status IN ('submitted','open','partial','cancel_pending')
+                      OR (status='canceled' AND (
+                          SELECT event_type FROM order_events WHERE order_id=orders.id
+                          ORDER BY id DESC LIMIT 1
+                      )='expired_day_order'))""",
             (cutoff,),
         ).fetchall()
         eastern_now = current.astimezone(ZoneInfo("America/New_York"))
@@ -111,15 +116,15 @@ def close_expired_unified_day_orders(connect, *, now: datetime | None = None) ->
                 rows.append((order_id, status))
         for order_id, previous_status in rows:
             conn.execute(
-                """UPDATE orders SET status='canceled',completed_at=COALESCE(completed_at,?),
+                """UPDATE orders SET status='broker_unknown',completed_at=NULL,
                    updated_at=?,version=version+1 WHERE id=? AND status=?""",
-                (updated_at, updated_at, order_id, previous_status),
+                (updated_at, order_id, previous_status),
             )
             conn.execute(
                 """INSERT INTO order_events
                    (order_id,event_type,from_status,to_status,actor,reason,payload_json,created_at)
-                   VALUES(?,'expired_day_order',?,'canceled','startup_recovery',
-                          'prior-session DAY order remainder expired','{}',?)""",
+                   VALUES(?,'prior_session_verification_required',?,'broker_unknown','startup_recovery',
+                          'final broker execution snapshot required','{}',?)""",
                 (order_id, previous_status, updated_at),
             )
     return len(rows)
@@ -204,7 +209,8 @@ def reconcile_unknown_orders_from_legacy_fills(connect) -> int:
             matches = conn.execute(
                 """SELECT * FROM trades t
                    WHERE t.symbol=? AND lower(t.action)=? AND CAST(t.qty AS INTEGER)=?
-                     AND t.order_status IN ('filled','reconciled','canceled')
+                     AND t.account_key=? AND ?='KR'
+                     AND t.order_status IN ('filled','canceled')
                      AND (t.order_status='canceled'
                           OR CAST(COALESCE(t.filled_qty,0) AS INTEGER)=?)
                      AND COALESCE(t.broker_order_id,'')<>''
@@ -213,7 +219,8 @@ def reconcile_unknown_orders_from_legacy_fills(connect) -> int:
                    ORDER BY t.id""",
                 (
                     order["symbol"], str(order["side"]).lower(),
-                    int(order["requested_qty"]), int(order["requested_qty"]),
+                    int(order["requested_qty"]), order["account_key"], order["market"],
+                    int(order["requested_qty"]),
                     order["created_at"],
                 ),
             ).fetchall()

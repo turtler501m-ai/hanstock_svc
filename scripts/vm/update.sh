@@ -53,8 +53,6 @@ sudo systemctl daemon-reload
 sudo systemctl enable hanstock-svc.service
 
 echo "[update] restarting dashboard"
-bash "$ROOT_DIR/scripts/vm/server.sh" restart
-bash "$ROOT_DIR/scripts/vm/server.sh" status
 sudo systemctl restart hanstock-svc.service
 sudo systemctl status hanstock-svc.service --no-pager
 

@@ -104,30 +104,31 @@ class NHPlugBrokerAdapter:
         if not self.account:
             raise ValueError("NHPLUG account is required")
 
+    def _inquiry_pages(self, path: str, body: dict, *, max_pages: int = 100):
+        """Return a complete inquiry or fail without exposing a partial snapshot."""
+        pages = []
+        cts = cts_flag = ""
+        seen = set()
+        for _ in range(max_pages):
+            kwargs = {"cts": cts, "cts_flag": cts_flag} if cts else {}
+            page = self.client.post(path, body, **kwargs)
+            pages.append(page)
+            continuation = getattr(page, "continuation", {}) or {}
+            next_cts = str(continuation.get("cts") or "").strip()
+            next_flag = str(continuation.get("cts_flag") or "").strip().upper()
+            if next_flag == "N" or (not next_cts and not next_flag):
+                return pages
+            if not next_cts or next_cts in seen:
+                raise RuntimeError(f"Incomplete broker inquiry: invalid continuation for {path}")
+            seen.add(next_cts)
+            cts, cts_flag = next_cts, next_flag
+        raise RuntimeError(f"Incomplete broker inquiry: page limit reached for {path}")
+
     def fetch_balance(self) -> AccountBalance:
         body = {
             "act_no": self.account, "bnc_bse_cd": "5", "ltg_aot_dit_cd": "9",
             "aet_bse": "2", "qut_dit_cd": "UNT"}
-        pages = []
-        cts = cts_flag = ""
-        seen_cts = set()
-        for _ in range(20):
-            try:
-                page = self.client.post(
-                    "/krstock/inquiry/v1/balance", body, cts=cts, cts_flag=cts_flag
-                )
-            except Exception:
-                if pages:
-                    break
-                raise
-            pages.append(page)
-            continuation = getattr(page, "continuation", {}) or {}
-            next_cts = str(continuation.get("cts") or "").strip()
-            next_flag = str(continuation.get("cts_flag") or "").strip()
-            if not next_cts or next_flag.upper() == "N" or next_cts in seen_cts:
-                break
-            seen_cts.add(next_cts)
-            cts, cts_flag = next_cts, next_flag
+        pages = self._inquiry_pages("/krstock/inquiry/v1/balance", body)
         first = pages[0]
         summary = _out(first) if isinstance(_out(first), Mapping) else {}
         rows = []
@@ -189,10 +190,15 @@ class NHPlugBrokerAdapter:
         # dca is the gross deposit figure in the mock response.  nxt2_dd_dca
         # is the settlement-adjusted cash component and reconciles with
         # tot_aet_amt - tot_eal_amt for the account overview.
-        cash = _num(summary.get("nxt2_dd_dca") or summary.get("dca") or summary.get("orr_pbl_amt"))
-        orderable_cash = _num(summary.get("orr_pbl_amt1") or summary.get("orr_pbl_amt"))
+        cash = _num(next((summary[key] for key in ("nxt2_dd_dca", "dca", "orr_pbl_amt")
+                          if summary.get(key) not in (None, "")), 0))
+        orderable_cash = _num(next((summary[key] for key in ("orr_pbl_amt1", "orr_pbl_amt")
+                                    if summary.get(key) not in (None, "")), 0))
+        raw = dict(getattr(first, "data", first))
+        if len(pages) > 1:
+            raw["Output_1"] = rows
         return AccountBalance(holdings, cash, orderable_cash, total or cash + stock_value,
-                              stock_value, _num(summary.get("tot_eal_pls")), raw=dict(getattr(page, "data", page)))
+                              stock_value, _num(summary.get("tot_eal_pls")), raw=raw)
 
     def _cached_sellable_quantity(self, symbol: str) -> int | None:
         cache_key = (self.account, str(symbol or "").strip())
@@ -323,6 +329,9 @@ class NHPlugBrokerAdapter:
             return []
 
     def _order(self, path: str, request: OrderRequest | ReviseOrderRequest | CancelOrderRequest) -> OrderResult:
+        from pathlib import Path
+        if Path(".runtime/order-maintenance").exists():
+            raise RuntimeError("Order maintenance is active; broker submissions are paused")
         if not self.order_submission_enabled:
             return OrderResult(True, "DRY_RUN", status=OrderStatus.SUBMITTED, dry_run=True)
         if isinstance(request, OrderRequest):
@@ -374,13 +383,14 @@ class NHPlugBrokerAdapter:
         rows = []
         while start <= end:
             if start.weekday() < 5:
-                page = self.client.post("/krstock/inquiry/v1/dailyOrderExecution", {
+                pages = self._inquiry_pages("/krstock/inquiry/v1/dailyOrderExecution", {
                     "orr_dt": start.strftime("%Y%m%d"), "act_no": self.account,
                     "orr_mkt_cd": "", "ost_cns_dit": "1"})
-                payload = getattr(page, "data", page)
-                # NHPLUG mock returns daily orders in Output_0, while some
-                # live-compatible gateways use Output_1.
-                rows.extend(_rows(payload, "Output_1") or _rows(payload, "Output_0"))
+                for page in pages:
+                    payload = getattr(page, "data", page)
+                    # Gateways expose execution rows under either output key.
+                    for row in _rows(payload, "Output_1") or _rows(payload, "Output_0"):
+                        rows.append({**row, "orr_dt": row.get("orr_dt") or start.strftime("%Y%m%d")})
             start += timedelta(days=1)
         return [self._execution(r) for r in rows]
 
@@ -397,8 +407,17 @@ class NHPlugBrokerAdapter:
 
     def fetch_order_snapshot(self, order_id: str, order_date: str = "") -> OrderSnapshot:
         rows = self.fetch_trade_history(order_date, order_date)
-        row = next((x for x in rows if x.order_id == str(order_id)), None)
+        def same_id(value):
+            text = str(value or "").strip()
+            return text.lstrip("0") == str(order_id).lstrip("0") if text.isdigit() and str(order_id).isdigit() else text == str(order_id)
+
+        row = next((x for x in rows if same_id(x.order_id)), None)
         if not row: return OrderSnapshot(str(order_id), outcome_unknown=True, message="Order not found")
+        if row.filled_quantity < row.requested_quantity and any(
+            same_id(item.raw.get("org_mkt_orr_no")) and item.status == OrderStatus.CANCELED
+            for item in rows
+        ):
+            row = replace(row, status=OrderStatus.CANCELED)
         return OrderSnapshot(row.order_id, row.status, row.requested_quantity, row.filled_quantity,
                              row.remaining_quantity, row.average_fill_price, raw=row.raw)
 

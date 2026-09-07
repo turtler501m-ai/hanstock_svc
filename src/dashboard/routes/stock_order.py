@@ -127,11 +127,15 @@ def reconcile_unified_order(order_id: int):
     if not broker_order_id:
         raise HTTPException(status_code=409, detail="broker order id is not known")
     snapshot = _get_api().fetch_order_snapshot(
-        broker_order_id, str(item.get("created_at") or "")[:10].replace("-", "")
+        broker_order_id, str(item.get("broker_order_date") or item.get("created_at") or "")[:10].replace("-", "")
     )
     status = str(getattr(snapshot.status, "value", snapshot.status))
     if snapshot.outcome_unknown:
-        status = "broker_unknown"
+        repository.record_event(
+            order_id, "broker_snapshot_unavailable", actor="reconciliation",
+            reason=snapshot.message or "broker execution evidence unavailable",
+        )
+        return {**item, "outcome_unknown": True, "message": snapshot.message}
     return repository.reconcile_snapshot(
         order_id,
         status=status,
@@ -719,6 +723,8 @@ def apply_broker_balance_reconciliation(payload: dict = Body(...)):
     if not reason:
         raise HTTPException(status_code=400, detail="review reason is required")
 
+    from src.application.orders.identity import broker_account_scope_key
+    account_key = broker_account_scope_key("KR")
     with trader.connect_db() as conn:
         conn.row_factory = sqlite3.Row
         latest = conn.execute(
@@ -727,7 +733,9 @@ def apply_broker_balance_reconciliation(payload: dict = Body(...)):
                  SELECT account_key,market,symbol,MAX(id) AS id
                  FROM reconciliation_adjustments WHERE status='open'
                  GROUP BY account_key,market,symbol
-               ) newest ON newest.id=r.id ORDER BY r.symbol"""
+               ) newest ON newest.id=r.id
+               WHERE r.account_key=? AND r.market='KR' ORDER BY r.symbol""",
+            (account_key,),
         ).fetchall()
     if not latest:
         recovery = run_startup_recovery(trader.connect_db)
@@ -768,7 +776,9 @@ def apply_broker_balance_reconciliation(payload: dict = Body(...)):
             })
 
     actor = f"dashboard:{reason[:120]}"
-    applied = apply_latest_open_reconciliation_issues(trader.connect_db, actor=actor)
+    applied = apply_latest_open_reconciliation_issues(
+        trader.connect_db, actor=actor, account_key=account_key, market="KR",
+    )
     recovery = run_startup_recovery(trader.connect_db)
     _clear_balance_cache()
     return {
@@ -2184,357 +2194,29 @@ def _is_ambiguous_order_failure(message: object) -> bool:
 
 
 def _reconcile_ambiguous_orders_from_balance(current_holdings: dict) -> dict:
-    """Promote response-lost/false-failed orders only when balance proves them."""
-    import json
-    from src.broker.response import broker_order_accepted
-
-    def accepted_response(row: dict) -> bool:
-        try:
-            payload = json.loads(str(row.get("broker_result") or "{}"))
-        except (TypeError, ValueError):
-            return False
-        return broker_order_accepted(payload)
-
-    def exact_latest_subset(rows: list[dict], target: int) -> list[dict]:
-        """Choose the newest exact quantity subset; never reconcile an overage."""
-        selected: list[dict] = []
-
-        def visit(index: int, remaining: int, picked: list[dict]) -> bool:
-            if remaining == 0:
-                selected.extend(picked)
-                return True
-            if remaining < 0 or index >= len(rows):
-                return False
-            row = rows[index]
-            qty = _to_int(row.get("qty"))
-            return visit(index + 1, remaining - qty, [*picked, row]) or visit(
-                index + 1, remaining, picked
-            )
-
-        visit(0, target, [])
-        return selected
-
-    with trader.connect_db() as conn:
-        conn.row_factory = sqlite3.Row
-        confirmed_rows = conn.execute(
-            """
-            SELECT * FROM trades
-            WHERE COALESCE(env, ?) = ? AND COALESCE(ok, 0) = 1
-            ORDER BY ts ASC, id ASC
-            """,
-            (trader.config.trading_env, trader.config.trading_env),
-        ).fetchall()
-        unresolved_rows = conn.execute(
-            """
-            SELECT * FROM trades
-            WHERE COALESCE(env, ?) = ?
-              AND COALESCE(order_status, '') IN ('failed', 'broker_unknown')
-              AND COALESCE(filled_qty, 0) = 0
-            ORDER BY ts DESC, id DESC
-            """,
-            (trader.config.trading_env, trader.config.trading_env),
-        ).fetchall()
-        unified_repair_refs = []
-
-        # A previous sync may have corrected the legacy row before the
-        # unified-ledger mirror was deployed. Revisit those rows idempotently.
-        for row in confirmed_rows:
-            item = dict(row)
-            source_approval_id = _to_int(item.get("source_approval_id"))
-            if (
-                source_approval_id > 0
-                and str(item.get("order_status") or "") == "reconciled"
-                and _to_int(item.get("filled_qty")) > 0
-            ):
-                unified_repair_refs.append({
-                    "approval_id": source_approval_id,
-                    "symbol": str(item.get("symbol") or ""),
-                    "qty": _to_int(item.get("filled_qty")),
-                    "price": _to_int(item.get("filled_price")) or _to_int(item.get("price")),
-                    "broker_order_id": item.get("broker_order_id") or "",
-                    "ts": item.get("ts") or "",
-                })
-
-        positions = {}
-        average_costs = {}
-        for trade in _account_trades([dict(row) for row in confirmed_rows]):
-            symbol = str(trade.get("symbol") or "")
-            qty = _to_int(trade.get("qty"))
-            price = _to_int(trade.get("price"))
-            position = positions.get(symbol, 0)
-            if trade.get("action") == "buy":
-                new_position = position + qty
-                previous_cost = average_costs.get(symbol, 0.0)
-                average_costs[symbol] = (
-                    ((position * previous_cost) + (qty * price)) / new_position
-                    if new_position > 0 else 0.0
-                )
-                positions[symbol] = new_position
-            elif trade.get("action") == "sell":
-                positions[symbol] = max(0, position - qty)
-                if positions[symbol] == 0:
-                    average_costs[symbol] = 0.0
-
-        groups = {}
-        for row in unresolved_rows:
-            item = dict(row)
-            if not (
-                _is_ambiguous_order_failure(item.get("response_msg"))
-                or accepted_response(item)
-            ):
-                continue
-            key = (str(item.get("symbol") or ""), str(item.get("action") or ""))
-            groups.setdefault(key, []).append(item)
-
-        reconciled_items = []
-        for (symbol, action), rows in groups.items():
-            local_qty = positions.get(symbol, 0)
-            broker_holding = current_holdings.get(symbol) or {}
-            broker_qty = _to_int(broker_holding.get("qty"))
-            balance_gap = broker_qty - local_qty
-            expected_qty = balance_gap if action == "buy" else -balance_gap
-            if expected_qty <= 0:
-                continue
-            rows = exact_latest_subset(rows, expected_qty)
-            if not rows:
-                continue
-
-            raw_holding = broker_holding.get("_raw") or {}
-            fallback_price = _to_int(
-                raw_holding.get("pchs_avg_pric")
-                or broker_holding.get("price")
-                or average_costs.get(symbol)
-            )
-            for row in rows:
-                qty = _to_int(row.get("qty"))
-                price = _to_int(row.get("price")) or fallback_price
-                previous_message = str(row.get("response_msg") or "").strip()
-                message = (
-                    f"{previous_message} | 증권사 잔고 기준 응답 유실 주문 보정"
-                    if previous_message else "증권사 잔고 기준 응답 유실 주문 보정"
-                )
-                conn.execute(
-                    """
-                    UPDATE trades
-                    SET ok = 1, order_status = 'reconciled', filled_qty = ?,
-                        filled_price = ?, price = ?, response_msg = ?
-                    WHERE id = ?
-                    """,
-                    (qty, price, price, message, int(row["id"])),
-                )
-                source_approval_id = _to_int(row.get("source_approval_id"))
-                if source_approval_id > 0:
-                    conn.execute(
-                        """
-                        UPDATE approvals
-                        SET status = 'executed', response_msg = ?, updated_at = ?
-                        WHERE id = ? AND status IN ('broker_unknown', 'failed')
-                        """,
-                        (
-                            message,
-                            trader.datetime.now(trader.KST).strftime("%Y-%m-%d %H:%M:%S"),
-                            source_approval_id,
-                        ),
-                    )
-                reconciled_items.append({
-                    "sync_type": "balance",
-                    "sync_result": "response_loss_reconciled",
-                    "ts": row.get("ts") or "",
-                    "symbol": symbol,
-                    "name": row.get("name") or symbol,
-                    "action": action,
-                    "qty": qty,
-                    "price": price,
-                    "broker_order_id": row.get("broker_order_id") or "",
-                    "order_status": "reconciled",
-                    "message": message,
-                })
-                source_approval_id = _to_int(row.get("source_approval_id"))
-                if source_approval_id > 0:
-                    unified_repair_refs.append({
-                        "approval_id": source_approval_id,
-                        "symbol": symbol,
-                        "qty": qty,
-                        "price": price,
-                        "broker_order_id": row.get("broker_order_id") or "",
-                        "ts": row.get("ts") or "",
-                    })
-
-    # The legacy projection and approval were repaired above. Mirror the same
-    # broker-confirmed fill into the unified ledger so positions and health use
-    # one source of truth on the next reconciliation pass.
-    if unified_repair_refs:
-        from src.application.orders.legacy_bridge import ensure_approval_order
-        from src.application.orders.repository import OrderLedgerRepository
-
-        ledger = OrderLedgerRepository(trader.connect_db)
-        for repair in unified_repair_refs:
-            with trader.connect_db() as conn:
-                conn.row_factory = sqlite3.Row
-                approval_row = conn.execute(
-                    "SELECT * FROM approvals WHERE id=?", (repair["approval_id"],)
-                ).fetchone()
-            if not approval_row:
-                continue
-            order = ensure_approval_order(trader.connect_db, dict(approval_row))
-            if not order:
-                continue
-            try:
-                ledger.reconcile_snapshot(
-                    int(order["id"]),
-                    status="filled",
-                    cumulative_filled_qty=int(repair["qty"]),
-                    average_fill_price=float(repair["price"] or 0),
-                    broker_order_id=str(repair["broker_order_id"] or ""),
-                    broker_order_date=str(repair.get("ts") or "")[:10],
-                    raw={"source": "balance_response_reconciliation"},
-                )
-            except (RuntimeError, ValueError) as exc:
-                logger.warning(
-                    "[RECONCILIATION] unified fill mirror skipped approval_id=%s: %s",
-                    repair["approval_id"], exc,
-                )
-
-    closed_issue_count = 0
-    from src.application.orders.identity import broker_account_scope_key
-    account_key = broker_account_scope_key("KR")
-    with trader.connect_db() as conn:
-        conn.row_factory = sqlite3.Row
-        open_rows = conn.execute(
-            "SELECT * FROM reconciliation_adjustments WHERE status='open' "
-            "ORDER BY symbol, id DESC"
-        ).fetchall()
-        grouped = {}
-        for row in open_rows:
-            grouped.setdefault(str(row["symbol"] or ""), []).append(row)
-        now = trader.datetime.now(trader.KST).strftime("%Y-%m-%d %H:%M:%S")
-        for symbol, rows in grouped.items():
-            live_qty = _to_int((current_holdings.get(symbol) or {}).get("qty"))
-            position_row = conn.execute(
-                "SELECT quantity FROM positions WHERE account_key=? AND market='KR' AND symbol=?",
-                (account_key, symbol),
-            ).fetchone()
-            if not position_row or _to_int(position_row[0]) != live_qty:
-                continue
-            for index, row in enumerate(rows):
-                target = "resolved" if index == 0 and _to_int(row["broker_qty"]) == live_qty else "superseded"
-                conn.execute(
-                    """UPDATE reconciliation_adjustments
-                       SET status=?, reviewed_by='system:broker-confirmed-fill',
-                           reviewed_at=?, reason=reason || ?
-                       WHERE id=? AND status='open'""",
-                    (
-                        target, now,
-                        " | automatically resolved by broker-confirmed fill"
-                        if target == "resolved"
-                        else " | superseded by broker-confirmed current balance",
-                        int(row["id"]),
-                    ),
-                )
-                closed_issue_count += 1
-
-    return {
-        "ok": True,
-        "reconciled_count": len(reconciled_items),
-        "closed_issue_count": closed_issue_count,
-        "items": reconciled_items,
-    }
+    """Keep legacy outcomes unchanged until broker execution evidence arrives."""
+    return {"ok": True, "reconciled_count": 0, "closed_issue_count": 0, "items": []}
 
 
 def _reconcile_unified_unknown_orders_from_balance(current_holdings: dict) -> dict:
-    """Infer fills for unified unknown orders when the broker balance proves them.
-
-    NHPLUG's demo account can accept an order and reflect it in balance before
-    the daily execution inquiry exposes the same order number.  Do not mark an
-    unknown order filled from balance alone unless the quantity gap exactly
-    equals the total remaining quantity of the matching unknown orders.
-    """
+    """Report unresolved orders in the current account without fabricating fills."""
+    from src.application.orders.identity import broker_account_scope_key
     from src.application.orders.repository import OrderLedgerRepository
 
     ledger = OrderLedgerRepository(trader.connect_db)
-    unknown = ledger.list_orders(statuses=("broker_unknown",), limit=500, offset=0)
-    positions = {
-        str(row.get("symbol") or ""): _to_int(row.get("quantity"))
-        for row in ledger.list_positions(market="KR")
-    }
-    grouped: dict[tuple[str, str], list[dict]] = {}
-    for order in unknown:
-        remaining = max(
-            0,
-            _to_int(order.get("requested_qty")) - _to_int(order.get("filled_qty")),
-        )
-        if remaining > 0:
-            grouped.setdefault(
-                (str(order.get("symbol") or ""), str(order.get("side") or "").lower()),
-                [],
-            ).append(order)
-
-    items = []
-    for (symbol, side), orders in grouped.items():
-        holding = current_holdings.get(symbol) or {}
-        broker_qty = _to_int(holding.get("qty"))
-        local_qty = positions.get(symbol, 0)
-        gap = broker_qty - local_qty if side == "buy" else local_qty - broker_qty
-        requested = sum(
-            max(0, _to_int(row.get("requested_qty")) - _to_int(row.get("filled_qty")))
-            for row in orders
-        )
-        if gap <= 0 or gap != requested:
-            continue
-        raw = holding.get("_raw") or {}
-        average_price = _to_int(
-            raw.get("pchs_avg_pric")
-            or raw.get("phs_pr")
-            or holding.get("price")
-        )
-        for order in sorted(orders, key=lambda row: int(row.get("id") or 0)):
-            quantity = max(
-                0,
-                _to_int(order.get("requested_qty")) - _to_int(order.get("filled_qty")),
-            )
-            if not quantity:
-                continue
-            try:
-                reconciled = ledger.reconcile_snapshot(
-                    int(order["id"]),
-                    status="filled",
-                    cumulative_filled_qty=_to_int(order.get("requested_qty")),
-                    average_fill_price=float(average_price or 0),
-                    broker_order_id=str(order.get("broker_order_id") or ""),
-                    broker_order_date=str(order.get("broker_order_date") or ""),
-                    raw={
-                        "source": "balance_inferred_fill",
-                        "broker_balance_quantity": broker_qty,
-                        "verified_local_quantity_before": local_qty,
-                        "quantity_gap": gap,
-                    },
-                )
-            except (RuntimeError, ValueError) as exc:
-                logger.warning(
-                    "[RECONCILIATION] unified balance inference skipped order_id=%s: %s",
-                    order.get("id"), exc,
-                )
-                continue
-            ledger.record_event(
-                int(order["id"]),
-                "balance_inferred_fill",
-                actor="reconciliation",
-                reason="broker balance quantity exactly matched unknown order remainder",
-                payload={"broker_balance_quantity": broker_qty, "quantity_gap": gap},
-            )
-            items.append({
-                "sync_type": "balance",
-                "sync_result": "unified_unknown_reconciled",
-                "order_id": int(reconciled["id"]),
-                "symbol": symbol,
-                "action": side,
-                "qty": quantity,
-                "price": average_price,
-                "broker_order_id": reconciled.get("broker_order_id") or "",
-                "order_status": reconciled.get("status"),
-            })
-
-    return {"ok": True, "reconciled_count": len(items), "items": items}
+    orders = ledger.list_orders(
+        statuses=("broker_unknown",), account_key=broker_account_scope_key("KR"),
+        market="KR", limit=500,
+    )
+    items = [{
+        "sync_type": "balance", "sync_result": "review_required",
+        "order_id": int(order["id"]), "symbol": order["symbol"],
+        "action": order["side"], "qty": int(order["requested_qty"]) - int(order["filled_qty"]),
+        "price": 0, "broker_order_id": order.get("broker_order_id") or "",
+        "order_status": order["status"],
+        "message": "주문 결과불명: 잔고로 체결을 추정하지 않고 증권사 체결내역 확인 필요",
+    } for order in orders]
+    return {"ok": not bool(items), "reconciled_count": 0, "items": items}
 
 
 def _remove_non_broker_trade_rows() -> dict:
@@ -2939,7 +2621,9 @@ def _execute_trade_sync(*, days: int, run_id: str, started_at: str) -> dict:
         order_status_items = [
             {
                 "sync_type": "order_status",
-                "sync_result": "updated" if item.get("balance_confirmed", True) else "checked",
+                "sync_result": item.get("sync_result") or (
+                    "updated" if item.get("balance_confirmed", True) else "checked"
+                ),
                 "ts": "",
                 "symbol": item.get("symbol", ""),
                 "name": item.get("name", ""),

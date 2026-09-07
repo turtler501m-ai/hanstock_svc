@@ -163,8 +163,8 @@ def save_trade(
     pre_order_qty = int(pre_order_qty or 0)
     broker_result_json = json.dumps(broker_result or {}, ensure_ascii=False)
     if account_key is None:
-        from src.db.performance_repository import account_scope_key
-        account_key = account_scope_key()
+        from src.application.orders.identity import broker_account_scope_key
+        account_key = broker_account_scope_key("KR")
     try:
         init_db()
         with connect_db() as conn:

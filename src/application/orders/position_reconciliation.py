@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 
-def apply_latest_open_reconciliation_issues(connect, *, actor: str) -> dict:
+def apply_latest_open_reconciliation_issues(connect, *, actor: str,
+                                          account_key: str | None = None,
+                                          market: str | None = None) -> dict:
     """Apply the newest broker snapshot per position and resolve its open issues.
 
     Quantity corrections are immutable ledger entries.  Cash flow is deliberately
@@ -17,6 +19,12 @@ def apply_latest_open_reconciliation_issues(connect, *, actor: str) -> dict:
     applied = []
     with connect() as conn:
         conn.row_factory = __import__("sqlite3").Row
+        clauses, params = [], []
+        for column, value in (("account_key", account_key), ("market", market)):
+            if value is not None:
+                clauses.append(f"r.{column}=?")
+                params.append(value)
+        where = " WHERE " + " AND ".join(clauses) if clauses else ""
         latest = conn.execute(
             """SELECT r.* FROM reconciliation_adjustments r
                JOIN (
@@ -24,7 +32,7 @@ def apply_latest_open_reconciliation_issues(connect, *, actor: str) -> dict:
                  FROM reconciliation_adjustments WHERE status='open'
                  GROUP BY account_key,market,symbol
                ) newest ON newest.id=r.id
-               ORDER BY r.account_key,r.market,r.symbol"""
+               """ + where + " ORDER BY r.account_key,r.market,r.symbol", tuple(params)
         ).fetchall()
         for raw in latest:
             issue = dict(raw)

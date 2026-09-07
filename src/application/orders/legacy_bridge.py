@@ -96,6 +96,11 @@ def backfill_active_legacy_orders(connect) -> dict:
     skipped = 0
     for raw in rows:
         trade = dict(raw)
+        if str(trade.get("account_key") or "") != account_key:
+            # Historical environment-only keys do not identify an account.
+            # Keep them visible for review instead of assigning the active one.
+            skipped += 1
+            continue
         trade_id = int(trade["id"])
         order_date = str(trade.get("ts") or "")[:10]
         broker_order_id = str(trade.get("broker_order_id") or "").strip()
