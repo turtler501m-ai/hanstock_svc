@@ -96,12 +96,11 @@ def build_order_health(connect, *, stale_minutes: int = 10, include_runtime: boo
     applied_migrations = {int(row[0]): str(row[1]) for row in migration_rows}
     schema_ready = applied_migrations == expected_migrations
     blockers = []
-    # An outcome-unknown order must remain visible and non-retryable until it
-    # is reconciled, but it must not freeze unrelated new orders.  Active,
-    # stale, reconciliation, schema, and kill-switch invariants remain hard
-    # blockers below.
-    if reconciliation_count:
-        blockers.append({"code": "RECONCILIATION_OPEN", "count": reconciliation_count})
+    # A position reconciliation issue is an operator-visible data-quality
+    # warning, not a global order gate.  It can belong to an old/manual
+    # position and must not freeze unrelated new orders indefinitely.  The
+    # reconciliation workflow remains available through the dashboard and
+    # the issue is still surfaced below in warnings.
     if unprotected_count:
         blockers.append({"code": "UNPROTECTED_POSITION", "count": unprotected_count})
     if legacy_unmirrored_count:
@@ -121,6 +120,8 @@ def build_order_health(connect, *, stale_minutes: int = 10, include_runtime: boo
         warnings.append({"code": "STALE_PENDING_APPROVAL", "count": stale_pending_approval_count})
     if expired_pending_approval_count:
         warnings.append({"code": "EXPIRED_PENDING_APPROVAL", "count": expired_pending_approval_count})
+    if reconciliation_count:
+        warnings.append({"code": "RECONCILIATION_OPEN", "count": reconciliation_count})
     computed_state = "reduce_only" if blockers else "ready"
     runtime = None
     if include_runtime:
