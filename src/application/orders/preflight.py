@@ -172,6 +172,17 @@ def evaluate_order_capacity(
     if side == "sell":
         holding = next((item for item in balance.holdings if str(item.symbol) == symbol), None)
         broker_sellable = _positive_int(getattr(holding, "sellable_quantity", 0))
+        # NHPLUG's balance endpoint may expose settlement quantities while
+        # leaving its integrated sellable field at zero.  The dedicated
+        # endpoint is authoritative for the final submission check too;
+        # otherwise an order can pass sell-all planning and be rejected here.
+        fetch_sellable = getattr(api, "fetch_sellable_quantity", None)
+        if callable(fetch_sellable):
+            try:
+                broker_sellable = _positive_int(fetch_sellable(symbol))
+            except Exception:
+                # Preserve fail-closed behavior when the broker query fails.
+                broker_sellable = 0
         available = max(0, broker_sellable - reserved_sell)
         approved = min(quantity, available)
         return OrderCapacityDecision(

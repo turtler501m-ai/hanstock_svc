@@ -21,6 +21,9 @@ class _Broker:
     def fetch_balance(self):
         return self.balance
 
+    def fetch_sellable_quantity(self, _symbol):
+        return self.balance.holdings[0].sellable_quantity
+
     def fetch_quote(self, _symbol):
         return self.quote
 
