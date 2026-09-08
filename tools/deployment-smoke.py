@@ -36,7 +36,9 @@ def verify(base_url: str, timeout: float) -> dict:
         raise RuntimeError("operations health schema readiness is missing")
     if operations["schema"]["ready"] is not True:
         raise RuntimeError("operations database schema is not ready")
-    periodic = fetch_json(f"{base_url}/api/performance/periodic", timeout)
+    # Performance can refresh broker data on a cold start. Keep fast health
+    # probes, but allow the same 30-second budget as the dashboard request.
+    periodic = fetch_json(f"{base_url}/api/performance/periodic", max(timeout, 30.0))
     if not all(isinstance(periodic.get(key), list) for key in ("daily", "monthly")):
         raise RuntimeError("periodic performance daily/monthly lists are missing")
     for path, marker in (
