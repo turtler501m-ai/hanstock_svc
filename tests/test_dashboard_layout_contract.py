@@ -20,7 +20,7 @@ class DashboardLayoutContractTests(unittest.TestCase):
         self.assertIn("left: auto", STYLE)
         self.assertNotIn("margin-left: 190px", STYLE)
         self.assertNotIn("margin-left: 164px", STYLE)
-        self.assertIn('href="/static/css/style.css?v=69"', TEMPLATE)
+        self.assertIn('href="/static/css/style.css?v=70"', TEMPLATE)
         self.assertIn('class="card glass pb-settings-card"', TEMPLATE)
         self.assertIn(".ha-performance-summary", STYLE)
         self.assertNotIn('id="pb-input-dev" style=', TEMPLATE)
