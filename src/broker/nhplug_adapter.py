@@ -123,7 +123,7 @@ class NHPlugBrokerAdapter:
             cts, cts_flag = next_cts, next_flag
         raise RuntimeError(f"Incomplete broker inquiry: page limit reached for {path}")
 
-    def fetch_balance(self) -> AccountBalance:
+    def fetch_balance(self, *, enrich_sellable: bool = True) -> AccountBalance:
         body = {
             "act_no": self.account, "bnc_bse_cd": "5", "ltg_aot_dit_cd": "9",
             "aet_bse": "2", "qut_dit_cd": "UNT"}
@@ -150,7 +150,7 @@ class NHPlugBrokerAdapter:
         # endpoint.  Successful and zero results are cached to respect the
         # broker rate limit while still making every row converge on refresh.
         enriched = []
-        for holding in holdings:
+        for holding in holdings if enrich_sellable else ():
             cached = self._cached_sellable_quantity(holding.symbol)
             if cached is not None:
                 enriched.append(self._apply_sellable_snapshot(holding, cached))
@@ -172,7 +172,8 @@ class NHPlugBrokerAdapter:
                 enriched.append(holding)
                 continue
             enriched.append(self._apply_sellable_snapshot(holding, sellable))
-        holdings = tuple(holding for holding in enriched if holding.quantity > 0)
+        if enrich_sellable:
+            holdings = tuple(holding for holding in enriched if holding.quantity > 0)
         stock_value = sum(x.market_value for x in holdings)
         total = _num(summary.get("tot_aet_amt") or summary.get("tot_eal_amt"))
         # dca is the gross deposit figure in the mock response.  nxt2_dd_dca
@@ -452,6 +453,14 @@ class NHPlugBrokerAdapter:
     # independent of the NHPLUG field names.
     def get_balance(self) -> dict[str, Any]:
         value = self.fetch_balance()
+        return self._balance_dict(value)
+
+    def get_performance_balance(self) -> dict[str, Any]:
+        """Return holdings without unrelated per-symbol sellability inquiries."""
+        return self._balance_dict(self.fetch_balance(enrich_sellable=False))
+
+    @staticmethod
+    def _balance_dict(value: AccountBalance) -> dict[str, Any]:
         return {
             "rsp_cd": "00000",
             "rsp_msg": "완료",

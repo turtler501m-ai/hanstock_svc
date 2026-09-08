@@ -84,9 +84,10 @@ def _enrich_current_holding_change(api, parsed: dict) -> None:
         except Exception:
             return holding, 0.0
 
-    # NHPLUG current-price calls are independent per symbol. A small pool keeps
-    # the performance tab below its 30-second frontend timeout.
-    with ThreadPoolExecutor(max_workers=min(4, max(1, len(missing)))) as executor:
+    # Keep requests serialized to respect NHPLUG's per-app rate limit. The
+    # performance-specific balance path already skips expensive sellability
+    # inquiries, and this short-lived cache serves the sibling dashboard call.
+    with ThreadPoolExecutor(max_workers=1) as executor:
         for holding, change in executor.map(load_change, missing):
             holding["daily_change_pct"] = change
     previous_value = daily_change_amount = 0.0
@@ -99,6 +100,11 @@ def _enrich_current_holding_change(api, parsed: dict) -> None:
     parsed["holding_daily_change_pct"] = (
         round(daily_change_amount / previous_value * 100, 2) if previous_value > 0 else None
     )
+
+
+def _get_performance_balance_data(api) -> dict:
+    loader = getattr(api, "get_performance_balance", None)
+    return loader() if callable(loader) else _get_balance_data(api)
 
 
 def _merge_current_broker_realized(result: dict, parsed: dict, today: str) -> None:
@@ -159,7 +165,7 @@ def get_periodic_performance(response: Response, strategy_id: str | None = None)
                 )
                 _merge_stored_holding_changes(result, list_holding_daily_snapshots())
                 api = _get_api()
-                parsed = _parse_balance(_get_balance_data(api))
+                parsed = _parse_balance(_get_performance_balance_data(api))
                 _enrich_current_holding_change(api, parsed)
                 today = trader.datetime.now(trader.KST).strftime("%Y-%m-%d")
                 current_change = parsed.get("holding_daily_change_pct")
@@ -332,7 +338,7 @@ def get_performance(response: Response, strategy_id: str | None = None):
         holding_daily_change_pct = None
         try:
             api = _get_api()
-            balance_data = _get_balance_data(api)
+            balance_data = _get_performance_balance_data(api)
             parsed_balance = _parse_balance(balance_data)
             _enrich_current_holding_change(api, parsed_balance)
             current_holdings = {h['symbol']: h for h in parsed_balance['holdings']}
