@@ -43,6 +43,34 @@ class HeikinAshiScalpingStrategyTests(unittest.TestCase):
         self.assertEqual(score, 0.0)
         self.assertFalse(indicators["heikin_ashi_scalping"]["long_setup"])
 
+    def test_opt_in_trend_continuation_uses_configured_minimum_score(self):
+        strategy = HeikinAshiScalpingStrategy(
+            min_score=2.0, allow_trend_continuation=True
+        )
+        prices = [100.0 + index * 0.1 for index in range(500)]
+        candles = [
+            Candle(price - 0.2, price + 0.3, price - 0.3, price)
+            for price in prices
+        ]
+        alpha = [Candle(100, 101, 99, 100.8) for _ in prices]
+        ema = [90.0] * len(prices)
+        ema[-21] = 95.0
+        ema[-1] = 98.0
+        indicators = {"highs": [c.high for c in candles], "lows": [c.low for c in candles]}
+        with (
+            patch.object(strategy, "_heikin_ashi", side_effect=[candles, alpha]),
+            patch.object(strategy, "_ema_series", return_value=ema),
+            patch.object(strategy, "_directional_indicators", return_value=(25.0, 30.0, 10.0)),
+            patch.object(strategy, "_atr", return_value=1.5),
+            patch.object(strategy, "_rsi", side_effect=[60.0, 55.0]),
+        ):
+            score = strategy.calculate_score(prices, indicators)
+        metadata = indicators["heikin_ashi_scalping"]
+        self.assertGreaterEqual(score, 2.0)
+        self.assertTrue(metadata["trend_continuation"])
+        self.assertTrue(metadata["long_setup"])
+        self.assertEqual(metadata["minimum_entry_score"], 2.0)
+
     def test_breakout_adds_quality_but_is_not_required_in_demo(self):
         confirmed_score, _ = self._calculate(["bear", "bull", "bull"], breakout=True)
         score, indicators = self._calculate(["bear", "bull", "bull"], breakout=False)

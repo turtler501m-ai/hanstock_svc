@@ -30,6 +30,7 @@ class HeikinAshiScalpingStrategy:
         max_entry_premium_pct: float | None = None,
         ema_slope_lookback: int | None = None,
         trigger_window: int = 7,
+        allow_trend_continuation: bool | None = None,
     ) -> None:
         settings = self._load_settings()
         self.fast_ema = int(fast_ema if fast_ema is not None else settings["fast_ema"])
@@ -54,9 +55,21 @@ class HeikinAshiScalpingStrategy:
         )
         self.ema_slope_lookback = int(ema_slope_lookback if ema_slope_lookback is not None else v2["ema_slope_lookback"])
         self.trigger_window = int(trigger_window)
+        self.allow_trend_continuation = bool(
+            allow_trend_continuation
+            if allow_trend_continuation is not None
+            else settings["allow_trend_continuation"]
+        )
 
     def _load_settings(self) -> dict[str, float]:
-        defaults = {"fast_ema": 10.0, "slow_ema": 20.0, "rsi_period": 14.0, "min_score": 2.5, "volume_ratio": 1.2}
+        defaults = {
+            "fast_ema": 10.0,
+            "slow_ema": 20.0,
+            "rsi_period": 14.0,
+            "min_score": 2.5,
+            "volume_ratio": 1.2,
+            "allow_trend_continuation": 0.0,
+        }
         try:
             from src.db.repository import get_watchlist_setting
 
@@ -68,6 +81,7 @@ class HeikinAshiScalpingStrategy:
                     "rsi_period": "HEIKIN_RSI_PERIOD",
                     "min_score": "HEIKIN_MIN_SCORE",
                     "volume_ratio": "HEIKIN_VOLUME_RATIO",
+                    "allow_trend_continuation": "HEIKIN_ALLOW_TREND_CONTINUATION",
                 }.items()
             }
         except Exception:
@@ -150,8 +164,19 @@ class HeikinAshiScalpingStrategy:
             "volume_confirmation": 0.25 if volume_confirmed else 0.0,
         }
         quality_score = round(min(5.0, sum(score_components.values())), 2)
-        score = quality_score if safety_ready and alpha_reversal and quality_score >= 2.5 else 0.0
-        long_setup = score >= 2.5
+        continuation_ready = all((
+            self.allow_trend_continuation,
+            trend_quality_ok,
+            fast_trend_ok,
+            rsi_momentum_ok,
+        ))
+        entry_pattern_ready = alpha_reversal or continuation_ready
+        score = (
+            quality_score
+            if safety_ready and entry_pattern_ready and quality_score >= self.min_score
+            else 0.0
+        )
+        long_setup = score >= self.min_score
         short_setup = all((
             current < ema_now,
             ema_now < ema_previous,
@@ -185,6 +210,7 @@ class HeikinAshiScalpingStrategy:
             "safety_ready": safety_ready,
             "trend_ok": trend_ok,
             "alpha_reversal": alpha_reversal,
+            "trend_continuation": continuation_ready,
             "price_confirmed": long_trigger,
             "trend_quality_ok": trend_quality_ok,
             "fast_trend_ok": fast_trend_ok,
@@ -218,7 +244,7 @@ class HeikinAshiScalpingStrategy:
             **risk,
             "score": score,
             "score_components": score_components,
-            "minimum_entry_score": 2.5,
+            "minimum_entry_score": self.min_score,
             "strategy_version": "alpha_ha_pullback_v3_demo_scored",
             "effective_parameters": self.effective_config(),
         }
@@ -238,7 +264,8 @@ class HeikinAshiScalpingStrategy:
             "slow_ema_period": self.slow_ema,
             "rsi_period": self.rsi_period,
             "volume_ratio_min": self.volume_ratio,
-            "minimum_entry_score": 2.5,
+            "minimum_entry_score": self.min_score,
+            "allow_trend_continuation": self.allow_trend_continuation,
             "adx_period": 14,
             "adx_min": self.min_adx,
             "atr_period": 14,
