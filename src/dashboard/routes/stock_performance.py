@@ -60,6 +60,48 @@ def _merge_current_holding_change(result: dict, parsed: dict, today: str) -> Non
         row["holding_change_missing_count"] = 0
 
 
+def _enrich_current_holding_change(api, parsed: dict) -> None:
+    """Fill Namuh balance rows with quote-based day moves when balance omits them."""
+    holdings = parsed.get("holdings") or []
+    for holding in holdings:
+        if float(holding.get("daily_change_pct") or 0.0) != 0.0:
+            continue
+        try:
+            quote = api.get_quote(str(holding.get("symbol") or ""))
+            holding["daily_change_pct"] = float(quote.get("daily_change_rate") or 0.0)
+        except Exception:
+            continue
+    previous_value = daily_change_amount = 0.0
+    for holding in holdings:
+        rate = float(holding.get("daily_change_pct") or 0.0) / 100.0
+        value = float(holding.get("value") or 0.0)
+        base = value / (1.0 + rate) if rate > -1.0 else 0.0
+        previous_value += base
+        daily_change_amount += value - base
+    parsed["holding_daily_change_pct"] = (
+        round(daily_change_amount / previous_value * 100, 2) if previous_value > 0 else None
+    )
+
+
+def _merge_current_broker_realized(result: dict, parsed: dict, today: str) -> None:
+    """Use the broker's current-session sell result when legacy sell prices are absent."""
+    sell_amount = int(parsed.get("broker_sell_amount") or 0)
+    realized = int(parsed.get("broker_realized_pnl") or 0)
+    if sell_amount <= 0 and realized == 0:
+        return
+    rows = result.setdefault("daily", [])
+    row = next((item for item in rows if item.get("period") == today), None)
+    if row is None:
+        row = {"period": today, **_period_bucket()}
+        rows.append(row)
+        rows.sort(key=lambda item: str(item.get("period") or ""))
+    cost = max(0, sell_amount - realized)
+    row["sell_amount"] = sell_amount
+    row["realized_pnl"] = realized
+    row["cost_of_sold"] = cost
+    row["realized_pnl_rate"] = round(realized / cost * 100, 2) if cost else 0.0
+
+
 def _merge_stored_holding_changes(result: dict, snapshots: list[dict]) -> None:
     rows = result.setdefault("daily", [])
     by_day = {str(row.get("period") or ""): row for row in rows}
@@ -97,14 +139,17 @@ def get_periodic_performance(response: Response, strategy_id: str | None = None)
                     list_holding_daily_snapshots,
                     save_holding_daily_snapshot,
                 )
-                parsed = _parse_balance(_get_balance_data(_get_api()))
+                _merge_stored_holding_changes(result, list_holding_daily_snapshots())
+                api = _get_api()
+                parsed = _parse_balance(_get_balance_data(api))
+                _enrich_current_holding_change(api, parsed)
                 today = trader.datetime.now(trader.KST).strftime("%Y-%m-%d")
                 current_change = parsed.get("holding_daily_change_pct")
                 holdings = parsed.get("holdings") or []
                 if current_change is not None and holdings:
                     save_holding_daily_snapshot(today, current_change, len(holdings))
-                _merge_stored_holding_changes(result, list_holding_daily_snapshots())
                 _merge_current_holding_change(result, parsed, today)
+                _merge_current_broker_realized(result, parsed, today)
             except Exception:
                 pass
         return result
@@ -271,9 +316,17 @@ def get_performance(response: Response, strategy_id: str | None = None):
             api = _get_api()
             balance_data = _get_balance_data(api)
             parsed_balance = _parse_balance(balance_data)
+            _enrich_current_holding_change(api, parsed_balance)
             current_holdings = {h['symbol']: h for h in parsed_balance['holdings']}
             total_broker_pnl = parsed_balance.get("pnl", 0)
             holding_daily_change_pct = parsed_balance.get("holding_daily_change_pct")
+            if not strategy_id:
+                periodic_perf = _build_periodic_performance(trades)
+                _merge_current_broker_realized(
+                    periodic_perf, parsed_balance,
+                    trader.datetime.now(trader.KST).strftime("%Y-%m-%d"),
+                )
+                realized_pnl = sum(day["realized_pnl"] for day in periodic_perf.get("daily", []))
         except Exception:
             pass
 

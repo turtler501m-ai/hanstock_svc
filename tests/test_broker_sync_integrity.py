@@ -12,6 +12,17 @@ from src.dashboard.services.balance_service import parse_balance
 
 
 class BrokerSyncIntegrityTests(unittest.TestCase):
+    def test_balance_exposes_broker_realized_sell_totals(self):
+        parsed = parse_balance({
+            "output1": [], "output2": [{}],
+            "_broker_response": {"Output_1": [
+                {"sll_amt": 1_302_200, "sll_pls_amt": -218_000},
+                {"sll_amt": 0, "sll_pls_amt": 0},
+            ]},
+        })
+        self.assertEqual(parsed["broker_sell_amount"], 1_302_200)
+        self.assertEqual(parsed["broker_realized_pnl"], -218_000)
+
     def test_current_holdings_replace_settlement_activity_without_hiding_reserved_positions(self):
         client = Mock(account="current-holdings-test")
         rows = [{"iem_cd": f"{index:06d}", "ny_stl_qty": 100, "now_pr": 20,

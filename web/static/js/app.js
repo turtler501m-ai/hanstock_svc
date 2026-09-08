@@ -3229,6 +3229,12 @@ function startTradeSyncPolling() {
                     : `증권사 기록 동기화 실패: ${result.error || '알 수 없는 오류'}`,
                 ['success', 'completed'].includes(result.status)
             );
+            if (result.status === 'review_required') {
+                setStatus(
+                    `증권사 기록 동기화 완료 · 확인 필요 ${Number(result.review_required_count || 0)}건`,
+                    true
+                );
+            }
         }
     };
     tradeSyncPollInterval = setInterval(poll, 3000);

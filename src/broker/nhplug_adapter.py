@@ -479,7 +479,9 @@ class NHPlugBrokerAdapter:
     def get_quote(self, symbol: str) -> dict[str, float]:
         value = self.fetch_quote(symbol)
         return {"current": value.current_price, "ask1": value.ask_price,
-                "bid1": value.bid_price, "market_cap": value.market_cap}
+                "bid1": value.bid_price, "market_cap": value.market_cap,
+                "daily_change_rate": _num(value.raw.get("prdy_ctrt")),
+                "previous_close": _num(value.raw.get("stck_prdy_clpr"))}
 
     def get_daily(self, symbol: str, n: int = 60) -> list[dict[str, Any]]:
         return [{"stck_bsop_date": x.date, "stck_oprc": str(x.open_price),
