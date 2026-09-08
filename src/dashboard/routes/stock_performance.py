@@ -16,7 +16,7 @@ _CompatRouter = CompatRouter
 
 _refresh_legacy_dependencies()
 _HOLDING_CHANGE_CACHE: dict[str, tuple[float, float]] = {}
-_HOLDING_CHANGE_CACHE_SECONDS = 30.0
+_HOLDING_CHANGE_CACHE_SECONDS = 300.0
 _HOLDING_CHANGE_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 _HOLDING_CHANGE_REFRESH_LOCK = Lock()
 _HOLDING_CHANGE_REFRESHING = False
