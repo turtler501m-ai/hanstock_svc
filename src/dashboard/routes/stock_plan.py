@@ -42,7 +42,10 @@ def _analyze_scheduler_failure(message: object, status: str = "failed") -> dict:
 
 @router.get("/api/risk/status")
 def get_risk_status():
+    from src.online_access import OnlineAccessBlockedError, require_online_access
+
     def _build():
+        require_online_access("리스크 잔고 조회")
         api = _get_api()
         balance_data = _get_balance_data(api, allow_cache=True)
         parsed = _parse_balance(balance_data)
@@ -70,6 +73,8 @@ def get_risk_status():
         # kill_switch는 로컬 상태라 stale 스냅샷에도 항상 현재값을 덮어쓴다.
         result["halted"] = bool(result.get("loss_halt")) or Path(".runtime/kill_switch.json").exists()
         return result
+    except (OnlineAccessBlockedError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail=f"Risk balance unavailable: {exc}") from exc
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

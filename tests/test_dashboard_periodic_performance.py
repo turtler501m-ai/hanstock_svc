@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from src.dashboard import (
     _account_trades,
@@ -31,6 +31,48 @@ from src.dashboard.services.performance_metrics import (
 
 
 class DashboardPeriodicPerformanceTests(unittest.TestCase):
+    def test_index_refresh_keeps_local_data_when_broker_cannot_initialize(self):
+        from src.dashboard import core
+
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        connection.execute.return_value.fetchall.return_value = [
+            {"date": "2026-09-07", "close": 100.0},
+        ]
+        with patch.object(core, "_INDEX_ROWS_CACHE", (0.0, {})), \
+                patch.object(core, "_get_api", side_effect=ValueError("missing credentials")), \
+                patch("src.db.repository.connect_db", return_value=connection):
+            result = core._load_index_rows()
+        self.assertEqual(result["KOSPI"], [{"date": "2026-09-07", "close": 100.0}])
+        self.assertEqual(result["KOSDAQ"], result["KOSPI"])
+
+    def test_index_refresh_does_not_initialize_broker_when_offline(self):
+        from src.dashboard import core
+
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        connection.execute.return_value.fetchall.return_value = []
+        with patch.object(core, "_INDEX_ROWS_CACHE", (0.0, {})), \
+                patch.object(trader.config, "online_access_blocked", True), \
+                patch.object(core, "_get_api") as get_api, \
+                patch("src.db.repository.connect_db", return_value=connection):
+            self.assertEqual(core._load_index_rows(), {})
+        get_api.assert_not_called()
+
+    def test_periodic_retains_stored_holdings_when_live_balance_fails(self):
+        from fastapi import Response
+        from src.dashboard.routes import stock_performance as route
+
+        with patch.object(route, "_refresh_legacy_dependencies"), \
+                patch.object(route, "_load_merged_trades", return_value=[]), \
+                patch.object(route, "_build_periodic_performance", return_value={"daily": [], "monthly": []}), \
+                patch.object(route, "_get_api", side_effect=ValueError("missing credentials")), \
+                patch("src.db.performance_repository.list_holding_daily_snapshots", return_value=[{
+                    "session_date": "2026-09-07", "holding_change_pct": 1.25, "symbol_count": 2,
+                }]):
+            result = route.get_periodic_performance(Response())
+        self.assertEqual(result["daily"][0]["holding_change_pct"], 1.25)
+
     def test_normalize_legacy_session_date(self):
         self.assertEqual(_normalize_session_date("26/03/13"), "2026-03-13")
         self.assertEqual(_normalize_session_date("20260904"), "2026-09-04")

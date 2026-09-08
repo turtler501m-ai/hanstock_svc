@@ -2046,8 +2046,15 @@ def _load_index_rows() -> dict[str, list[dict]]:
     series: dict[str, list[dict]] = {}
     from src.db.repository import save_daily_charts
 
-    api = _get_api()
-    for name, code in _NAMUH_INDEX_CODES.items():
+    try:
+        from src.online_access import require_online_access
+
+        require_online_access("성과 탭 시장지수 조회")
+        api = _get_api()
+    except Exception as exc:
+        logger.info(f"Namuh performance benchmark unavailable; using stored data: {exc}")
+        api = None
+    for name, code in (_NAMUH_INDEX_CODES.items() if api is not None else []):
         rows = []
         for attempt in range(2):
             try:

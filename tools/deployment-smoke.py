@@ -34,6 +34,20 @@ def verify(base_url: str, timeout: float) -> dict:
         raise RuntimeError("operations health blockers must be a list")
     if not isinstance(operations["schema"], dict) or "ready" not in operations["schema"]:
         raise RuntimeError("operations health schema readiness is missing")
+    if operations["schema"]["ready"] is not True:
+        raise RuntimeError("operations database schema is not ready")
+    periodic = fetch_json(f"{base_url}/api/performance/periodic", timeout)
+    if not all(isinstance(periodic.get(key), list) for key in ("daily", "monthly")):
+        raise RuntimeError("periodic performance daily/monthly lists are missing")
+    for path, marker in (
+        ("/", 'id="dashboard-main"'),
+        ("/env-settings", 'id="btn-env-save"'),
+        ("/static/js/app.js", "renderBalance"),
+        ("/static/css/style.css", ".dashboard-tabs"),
+    ):
+        with urlopen(f"{base_url}{path}", timeout=timeout) as response:
+            if response.status != 200 or marker not in response.read().decode("utf-8"):
+                raise RuntimeError(f"dashboard resource is missing or malformed: {path}")
     return {"dashboard": health, "operations": operations}
 
 
