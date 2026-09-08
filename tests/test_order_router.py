@@ -269,6 +269,26 @@ class OrderRouterTests(unittest.TestCase):
         self.assertEqual(result["status"], "failed")
         self.assertNotIn("approval_id", result)
 
+    def test_active_partial_buy_suppresses_duplicate_approval(self):
+        self._set_config(
+            dry_run=False,
+            trading_env="demo",
+            enable_live_trading=False,
+            require_approval=True,
+        )
+        approval_service = Mock()
+        order_router = router.OrderRouter(Mock(), approval_service=approval_service)
+        active = {"id": 17, "status": "partial", "requested_qty": 26, "filled_qty": 25}
+
+        with patch.object(router, "save_decision_log"), \
+                patch.object(order_router, "_active_order_for_symbol", return_value=active):
+            result = order_router.route("086790", "하나금융지주", "buy", 1, 137600, "test", {})
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["status"], "duplicate")
+        self.assertEqual(result["order_id"], 17)
+        approval_service.queue_approval.assert_not_called()
+
     def test_online_access_block_rejects_without_order_or_approval(self):
         self._set_config(
             dry_run=True,

@@ -53,6 +53,24 @@ class OrderRouter:
             online_access_blocked=self.online_access_blocked,
         )
 
+    @staticmethod
+    def _active_order_for_symbol(symbol: str, action: str) -> dict | None:
+        """Return an unresolved broker order that must block a duplicate submission."""
+        from src.application.orders.identity import broker_account_scope_key
+
+        with connect_db() as conn:
+            conn.row_factory = __import__("sqlite3").Row
+            row = conn.execute(
+                """SELECT id,status,requested_qty,filled_qty,broker_order_id
+                   FROM orders
+                   WHERE account_key=? AND market='KR' AND symbol=? AND side=?
+                     AND status IN ('submitting','submitted','open','partial','cancel_pending','broker_unknown')
+                     AND requested_qty > filled_qty
+                   ORDER BY id DESC LIMIT 1""",
+                (broker_account_scope_key("KR"), str(symbol), str(action)),
+            ).fetchone()
+        return dict(row) if row else None
+
     def _place_order_with_rate_limit_retries(
         self,
         symbol: str,
@@ -132,6 +150,19 @@ class OrderRouter:
             logger.info(f"[ROUTER] Paper Trading: {action} {name} qty={qty}")
             save_trade(symbol, name, action, qty, price, reason, True, False, strategy_id=strategy_id)
             return {"ok": True, "msg": "Paper trading executed", "status": "paper"}
+
+        active_order = self._active_order_for_symbol(symbol, action)
+        if active_order is not None:
+            logger.info(
+                f"[ROUTER] Duplicate order suppressed: {action} {name} "
+                f"active_order_id={active_order['id']} status={active_order['status']}"
+            )
+            return {
+                "ok": True,
+                "msg": "Active broker order already exists for this symbol and side",
+                "status": "duplicate",
+                "order_id": int(active_order["id"]),
+            }
 
         if decision.decision == "queue":
             approval_id = self._insert_approval(
