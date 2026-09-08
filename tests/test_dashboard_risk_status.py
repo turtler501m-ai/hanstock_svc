@@ -1,3 +1,4 @@
+import inspect
 import unittest
 from unittest.mock import patch
 
@@ -12,7 +13,7 @@ class DashboardRiskStatusTests(unittest.TestCase):
                 patch.object(stock_plan, "snapshot_read_through", side_effect=lambda key, build: build()), \
                 patch.object(stock_plan, "_get_api") as get_api:
             with self.assertRaises(HTTPException) as caught:
-                stock_plan.get_risk_status()
+                inspect.unwrap(stock_plan.get_risk_status)()
         self.assertEqual(caught.exception.status_code, 503)
         get_api.assert_not_called()
 
@@ -20,5 +21,5 @@ class DashboardRiskStatusTests(unittest.TestCase):
         with patch.object(stock_plan.trader.config, "online_access_blocked", True), \
                 patch.object(stock_plan, "snapshot_read_through", return_value={"loss_halt": True}), \
                 patch.object(stock_plan, "_get_api") as get_api:
-            self.assertTrue(stock_plan.get_risk_status()["halted"])
+            self.assertTrue(inspect.unwrap(stock_plan.get_risk_status)()["halted"])
         get_api.assert_not_called()
