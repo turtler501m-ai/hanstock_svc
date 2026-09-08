@@ -20,6 +20,8 @@ _HOLDING_CHANGE_CACHE_SECONDS = 300.0
 _HOLDING_CHANGE_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 _HOLDING_CHANGE_REFRESH_LOCK = Lock()
 _HOLDING_CHANGE_REFRESHING = False
+_PERFORMANCE_BALANCE_CACHE: tuple[float, dict] = (0.0, {})
+_PERFORMANCE_BALANCE_LOCK = Lock()
 router = _CompatRouter(
     namespace=globals(), dependencies=(_order, _stock), tags=["stock", "stock-performance"]
 )
@@ -115,8 +117,15 @@ def _enrich_current_holding_change(api, parsed: dict) -> None:
 
 
 def _get_performance_balance_data(api) -> dict:
-    loader = getattr(api, "get_performance_balance", None)
-    return loader() if callable(loader) else _get_balance_data(api)
+    global _PERFORMANCE_BALANCE_CACHE
+    with _PERFORMANCE_BALANCE_LOCK:
+        cached_at, cached = _PERFORMANCE_BALANCE_CACHE
+        if cached and time.monotonic() - cached_at < 30.0:
+            return cached
+        loader = getattr(api, "get_performance_balance", None)
+        result = loader() if callable(loader) else _get_balance_data(api)
+        _PERFORMANCE_BALANCE_CACHE = (time.monotonic(), result)
+        return result
 
 
 def _merge_current_broker_realized(result: dict, parsed: dict, today: str) -> None:
