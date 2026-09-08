@@ -7,6 +7,9 @@ from unittest.mock import Mock, patch
 
 from src.config import config
 from src.broker.models import AccountBalance, Holding
+from src.application.orders.identity import broker_account_scope_key
+from src.application.orders.models import OrderIntent
+from src.application.orders.repository import OrderLedgerRepository
 from src.strategy import router
 from src.db.connection import open_sqlite
 
@@ -288,6 +291,51 @@ class OrderRouterTests(unittest.TestCase):
         self.assertEqual(result["status"], "duplicate")
         self.assertEqual(result["order_id"], 17)
         approval_service.queue_approval.assert_not_called()
+
+    def test_partial_blocks_reorder_until_cancellation_is_confirmed(self):
+        self._set_config(
+            dry_run=False,
+            trading_env="demo",
+            enable_live_trading=False,
+            require_approval=True,
+        )
+        approval_service = Mock()
+        approval_service.queue_approval.return_value = 99
+        order_router = router.OrderRouter(Mock(), approval_service=approval_service)
+        ledger = OrderLedgerRepository(router.connect_db)
+        order = ledger.create(OrderIntent(
+            client_order_key="partial-cancel-reorder",
+            correlation_id="partial-cancel-reorder",
+            account_key=broker_account_scope_key("KR"),
+            symbol="086790",
+            name="하나금융지주",
+            side="buy",
+            quantity=26,
+            price=137600,
+        ), initial_status="submitted")
+        ledger.reconcile_snapshot(
+            order["id"], status="partial", cumulative_filled_qty=25,
+        )
+
+        with patch.object(router, "save_decision_log"):
+            blocked = order_router.route(
+                "086790", "하나금융지주", "buy", 1, 137600, "test", {},
+            )
+        self.assertEqual(blocked["status"], "duplicate")
+        approval_service.queue_approval.assert_not_called()
+
+        ledger.transition(
+            order["id"], "partial", "canceled",
+            actor="test_broker", reason="broker cancellation confirmed",
+        )
+        with patch.object(router, "save_decision_log"):
+            allowed = order_router.route(
+                "086790", "하나금융지주", "buy", 1, 137600, "test", {},
+            )
+
+        self.assertEqual(allowed["status"], "pending")
+        self.assertEqual(allowed["approval_id"], 99)
+        approval_service.queue_approval.assert_called_once()
 
     def test_online_access_block_rejects_without_order_or_approval(self):
         self._set_config(

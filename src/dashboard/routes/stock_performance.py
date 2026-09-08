@@ -141,10 +141,42 @@ def _merge_current_broker_realized(result: dict, parsed: dict, today: str) -> No
         rows.append(row)
         rows.sort(key=lambda item: str(item.get("period") or ""))
     cost = max(0, sell_amount - realized)
+
+    # Periodic performance is initially projected from the local fill ledger.
+    # Replacing today's daily broker totals without applying the same delta to
+    # the month made the daily and monthly tabs disagree.  Adjust rather than
+    # overwrite the month because it also contains finalized earlier sessions.
+    previous_sell_amount = int(row.get("sell_amount") or 0)
+    previous_realized = int(row.get("realized_pnl") or 0)
+    previous_cost = int(row.get("cost_of_sold") or 0)
     row["sell_amount"] = sell_amount
     row["realized_pnl"] = realized
     row["cost_of_sold"] = cost
     row["realized_pnl_rate"] = round(realized / cost * 100, 2) if cost else 0.0
+
+    month_key = today[:7]
+    month_rows = result.setdefault("monthly", [])
+    month_row = next(
+        (item for item in month_rows if item.get("period") == month_key), None
+    )
+    if month_row is None:
+        month_row = {"period": month_key, **_period_bucket()}
+        month_rows.append(month_row)
+        month_rows.sort(key=lambda item: str(item.get("period") or ""))
+    month_row["sell_amount"] = (
+        int(month_row.get("sell_amount") or 0) + sell_amount - previous_sell_amount
+    )
+    month_row["realized_pnl"] = (
+        int(month_row.get("realized_pnl") or 0) + realized - previous_realized
+    )
+    month_row["cost_of_sold"] = (
+        int(month_row.get("cost_of_sold") or 0) + cost - previous_cost
+    )
+    month_cost = int(month_row["cost_of_sold"])
+    month_row["realized_pnl_rate"] = (
+        round(int(month_row["realized_pnl"]) / month_cost * 100, 2)
+        if month_cost else 0.0
+    )
 
 
 def _merge_stored_holding_changes(result: dict, snapshots: list[dict]) -> None:

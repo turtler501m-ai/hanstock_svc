@@ -31,6 +31,35 @@ class PerformanceBrokerMetricsTests(unittest.TestCase):
         self.assertEqual(result["daily"][0]["realized_pnl"], -218_000)
         self.assertEqual(result["daily"][0]["cost_of_sold"], 1_520_200)
         self.assertEqual(result["daily"][0]["realized_pnl_rate"], -14.34)
+        self.assertEqual(result["monthly"][0]["realized_pnl"], -218_000)
+        self.assertEqual(result["monthly"][0]["cost_of_sold"], 1_520_200)
+        self.assertEqual(result["monthly"][0]["realized_pnl_rate"], -14.34)
+
+    def test_broker_daily_correction_updates_month_by_delta(self):
+        result = {
+            "daily": [{
+                "period": "2026-09-08", "sell_amount": 120_000,
+                "realized_pnl": 20_000, "cost_of_sold": 100_000,
+                "realized_pnl_rate": 20.0,
+            }],
+            "monthly": [{
+                "period": "2026-09", "sell_amount": 620_000,
+                "realized_pnl": 70_000, "cost_of_sold": 550_000,
+                "realized_pnl_rate": 12.73,
+            }],
+        }
+
+        _merge_current_broker_realized(
+            result,
+            {"broker_sell_amount": 150_000, "broker_realized_pnl": 30_000},
+            "2026-09-08",
+        )
+
+        self.assertEqual(result["daily"][0]["realized_pnl"], 30_000)
+        self.assertEqual(result["monthly"][0]["sell_amount"], 650_000)
+        self.assertEqual(result["monthly"][0]["realized_pnl"], 80_000)
+        self.assertEqual(result["monthly"][0]["cost_of_sold"], 570_000)
+        self.assertEqual(result["monthly"][0]["realized_pnl_rate"], 14.04)
 
 
 if __name__ == "__main__":
