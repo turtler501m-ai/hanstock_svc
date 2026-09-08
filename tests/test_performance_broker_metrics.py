@@ -25,7 +25,7 @@ class PerformanceBrokerMetricsTests(unittest.TestCase):
         }):
             _enrich_current_holding_change(api, parsed)
         result = {"daily": [], "monthly": []}
-        _merge_current_broker_realized(result, parsed, "2026-09-08")
+        reconciliation = _merge_current_broker_realized(result, parsed, "2026-09-08")
 
         self.assertEqual(parsed["holding_daily_change_pct"], 0.0)
         self.assertEqual(result["daily"][0]["realized_pnl"], -218_000)
@@ -34,6 +34,9 @@ class PerformanceBrokerMetricsTests(unittest.TestCase):
         self.assertEqual(result["monthly"][0]["realized_pnl"], -218_000)
         self.assertEqual(result["monthly"][0]["cost_of_sold"], 1_520_200)
         self.assertEqual(result["monthly"][0]["realized_pnl_rate"], -14.34)
+        self.assertEqual(reconciliation["status"], "adjusted")
+        self.assertEqual(reconciliation["broker_realized_pnl"], -218_000)
+        self.assertEqual(reconciliation["realized_pnl_difference"], -218_000)
 
     def test_broker_daily_correction_updates_month_by_delta(self):
         result = {

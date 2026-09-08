@@ -51,6 +51,12 @@ class CommonDashboardFrontendContractTests(unittest.TestCase):
         self.assertIn("'/api/trades/local-cleanup?limit=200'", FRONTEND_JS)
         self.assertIn("`/api/trades/local/${tradeId}?confirm=true`", FRONTEND_JS)
 
+    def test_performance_tab_exposes_broker_realized_pnl_reconciliation(self):
+        self.assertIn('id="performance-broker-reconciliation"', INDEX_HTML)
+        self.assertIn("broker_reconciliation", FRONTEND_JS)
+        self.assertIn("realized_pnl_difference", FRONTEND_JS)
+        self.assertIn("증권사 당일 실현손익으로 교정했습니다", FRONTEND_JS)
+
     def test_performance_tab_exposes_market_context_strategy_validation_and_sorting(self):
         self.assertIn("보유주식 당일 등락", INDEX_HTML)
         self.assertIn("KOSPI 대비", FRONTEND_JS)

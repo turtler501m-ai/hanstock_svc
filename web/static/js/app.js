@@ -3439,6 +3439,7 @@ async function renderPeriodicPerformance() {
         fetchJson,
         performancePath,
         escapeHtml,
+        formatCurrency,
         setStatus,
         setPeriodicData: (data) => { periodicDataCache = data; },
         activateTab: (tab, activeButton, otherButton) => {

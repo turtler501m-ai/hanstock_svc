@@ -128,12 +128,12 @@ def _get_performance_balance_data(api) -> dict:
         return result
 
 
-def _merge_current_broker_realized(result: dict, parsed: dict, today: str) -> None:
+def _merge_current_broker_realized(result: dict, parsed: dict, today: str) -> dict | None:
     """Use the broker's current-session sell result when legacy sell prices are absent."""
     sell_amount = int(parsed.get("broker_sell_amount") or 0)
     realized = int(parsed.get("broker_realized_pnl") or 0)
     if sell_amount <= 0 and realized == 0:
-        return
+        return None
     rows = result.setdefault("daily", [])
     row = next((item for item in rows if item.get("period") == today), None)
     if row is None:
@@ -177,6 +177,15 @@ def _merge_current_broker_realized(result: dict, parsed: dict, today: str) -> No
         round(int(month_row["realized_pnl"]) / month_cost * 100, 2)
         if month_cost else 0.0
     )
+    return {
+        "session_date": today,
+        "source": "broker_current_session",
+        "status": "matched" if previous_realized == realized else "adjusted",
+        "local_realized_pnl": previous_realized,
+        "broker_realized_pnl": realized,
+        "realized_pnl_difference": realized - previous_realized,
+        "broker_sell_amount": sell_amount,
+    }
 
 
 def _merge_stored_holding_changes(result: dict, snapshots: list[dict]) -> None:
@@ -226,7 +235,9 @@ def get_periodic_performance(response: Response, strategy_id: str | None = None)
                 if current_change is not None and holdings:
                     save_holding_daily_snapshot(today, current_change, len(holdings))
                 _merge_current_holding_change(result, parsed, today)
-                _merge_current_broker_realized(result, parsed, today)
+                reconciliation = _merge_current_broker_realized(result, parsed, today)
+                if reconciliation is not None:
+                    result["broker_reconciliation"] = reconciliation
             except Exception:
                 pass
         return result
