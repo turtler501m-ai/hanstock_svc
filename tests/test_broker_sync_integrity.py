@@ -16,12 +16,19 @@ class BrokerSyncIntegrityTests(unittest.TestCase):
         parsed = parse_balance({
             "output1": [], "output2": [{}],
             "_broker_response": {"Output_1": [
-                {"sll_amt": 1_302_200, "sll_pls_amt": -218_000},
+                {
+                    "iem_cd": "003230", "iem_nm": "삼양식품",
+                    "sll_amt": 1_302_200, "sll_pls_amt": -218_000,
+                },
                 {"sll_amt": 0, "sll_pls_amt": 0},
             ]},
         })
         self.assertEqual(parsed["broker_sell_amount"], 1_302_200)
         self.assertEqual(parsed["broker_realized_pnl"], -218_000)
+        self.assertEqual(parsed["broker_realized_rows"], [{
+            "symbol": "003230", "name": "삼양식품",
+            "sell_amount": 1_302_200, "realized_pnl": -218_000,
+        }])
 
     def test_current_holdings_replace_settlement_activity_without_hiding_reserved_positions(self):
         client = Mock(account="current-holdings-test")

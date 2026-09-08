@@ -112,6 +112,21 @@ def parse_balance(balance_data: dict) -> dict:
         broker_rows = []
     broker_sell_amount = sum(to_int(row.get("sll_amt")) for row in broker_rows if isinstance(row, dict))
     broker_realized_pnl = sum(to_int(row.get("sll_pls_amt")) for row in broker_rows if isinstance(row, dict))
+    broker_realized_rows = []
+    for row in broker_rows:
+        if not isinstance(row, dict):
+            continue
+        sell_amount = to_int(row.get("sll_amt"))
+        realized_pnl = to_int(row.get("sll_pls_amt"))
+        symbol = str(row.get("iem_cd") or "").strip()
+        if not symbol or (sell_amount == 0 and realized_pnl == 0):
+            continue
+        broker_realized_rows.append({
+            "symbol": symbol,
+            "name": str(row.get("iem_nm") or symbol).strip(),
+            "sell_amount": sell_amount,
+            "realized_pnl": realized_pnl,
+        })
     orderable_cash = (to_int(first_summary["ord_psbl_cash"])
                       if first_summary.get("ord_psbl_cash") not in (None, "") else cash)
     previous_stock_eval = 0.0
@@ -134,6 +149,7 @@ def parse_balance(balance_data: dict) -> dict:
         "pnl": to_int(first_summary.get("evlu_pfls_smtl_amt")),
         "broker_sell_amount": broker_sell_amount,
         "broker_realized_pnl": broker_realized_pnl,
+        "broker_realized_rows": broker_realized_rows,
         "holding_daily_change_pct": round(
             daily_change_amount / previous_stock_eval * 100, 2
         ) if previous_stock_eval > 0 else None,

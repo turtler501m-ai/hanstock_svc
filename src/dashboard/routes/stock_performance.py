@@ -185,6 +185,7 @@ def _merge_current_broker_realized(result: dict, parsed: dict, today: str) -> di
         "broker_realized_pnl": realized,
         "realized_pnl_difference": realized - previous_realized,
         "broker_sell_amount": sell_amount,
+        "broker_rows": list(parsed.get("broker_realized_rows") or []),
     }
 
 

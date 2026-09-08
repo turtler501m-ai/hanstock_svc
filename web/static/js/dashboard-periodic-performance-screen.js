@@ -13,9 +13,14 @@
         const matched = item.status === 'matched';
         container.hidden = false;
         container.classList.toggle('success-note', matched);
-        container.innerHTML = matched
+        const summary = matched
             ? `증권사 당일 실현손익과 로컬 체결 원장이 일치합니다. (${deps.formatCurrency(Number(item.broker_realized_pnl || 0))})`
             : `증권사 당일 실현손익으로 교정했습니다. 로컬 ${deps.formatCurrency(Number(item.local_realized_pnl || 0))} · 증권사 ${deps.formatCurrency(Number(item.broker_realized_pnl || 0))} · 차이 ${deps.formatCurrency(difference)}`;
+        const brokerRows = Array.isArray(item.broker_rows) ? item.broker_rows : [];
+        const detail = brokerRows.length
+            ? `<ul>${brokerRows.map((row) => `<li>${deps.escapeHtml(row.name || row.symbol)} (${deps.escapeHtml(row.symbol || '-')}) · 매도 ${deps.formatCurrency(Number(row.sell_amount || 0))} · 실현손익 ${deps.formatCurrency(Number(row.realized_pnl || 0))}</li>`).join('')}</ul>`
+            : '';
+        container.innerHTML = summary + detail;
     }
 
     async function renderPeriodicPerformance(deps) {
