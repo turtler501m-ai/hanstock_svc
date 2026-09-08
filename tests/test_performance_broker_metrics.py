@@ -1,6 +1,8 @@
 import unittest
-from unittest.mock import MagicMock
+import time
+from unittest.mock import MagicMock, patch
 
+from src.dashboard.routes import stock_performance
 from src.dashboard.routes.stock_performance import (
     _enrich_current_holding_change,
     _merge_current_broker_realized,
@@ -10,10 +12,6 @@ from src.dashboard.routes.stock_performance import (
 class PerformanceBrokerMetricsTests(unittest.TestCase):
     def test_quote_change_and_broker_sell_are_merged_into_today(self):
         api = MagicMock()
-        api.get_quote.side_effect = [
-            {"daily_change_rate": 1.0},
-            {"daily_change_rate": -1.0},
-        ]
         parsed = {
             "holdings": [
                 {"symbol": "A", "value": 101, "daily_change_pct": 0},
@@ -22,7 +20,10 @@ class PerformanceBrokerMetricsTests(unittest.TestCase):
             "broker_sell_amount": 1_302_200,
             "broker_realized_pnl": -218_000,
         }
-        _enrich_current_holding_change(api, parsed)
+        with patch.object(stock_performance, "_HOLDING_CHANGE_CACHE", {
+            "A": (time.monotonic(), 1.0), "B": (time.monotonic(), -1.0),
+        }):
+            _enrich_current_holding_change(api, parsed)
         result = {"daily": [], "monthly": []}
         _merge_current_broker_realized(result, parsed, "2026-09-08")
 

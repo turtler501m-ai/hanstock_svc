@@ -2,6 +2,7 @@
 
 import time
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 
 from src.dashboard.routes.compat_router import CompatRouter, refresh_dependencies
 from src.dashboard.routes import stock as _stock
@@ -16,6 +17,9 @@ _CompatRouter = CompatRouter
 _refresh_legacy_dependencies()
 _HOLDING_CHANGE_CACHE: dict[str, tuple[float, float]] = {}
 _HOLDING_CHANGE_CACHE_SECONDS = 30.0
+_HOLDING_CHANGE_EXECUTOR = ThreadPoolExecutor(max_workers=1)
+_HOLDING_CHANGE_REFRESH_LOCK = Lock()
+_HOLDING_CHANGE_REFRESHING = False
 router = _CompatRouter(
     namespace=globals(), dependencies=(_order, _stock), tags=["stock", "stock-performance"]
 )
@@ -67,29 +71,37 @@ def _merge_current_holding_change(result: dict, parsed: dict, today: str) -> Non
 
 def _enrich_current_holding_change(api, parsed: dict) -> None:
     """Fill Namuh balance rows with quote-based day moves when balance omits them."""
+    global _HOLDING_CHANGE_REFRESHING
     holdings = parsed.get("holdings") or []
-    missing = [holding for holding in holdings
-               if float(holding.get("daily_change_pct") or 0.0) == 0.0]
-
-    def load_change(holding: dict) -> tuple[dict, float]:
+    missing_symbols = []
+    now = time.monotonic()
+    for holding in holdings:
         symbol = str(holding.get("symbol") or "")
         cached = _HOLDING_CHANGE_CACHE.get(symbol)
-        if cached and time.monotonic() - cached[0] < _HOLDING_CHANGE_CACHE_SECONDS:
-            return holding, cached[1]
-        try:
-            quote = api.get_quote(symbol)
-            change = float(quote.get("daily_change_rate") or 0.0)
-            _HOLDING_CHANGE_CACHE[symbol] = (time.monotonic(), change)
-            return holding, change
-        except Exception:
-            return holding, 0.0
+        if cached and now - cached[0] < _HOLDING_CHANGE_CACHE_SECONDS:
+            holding["daily_change_pct"] = cached[1]
+        elif float(holding.get("daily_change_pct") or 0.0) == 0.0 and symbol:
+            missing_symbols.append(symbol)
 
-    # Keep requests serialized to respect NHPLUG's per-app rate limit. The
-    # performance-specific balance path already skips expensive sellability
-    # inquiries, and this short-lived cache serves the sibling dashboard call.
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        for holding, change in executor.map(load_change, missing):
-            holding["daily_change_pct"] = change
+    def refresh_changes() -> None:
+        global _HOLDING_CHANGE_REFRESHING
+        try:
+            for symbol in missing_symbols:
+                try:
+                    quote = api.get_quote(symbol)
+                    _HOLDING_CHANGE_CACHE[symbol] = (
+                        time.monotonic(), float(quote.get("daily_change_rate") or 0.0)
+                    )
+                except Exception:
+                    continue
+        finally:
+            with _HOLDING_CHANGE_REFRESH_LOCK:
+                _HOLDING_CHANGE_REFRESHING = False
+
+    with _HOLDING_CHANGE_REFRESH_LOCK:
+        if missing_symbols and not _HOLDING_CHANGE_REFRESHING:
+            _HOLDING_CHANGE_REFRESHING = True
+            _HOLDING_CHANGE_EXECUTOR.submit(refresh_changes)
     previous_value = daily_change_amount = 0.0
     for holding in holdings:
         rate = float(holding.get("daily_change_pct") or 0.0) / 100.0
