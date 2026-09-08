@@ -463,6 +463,28 @@ def _load_trackable_order_trades(days: int = MIN_ORDER_HISTORY_SYNC_DAYS) -> lis
 
     repository = OrderLedgerRepository(trader.connect_db)
     account_key = broker_account_scope_key("KR")
+    # The legacy trade mirror can retain an old active-looking status after
+    # its authoritative unified order has already reached a terminal state.
+    # Re-querying those rows forever makes a successful performance sync look
+    # like an operational failure when the demo broker no longer returns old
+    # order numbers.
+    active_tracked = []
+    for trade in tracked:
+        approval_id = _to_int(trade.get("source_approval_id"))
+        linked = repository.get_by_approval(approval_id) if approval_id else None
+        if linked is None:
+            linked = repository.get_by_broker_order_id(
+                str(trade.get("broker_order_id") or ""),
+                broker_order_date=str(trade.get("ts") or "")[:10],
+                account_key=account_key,
+                market="KR",
+            )
+        if linked is not None:
+            if str(linked.get("status") or "") in TERMINAL_ORDER_STATUSES:
+                continue
+            trade["_unified_order_id"] = int(linked["id"])
+        active_tracked.append(trade)
+    tracked = active_tracked
     offset = 0
     while True:
         batch = repository.list_orders(
