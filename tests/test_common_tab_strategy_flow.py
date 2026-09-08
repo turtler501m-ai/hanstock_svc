@@ -24,6 +24,17 @@ class CommonTabStrategyFlowTests(unittest.TestCase):
                 return route
         raise AssertionError(f"Missing GET route for {path}")
 
+    def test_default_analysis_strategy_uses_selected_strategy(self):
+        selected = {"id": "rsi_limit_strategy", "selected": True}
+        with patch.object(
+            dashboard.core, "_resolve_dashboard_strategy", return_value=selected,
+        ) as resolve:
+            strategy_id, cycle = dashboard.core._dashboard_analysis_cycle(None, None)
+
+        self.assertEqual(strategy_id, "rsi_limit_strategy")
+        self.assertIsNone(cycle)
+        resolve.assert_called_once_with(None)
+
     def test_strategy_id_is_preserved_by_signals_candidates_and_execution_plan(self):
         signals_route = self._get_route("/api/signals")
         candidates_route = self._get_route("/api/candidates")

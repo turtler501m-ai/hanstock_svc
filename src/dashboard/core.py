@@ -1268,8 +1268,6 @@ def _dashboard_analysis_cycle(
     strategy_id: str | None,
     cycle_id: str | None = None,
 ) -> tuple[str, dict | None]:
-    if not strategy_id and not cycle_id:
-        return "seven_split", None
     strategy = _resolve_dashboard_strategy(strategy_id)
     if strategy_id and strategy is None:
         raise AnalysisCycleError(f"strategy not found: {strategy_id}")
