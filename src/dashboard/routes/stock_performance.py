@@ -1,5 +1,8 @@
 """Performance HTTP handlers extracted from the legacy stock route module."""
 
+import time
+from concurrent.futures import ThreadPoolExecutor
+
 from src.dashboard.routes.compat_router import CompatRouter, refresh_dependencies
 from src.dashboard.routes import stock as _stock
 from src.dashboard.routes import stock_order as _order
@@ -11,6 +14,8 @@ _CompatRouter = CompatRouter
 
 
 _refresh_legacy_dependencies()
+_HOLDING_CHANGE_CACHE: dict[str, tuple[float, float]] = {}
+_HOLDING_CHANGE_CACHE_SECONDS = 30.0
 router = _CompatRouter(
     namespace=globals(), dependencies=(_order, _stock), tags=["stock", "stock-performance"]
 )
@@ -63,14 +68,27 @@ def _merge_current_holding_change(result: dict, parsed: dict, today: str) -> Non
 def _enrich_current_holding_change(api, parsed: dict) -> None:
     """Fill Namuh balance rows with quote-based day moves when balance omits them."""
     holdings = parsed.get("holdings") or []
-    for holding in holdings:
-        if float(holding.get("daily_change_pct") or 0.0) != 0.0:
-            continue
+    missing = [holding for holding in holdings
+               if float(holding.get("daily_change_pct") or 0.0) == 0.0]
+
+    def load_change(holding: dict) -> tuple[dict, float]:
+        symbol = str(holding.get("symbol") or "")
+        cached = _HOLDING_CHANGE_CACHE.get(symbol)
+        if cached and time.monotonic() - cached[0] < _HOLDING_CHANGE_CACHE_SECONDS:
+            return holding, cached[1]
         try:
-            quote = api.get_quote(str(holding.get("symbol") or ""))
-            holding["daily_change_pct"] = float(quote.get("daily_change_rate") or 0.0)
+            quote = api.get_quote(symbol)
+            change = float(quote.get("daily_change_rate") or 0.0)
+            _HOLDING_CHANGE_CACHE[symbol] = (time.monotonic(), change)
+            return holding, change
         except Exception:
-            continue
+            return holding, 0.0
+
+    # NHPLUG current-price calls are independent per symbol. A small pool keeps
+    # the performance tab below its 30-second frontend timeout.
+    with ThreadPoolExecutor(max_workers=min(4, max(1, len(missing)))) as executor:
+        for holding, change in executor.map(load_change, missing):
+            holding["daily_change_pct"] = change
     previous_value = daily_change_amount = 0.0
     for holding in holdings:
         rate = float(holding.get("daily_change_pct") or 0.0) / 100.0
