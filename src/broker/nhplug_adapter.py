@@ -417,12 +417,18 @@ class NHPlugBrokerAdapter:
     @staticmethod
     def _execution(row: Mapping[str, Any]) -> TradeExecution:
         requested, filled = _int(row.get("orr_qty")), _int(row.get("tot_cns_qty"))
+        execution_amount = _num(row.get("cns_amt"))
+        average_fill_price = (
+            execution_amount / filled
+            if execution_amount > 0 and filled > 0
+            else _num(row.get("cns_avg_uit_pr"))
+        )
         text = str(row.get("sby_dit_cd_nm") or "")
         side = OrderSide.SELL if "매도" in text else OrderSide.BUY
         status = OrderStatus.FILLED if requested and filled >= requested else OrderStatus.PARTIAL if filled else OrderStatus.OPEN
         if "취소" in str(row.get("cor_can_dit_cd_nm") or ""): status = OrderStatus.CANCELED
         return TradeExecution(str(row.get("mkt_orr_no") or row.get("odno") or row.get("ord_no") or row.get("itg_orr_no") or ""), str(row.get("iem_cd") or ""), side,
-            requested, filled, max(0, requested-filled), _num(row.get("cns_avg_uit_pr")), status,
+            requested, filled, max(0, requested-filled), average_fill_price, status,
             str(row.get("orr_dt") or row.get("orr_tm") or ""), row)
 
     def fetch_order_snapshot(self, order_id: str, order_date: str = "") -> OrderSnapshot:

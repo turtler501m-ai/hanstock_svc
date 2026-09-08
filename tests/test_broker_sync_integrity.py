@@ -123,6 +123,16 @@ class BrokerSyncIntegrityTests(unittest.TestCase):
         self.assertEqual([row.order_id for row in result], ["1", "2"])
         self.assertEqual(client.post.call_args.kwargs, {"cts": "next", "cts_flag": "Y"})
 
+    def test_trade_history_derives_demo_price_from_execution_amount(self):
+        client = Mock()
+        client.post.return_value = self.page([{
+            "mkt_orr_no": "174", "iem_cd": "055550", "orr_qty": 166,
+            "tot_cns_qty": 17, "cns_avg_uit_pr": 112.8,
+            "cns_amt": 1917600, "orr_dt": "20260908",
+        }])
+        result = NHPlugBrokerAdapter(client).fetch_trade_history("20260908", "20260908")
+        self.assertEqual(result[0].average_fill_price, 112800)
+
     def test_zero_orderable_cash_is_authoritative(self):
         client = Mock()
         client.post.return_value = self.page(summary={

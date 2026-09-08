@@ -27,6 +27,10 @@ def _history_int(row: dict | None, *keys: str) -> int:
 
 
 def _history_fill_price(row: dict | None) -> int:
+    filled_qty = _history_fill_qty(row)
+    execution_amount = _history_int(row, "cns_amt", "tot_cns_amt", "tot_ccld_amt")
+    if filled_qty > 0 and execution_amount > 0:
+        return round(execution_amount / filled_qty)
     return _history_int(
         row,
         "cns_avg_uit_pr",

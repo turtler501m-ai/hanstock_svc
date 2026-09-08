@@ -27,16 +27,17 @@ def ensure_approval_order(connect, approval: dict) -> dict | None:
     existing = repository.get_by_approval(approval_id)
     if existing:
         return existing
+    market = str(approval.get("market") or "KR").upper()
     intent = OrderIntent(
         client_order_key=_key(approval),
         correlation_id=str(approval.get("correlation_id") or uuid.uuid4()),
-        account_key=str(approval.get("account_key") or ""),
+        account_key=str(approval.get("account_key") or broker_account_scope_key(market)),
         symbol=str(approval.get("symbol") or ""),
         name=str(approval.get("name") or ""),
         side=str(approval.get("action") or "").lower(),
         quantity=int(approval.get("qty") or 0),
         price=float(approval.get("price") or 0),
-        market=str(approval.get("market") or "KR").upper(),
+        market=market,
         order_type="market" if float(approval.get("price") or 0) == 0 else "limit",
         strategy_id=approval.get("strategy_id"),
         strategy_version=approval.get("strategy_version"),

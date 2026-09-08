@@ -33,6 +33,14 @@ class OrderHistoryServiceTests(unittest.TestCase):
         self.assertEqual(trade["ts"], "2026-09-07 10:00:01")
         self.assertEqual(trade["order_status"], "filled")
 
+    def test_execution_amount_corrects_demo_thousand_unit_price(self):
+        row = {
+            "tot_cns_qty": 17,
+            "cns_avg_uit_pr": 112.8,
+            "cns_amt": 1917600,
+        }
+        self.assertEqual(_history_fill_price(row), 112800)
+
     def test_cancellation_does_not_cross_order_dates(self):
         first = {"mkt_orr_no": "12", "orr_dt": "20260904"}
         second = {"mkt_orr_no": "12", "orr_dt": "20260907", "cor_can_dit_cd_nm": "정상"}
