@@ -46,7 +46,11 @@
                 const completedLabel = completedAt && !Number.isNaN(completedAt.getTime()) ? completedAt.toLocaleString('ko-KR') : '-';
                 const itemCount = Number(run.sync_item_count ?? (Array.isArray(run.sync_items) ? run.sync_items.length : 0));
                 const changed = Number(run.history_imported_count || 0) + Number(run.history_updated_count || 0);
-                const status = run.status === 'running' ? deps.labels.running : (run.status === 'failed' || run.ok === false ? deps.labels.failed : deps.labels.done);
+                const status = run.status === 'running'
+                    ? deps.labels.running
+                    : run.status === 'review_required'
+                        ? '확인 필요'
+                        : (run.status === 'failed' || run.ok === false ? deps.labels.failed : deps.labels.done);
                 return `<tr><td><button type="button" class="trade-sync-run-button" data-run-index="${index}">${deps.escapeHtml(completedLabel)}</button></td><td>${itemCount.toLocaleString()}${deps.labels.items}</td><td>${changed.toLocaleString()}${deps.labels.items}</td><td>${Number(run.balance_synced_count || 0).toLocaleString()}${deps.labels.items}</td><td>${Number(run.removed_mismatch_count || 0).toLocaleString()}${deps.labels.items}</td><td>${status}${run.error ? `<div class="time-muted" title="${deps.escapeHtml(run.error)}">${deps.escapeHtml(run.error)}</div>` : ''}</td></tr>`;
             }).join('');
             runsTbody.querySelectorAll('.trade-sync-run-button').forEach((button) => {
