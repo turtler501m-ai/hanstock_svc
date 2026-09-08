@@ -1,6 +1,6 @@
 # 대시보드 기능 목표·수행 결과·개선 보고서
 
-작성일: 2026-09-08 (KST). 최초 점검 소스: `b76c65b`. 최종 통합 기준: `05115e8`. 점검 브랜치: `audit/dashboard-20260908`, 배포 대상: `main`.
+작성일: 2026-09-08 (KST). 최초 점검 소스: `b76c65b`. 최종 통합 기준: `42e3f59`. 점검 브랜치: `audit/dashboard-20260908`, 배포 대상: `main`.
 
 ## 판정 기준
 
@@ -29,6 +29,8 @@
 | FIX-02 | 실시간 잔고 조회 실패 시 같은 try 블록 뒤에 있는 과거 보유 등락 스냅샷 병합도 생략 | 저장 스냅샷을 실시간 잔고보다 먼저 병합 | 잔고 실패에도 과거 등락 1.25% 유지 |
 | FIX-03 | 온라인 차단·스냅샷 없음 상태에서 리스크 조회가 인증 초기화를 시도하고 500 반환 | 외부 접근 차단 준수, 정보 불가를 503으로 구분. 기존 스냅샷은 계속 사용 | 오프라인 시 브로커 미생성, 스냅샷의 손실 차단 상태 유지 |
 | FIX-04 | 배포 확인이 상태 API의 형태만 검사하여 성과 500·HTML/정적파일 누락·DB 스키마 미준비를 놓칠 수 있음 | 성과 daily/monthly 배열, 주요 페이지/JS/CSS, DB schema.ready 확인 추가 | 정상 빈 성과 허용, 스키마 미준비·성과 형식 오류·페이지 누락 거부 |
+
+모바일 추가 수정(FIX-05): 전략진단의 조회 요약이 6열 최소 너비(712px)를 유지해 390px 화면을 737px로 확장했다. 768px 이하에서는 2열 `minmax(0, 1fr)`로 표시하도록 수정하고 CSS 캐시 버전을 올렸다. 수정 후 모바일 10개 탭 모두 문서 가로 넘침 없음, JavaScript 예외 0을 확인했다. 증적: `mobile-strategy-before.png`, `mobile-strategy-confirmed.png`, `browser-actions.json`.
 
 ## 기능별 목표와 판정
 
@@ -157,7 +159,7 @@
 
 ## 실행 기록과 산출물
 
-- 원본 작업 트리의 미커밋 수정은 건드리지 않고 별도 작업 트리를 사용했다. 점검 도중 main에 반영된 `72fbaa6`, `05115e8`은 재배치(rebase)하여 기존 운영 개선을 유지했다. FIX-02 변경은 `72fbaa6`에도 포함되어 중복 적용하지 않았다.
+- 원본 작업 트리의 미커밋 수정은 건드리지 않고 별도 작업 트리를 사용했다. 점검 도중 main에 반영된 `72fbaa6`부터 `42e3f59`까지의 성과 개선은 재배치(rebase)하여 기존 운영 개선을 유지했다. FIX-02 변경은 `72fbaa6`에도 포함되어 중복 적용하지 않았다.
 - 원본 증적: 작업공간 `.runtime/dashboard-audit/`의 테스트 로그, API 응답 상태, 브라우저 결과 JSON, 화면 PNG. 계좌·비밀값 응답 본문은 문서에 기록하지 않는다.
 - 재현 명령: `powershell -ExecutionPolicy Bypass -File tools/verify-local.ps1 -Profile all`
 - 추가 표준 명령: `python -m unittest discover -s tests`
@@ -167,8 +169,8 @@
 
 최종 사전 검증:
 
-- 전체 테스트 807개, 실패 0, 건너뜀 2 (`verify-release-final.log`).
-- 최신 main 통합 후 관련 회귀 테스트 37개 통과 (`regression-latest.log`).
+- 전체 테스트 807개, 실패 0, 건너뜀 2 (`verify-release-final.log`, `verify-deploy.log`).
+- main 통합 후 관련 회귀 테스트 61개 통과 (`regression-deploy.log`). 최종 전체 검증은 `verify-final-integrated.log`에 기록한다.
 - JavaScript 54개 파일 + HTML 인라인 스크립트 3개 문법 정상.
 - 격리 조회 41개: 200 응답 36개, 외부 데이터가 없어 의도적으로 제한되는 503 응답 4개(balance/signals/execution-plan/risk), 국면 미수집 404 응답 1개. 500 응답 0개.
 - 일별/월별 성과 전환 버튼 직접 클릭 확인. 신규 AI전략 등록 버튼/폼은 실제 브라우저에서도 비노출 확인.
