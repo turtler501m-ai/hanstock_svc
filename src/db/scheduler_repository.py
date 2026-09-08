@@ -589,8 +589,20 @@ def is_schedule_due(schedule: dict, now=None) -> bool:
     except ValueError:
         return True
     interval = int(schedule.get("interval_minutes") or 15)
-    buffer_seconds = min(120, interval * 60 // 2)
-    return (now - last_dt).total_seconds() >= interval * 60 - buffer_seconds
+    if interval <= 0:
+        return False
+    start_at = now.replace(
+        hour=int(start_hm[:2]), minute=int(start_hm[2:]),
+        second=0, microsecond=0,
+    )
+    elapsed_minutes = max(0, int((now - start_at).total_seconds() // 60))
+    slot_at = start_at + timedelta(
+        minutes=(elapsed_minutes // interval) * interval,
+    )
+    # 실행 완료 시각 기준으로 간격을 더하면 수십 초짜리 실행이 5분 cron과
+    # 결합해 계속 밀리고, 결국 15:30 종료 슬롯을 놓친다. 고정 시간표의
+    # 현재 슬롯이 실행됐는지를 비교해 지연을 다음 회차로 누적하지 않는다.
+    return last_dt < slot_at
 
 
 # ---------------------------------------------------------------------------
