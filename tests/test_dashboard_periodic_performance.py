@@ -313,6 +313,37 @@ class DashboardPeriodicPerformanceTests(unittest.TestCase):
         self.assertEqual(sell_detail["realized_pnl"], 35000)
         self.assertEqual(sell_detail["realized_pnl_rate"], 10.0)
 
+    def test_periodic_performance_counts_price_unavailable_orders(self):
+        trader.config.dry_run = False
+        trader.config.trading_env = "demo"
+        trades = [
+            {
+                "ok": 1,
+                "dry_run": 0,
+                "reason": "market sell submitted",
+                "symbol": "105560",
+                "name": "KB금융",
+                "action": "sell",
+                "qty": 170,
+                "price": 0,
+                "filled_qty": 0,
+                "filled_price": 0,
+                "order_status": "broker_unknown",
+                "ts": "2026-09-10 09:15:54",
+            },
+        ]
+
+        with patch("src.dashboard.core._load_index_rows", return_value={}):
+            perf = _build_periodic_performance(trades)
+
+        day_bucket = perf["daily"][0]
+        self.assertEqual(day_bucket["period"], "2026-09-10")
+        self.assertEqual(day_bucket["order_count"], 1)
+        self.assertEqual(day_bucket["sell_count"], 1)
+        self.assertEqual(day_bucket["sell_amount"], 0)
+        self.assertEqual(len(day_bucket["details"]), 1)
+        self.assertTrue(day_bucket["details"][0]["price_unavailable"])
+
     def test_realized_pnl_matches_symbol_when_exit_strategy_differs(self):
         trader.config.dry_run = True
         trades = [

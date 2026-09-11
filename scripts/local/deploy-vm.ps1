@@ -73,6 +73,7 @@ function Resolve-SshKeyPath {
     }
 
     $candidates = @(
+        "C:\0.DOC\id_ed25519",
         (Join-Path $env:USERPROFILE ".ssh\id_ed25519"),
         (Join-Path $env:USERPROFILE ".ssh\hanstock_vm_ed25519"),
         (Join-Path $env:USERPROFILE ".ssh\google_compute_engine"),

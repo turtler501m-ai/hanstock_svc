@@ -2417,9 +2417,9 @@ def _build_periodic_performance(trades: list[dict]) -> dict:
         strategy_name = _strategy_label(strategy_id)
         qty = _to_int(trade.get("qty"))
         price = _to_int(trade.get("price"))
-        amount = qty * price
+        amount = qty * price if price > 0 else 0
 
-        if qty <= 0 or price <= 0 or action not in {"buy", "sell"}:
+        if qty <= 0 or action not in {"buy", "sell"}:
             continue
 
         day = daily.setdefault(day_key, _period_bucket())
@@ -2446,6 +2446,28 @@ def _build_periodic_performance(trades: list[dict]) -> dict:
         })
         stats["order_count"] += 1
         stats[f"{action}_count"] += 1
+
+        if price <= 0:
+            detail = {
+                "ts": ts,
+                "symbol": symbol,
+                "name": trade.get("name") or symbol,
+                "action": action,
+                "qty": qty,
+                "price": price,
+                "amount": 0,
+                "realized_pnl": 0,
+                "cost_of_sold": 0,
+                "realized_pnl_rate": 0.0,
+                "reason": trade.get("reason", ""),
+                "order_status": trade.get("order_status", ""),
+                "strategy_id": strategy_id,
+                "strategy_name": strategy_name,
+                "price_unavailable": True,
+            }
+            day["details"].append(detail)
+            month["details"].append(detail)
+            continue
 
         if action == "buy":
             total_qty = holding["qty"] + qty
