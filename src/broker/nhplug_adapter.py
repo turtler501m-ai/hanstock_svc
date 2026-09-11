@@ -406,7 +406,7 @@ class NHPlugBrokerAdapter:
             if start.weekday() < 5:
                 pages = self._inquiry_pages("/krstock/inquiry/v1/dailyOrderExecution", {
                     "orr_dt": start.strftime("%Y%m%d"), "act_no": self.account,
-                    "orr_mkt_cd": "", "ost_cns_dit": "1"})
+                    "orr_mkt_cd": "", "ost_cns_dit": "0"})
                 for page in pages:
                     payload = getattr(page, "data", page)
                     # Gateways expose execution rows under either output key.
@@ -426,10 +426,16 @@ class NHPlugBrokerAdapter:
         )
         text = str(row.get("sby_dit_cd_nm") or "")
         side = OrderSide.SELL if "매도" in text else OrderSide.BUY
+        canceled = max(0, _int(row.get("can_qty")))
+        remaining = (max(0, _int(row["ny_cns_qty"]))
+                     if row.get("ny_cns_qty") not in (None, "")
+                     else max(0, requested - filled - canceled))
         status = OrderStatus.FILLED if requested and filled >= requested else OrderStatus.PARTIAL if filled else OrderStatus.OPEN
-        if "취소" in str(row.get("cor_can_dit_cd_nm") or ""): status = OrderStatus.CANCELED
+        if ("취소" in str(row.get("cor_can_dit_cd_nm") or "") or "취소" in text
+                or (canceled > 0 and remaining == 0 and filled < requested)):
+            status = OrderStatus.CANCELED
         return TradeExecution(str(row.get("mkt_orr_no") or row.get("odno") or row.get("ord_no") or row.get("itg_orr_no") or ""), str(row.get("iem_cd") or ""), side,
-            requested, filled, max(0, requested-filled), average_fill_price, status,
+            requested, filled, remaining, average_fill_price, status,
             str(row.get("orr_dt") or row.get("orr_tm") or ""), row)
 
     def fetch_order_snapshot(self, order_id: str, order_date: str = "") -> OrderSnapshot:

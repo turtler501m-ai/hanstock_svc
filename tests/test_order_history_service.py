@@ -9,6 +9,33 @@ from src.dashboard.services.order_history_service import (
 
 
 class OrderHistoryServiceTests(unittest.TestCase):
+    def test_demo_cancellation_preserves_original_fills(self):
+        original = {"itg_orr_no": 480, "org_itg_orr_no": 0,
+                    "iem_cd": "300720", "sby_dit_cd_nm": "현금매수",
+                    "orr_dt": "20260911", "orr_qty": 550,
+                    "tot_cns_qty": 411, "can_qty": 139, "ny_cns_qty": 0,
+                    "cns_amt": 6825730}
+        cancel = {"itg_orr_no": 499, "org_itg_orr_no": 480,
+                  "sby_dit_cd_nm": "매수취소", "orr_dt": "20260911"}
+        rows = _normalize_history_cancellations([cancel, original])
+        self.assertEqual(rows, [original])
+        trade = _history_row_to_trade(rows[0])
+        self.assertEqual(trade["order_status"], "canceled")
+        self.assertEqual(trade["filled_qty"], 411)
+        self.assertEqual(_history_remaining_qty(rows[0]), 0)
+
+    def test_demo_partial_cancel_preserves_open_remainder(self):
+        from src.dashboard.services.order_history_service import _history_order_is_canceled
+        original = {"itg_orr_no": 480, "org_itg_orr_no": 0,
+                    "orr_qty": 10, "tot_cns_qty": 3, "can_qty": 2,
+                    "ny_cns_qty": 5, "orr_dt": "20260911"}
+        cancel = {"itg_orr_no": 499, "org_itg_orr_no": 480,
+                  "sby_dit_cd_nm": "매수취소", "orr_dt": "20260911"}
+        rows = _normalize_history_cancellations([cancel, original])
+        self.assertEqual(rows, [original])
+        self.assertFalse(_history_order_is_canceled(rows[0]))
+        self.assertEqual(_history_remaining_qty(rows[0]), 5)
+
     def test_parses_namuh_execution_price_and_remaining_quantity(self):
         row = {
             "cntr_uv": "0000026900",

@@ -151,6 +151,34 @@ class BrokerSyncIntegrityTests(unittest.TestCase):
         result = NHPlugBrokerAdapter(client).fetch_trade_history("20260908", "20260908")
         self.assertEqual(result[0].average_fill_price, 112800)
 
+    def test_demo_canceled_remainder_and_filled_orders_remain_visible(self):
+        client = Mock()
+        rows = [
+            {"itg_orr_no": 480, "iem_cd": "300720", "orr_qty": 550,
+             "tot_cns_qty": 411, "cns_amt": 6825730, "can_qty": 139,
+             "ny_cns_qty": 0, "org_itg_orr_no": 0},
+            {"itg_orr_no": 501, "iem_cd": "300720", "orr_qty": 489,
+             "tot_cns_qty": 489, "can_qty": 0, "ny_cns_qty": 0},
+        ]
+        def history_page(path, body, **kwargs):
+            return self.page(rows if body["ost_cns_dit"] == "0" else [])
+        client.post.side_effect = history_page
+        broker = NHPlugBrokerAdapter(client)
+        canceled = broker.fetch_order_snapshot("0000000480", "20260911")
+        self.assertFalse(canceled.outcome_unknown)
+        self.assertEqual(canceled.status.value, "canceled")
+        self.assertEqual(canceled.filled_quantity, 411)
+        self.assertEqual(canceled.remaining_quantity, 0)
+        self.assertAlmostEqual(canceled.average_fill_price, 6825730 / 411)
+        filled = broker.fetch_order_snapshot("501", "20260911")
+        self.assertEqual(filled.status.value, "filled")
+
+    def test_partial_cancellation_with_open_remainder_is_not_terminal(self):
+        row = {"orr_qty": 10, "tot_cns_qty": 3, "can_qty": 2, "ny_cns_qty": 5}
+        execution = NHPlugBrokerAdapter._execution(row)
+        self.assertEqual(execution.status.value, "partial")
+        self.assertEqual(execution.remaining_quantity, 5)
+
     def test_zero_orderable_cash_is_authoritative(self):
         client = Mock()
         client.post.return_value = self.page(summary={

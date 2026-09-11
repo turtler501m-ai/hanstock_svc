@@ -61,16 +61,23 @@ def _history_requested_qty(row: dict | None) -> int:
 def _history_remaining_qty(row: dict | None) -> int:
     if not isinstance(row, dict):
         return 0
+    if row.get("ny_cns_qty") not in (None, ""):
+        return max(0, _to_int(row["ny_cns_qty"]))
     explicit = _history_int(
         row, "ord_remnq", "rmn_qty", "RMN_QTY", "ord_psbl_qty", "oso_qty", "remaining_qty"
     )
     if explicit:
         return explicit
-    return max(0, _history_requested_qty(row) - _history_fill_qty(row))
+    return max(0, _history_requested_qty(row) - _history_fill_qty(row)
+               - _history_int(row, "can_qty"))
 
 
 def _history_order_is_canceled(row: dict) -> bool:
-    if "취소" in str(row.get("cor_can_dit_cd_nm") or ""):
+    if ("취소" in str(row.get("cor_can_dit_cd_nm") or "")
+            or "취소" in str(row.get("sby_dit_cd_nm") or "")):
+        return True
+    if (_history_int(row, "can_qty") > 0 and _history_remaining_qty(row) == 0
+            and _history_fill_qty(row) < _history_requested_qty(row)):
         return True
     value = _history_text(
         row,
@@ -85,12 +92,14 @@ def _history_order_is_canceled(row: dict) -> bool:
     ).strip()
     return value.upper() == "Y" or "취소" in value or "cancel" in value.lower()
 def _history_original_order_id(row: dict) -> str:
-    return _history_text(
+    value = _history_text(
         row,
         "org_mkt_orr_no",
+        "org_itg_orr_no",
         "orig_ord_no", "orig_odno", "ORIG_ORD_NO", "ORIG_ODNO",
         "orgn_ord_no", "original_order_no", "ori_ord", "ORI_ORD",
     )
+    return "" if value.isdigit() and int(value) == 0 else value
 
 
 def _normalize_history_cancellations(history: list[dict]) -> list[dict]:
@@ -109,7 +118,10 @@ def _normalize_history_cancellations(history: list[dict]) -> list[dict]:
         if original_order_id and _history_order_is_canceled(row):
             continue
         order_id = _broker_order_id_from_history(row)
-        if (_history_timestamp(row)[:10], order_id) in canceled_original_ids and not _history_order_is_canceled(row):
+        if ((_history_timestamp(row)[:10], order_id) in canceled_original_ids
+                and not _history_order_is_canceled(row)
+                and not (row.get("ny_cns_qty") not in (None, "")
+                         and _history_remaining_qty(row) > 0)):
             row = {**row, "cncl_yn": "Y"}
         normalized.append(row)
     return normalized
