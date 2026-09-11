@@ -8,7 +8,7 @@ param(
     [string]$Instance = $(if ($env:HANSTOCK_GCP_INSTANCE) { $env:HANSTOCK_GCP_INSTANCE } else { "" }),
     [string]$Zone = $(if ($env:HANSTOCK_GCP_ZONE) { $env:HANSTOCK_GCP_ZONE } else { "us-central1-c" }),
     [string]$Project = $(if ($env:HANSTOCK_GCP_PROJECT) { $env:HANSTOCK_GCP_PROJECT } else { "" }),
-    [string]$KeyPath = $(if ($env:HANSTOCK_SSH_KEY) { $env:HANSTOCK_SSH_KEY } else { (Join-Path $env:USERPROFILE ".ssh\id_ed25519") }),
+    [string]$KeyPath = $(if ($env:HANSTOCK_SSH_KEY) { $env:HANSTOCK_SSH_KEY } else { "" }),
     [string]$BackupRoot = $(if ($env:HANSTOCK_VM_BACKUP_ROOT) { $env:HANSTOCK_VM_BACKUP_ROOT } else { "/home/ubuntu/hanstock_svc_backups" }),
     [string]$RepoUrl = $(if ($env:HANSTOCK_REPO_URL) { $env:HANSTOCK_REPO_URL } else { "https://github.com/turtler501m-ai/hanstock_svc.git" }),
     [string]$SeedEnvPath = $(if ($env:HANSTOCK_VM_SEED_ENV) { $env:HANSTOCK_VM_SEED_ENV } else { "/home/ubuntu/hanstock_svc/.env" }),
@@ -62,6 +62,31 @@ function Get-ScpPath {
     throw "OpenSSH scp client was not found."
 }
 
+function Resolve-SshKeyPath {
+    param([string]$RequestedPath)
+
+    if ($RequestedPath) {
+        if (Test-Path -LiteralPath $RequestedPath) {
+            return $RequestedPath
+        }
+        throw "SSH key was not found: $RequestedPath. Set HANSTOCK_SSH_KEY or pass -KeyPath."
+    }
+
+    $candidates = @(
+        (Join-Path $env:USERPROFILE ".ssh\id_ed25519"),
+        (Join-Path $env:USERPROFILE ".ssh\hanstock_vm_ed25519"),
+        (Join-Path $env:USERPROFILE ".ssh\google_compute_engine"),
+        (Join-Path $env:USERPROFILE ".ssh\id_rsa")
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
+        }
+    }
+
+    throw "SSH key was not found. Set HANSTOCK_SSH_KEY or pass -KeyPath."
+}
+
 function Resolve-GcpHost {
     param(
         [string]$InstanceName,
@@ -90,6 +115,7 @@ if (-not $HostName) {
 }
 
 $ssh = Get-SshPath
+$KeyPath = Resolve-SshKeyPath -RequestedPath $KeyPath
 $target = if ($User) { "$User@$HostName" } else { $HostName }
 
 if (-not $SkipPush) {
@@ -192,11 +218,11 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding -ArgumentList $false
 
 try {
     if (Test-Path -LiteralPath $KeyPath) {
-        & $scp -i $KeyPath -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 $tempScript "${target}:$remoteScript"
+        & $scp -i $KeyPath -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 $tempScript "${target}:$remoteScript"
         if ($LASTEXITCODE -ne 0) {
             throw "VM deploy upload failed with exit code $LASTEXITCODE"
         }
-        & $ssh -i $KeyPath -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 $target "bash '$remoteScript'; status=`$?; rm -f '$remoteScript'; exit `$status"
+        & $ssh -i $KeyPath -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 $target "bash '$remoteScript'; status=`$?; rm -f '$remoteScript'; exit `$status"
     } else {
         & $scp -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 $tempScript "${target}:$remoteScript"
         if ($LASTEXITCODE -ne 0) {
