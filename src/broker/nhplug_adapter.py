@@ -451,8 +451,8 @@ class NHPlugBrokerAdapter:
     # Existing application services consume these dictionary-shaped facades.
     # They deliberately translate only at this boundary; business code stays
     # independent of the NHPLUG field names.
-    def get_balance(self) -> dict[str, Any]:
-        value = self.fetch_balance()
+    def get_balance(self, *, enrich_sellable: bool = True) -> dict[str, Any]:
+        value = self.fetch_balance(enrich_sellable=enrich_sellable)
         return self._balance_dict(value)
 
     def get_performance_balance(self) -> dict[str, Any]:

@@ -27,7 +27,30 @@ class DashboardAccountServiceTests(unittest.TestCase):
         )
 
         self.assertIs(result, cached)
-        run_timeout.assert_called_once_with(api.get_balance, 50)
+        self.assertEqual(run_timeout.call_args.args[1], 50)
+
+    def test_live_balance_fetch_skips_sellable_enrichment(self):
+        api = Mock()
+        api.get_balance.return_value = {
+            "output1": [],
+            "output2": [{"dnca_tot_amt": "1000"}],
+        }
+
+        result = get_balance_data(
+            api,
+            allow_cache=False,
+            balance_cache_ttl_seconds=30,
+            fetch_timeout_seconds=1,
+            cache_lock=threading.Lock(),
+            load_cache=lambda: None,
+            cache_age=lambda _: None,
+            mark_cache_fresh=Mock(),
+            parse_balance=Mock(return_value={}),
+            save_cache=Mock(),
+        )
+
+        self.assertEqual(result["output2"][0]["dnca_tot_amt"], "1000")
+        api.get_balance.assert_called_once_with(enrich_sellable=False)
 
     def test_fresh_cache_skips_broker_and_marks_cache_fresh(self):
         api = Mock()

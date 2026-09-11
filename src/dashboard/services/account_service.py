@@ -49,8 +49,14 @@ def get_balance_data(
             cached = load_cache()
             if cached is not None and fresh(cached):
                 return mark_cache_fresh(cached)
+        def fetch_balance_snapshot():
+            try:
+                return api.get_balance(enrich_sellable=False)
+            except TypeError:
+                return api.get_balance()
+
         try:
-            balance_data = run_timeout(api.get_balance, fetch_timeout_seconds)
+            balance_data = run_timeout(fetch_balance_snapshot, fetch_timeout_seconds)
         except concurrent.futures.TimeoutError:
             if cached is not None:
                 return cached
