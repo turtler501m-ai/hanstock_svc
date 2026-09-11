@@ -105,7 +105,10 @@ def _active_local_reservations(
 
 def _fetch_balance(api: Any) -> AccountBalance:
     if hasattr(api, "fetch_balance"):
-        balance = api.fetch_balance()
+        try:
+            balance = api.fetch_balance(enrich_sellable=False)
+        except TypeError:
+            balance = api.fetch_balance()
         if isinstance(balance, AccountBalance):
             return balance
     if not hasattr(api, "get_balance"):

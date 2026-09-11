@@ -1096,7 +1096,10 @@ def run(
         order_submission_enabled=flags.order_submission_enabled,
     )
     market_data_api = build_market_data_api(api)
-    account = api.fetch_balance()
+    try:
+        account = api.fetch_balance(enrich_sellable=False)
+    except TypeError:
+        account = api.fetch_balance()
     if not isinstance(account, AccountBalance):
         raw_balance = api.get_balance()
         rows = raw_balance.get("output1", [])

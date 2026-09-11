@@ -17,8 +17,10 @@ class _Broker:
             orderable_cash=cash,
         )
         self.quote = Quote("005930", current_price=ask, ask_price=ask)
+        self.fetch_balance_kwargs = []
 
-    def fetch_balance(self):
+    def fetch_balance(self, **kwargs):
+        self.fetch_balance_kwargs.append(kwargs)
         return self.balance
 
     def fetch_sellable_quantity(self, _symbol):
@@ -73,14 +75,16 @@ class OrderCapacityPreflightTests(unittest.TestCase):
         self.assertGreater(pending["id"], 0)
 
     def test_limit_buys_share_orderable_cash(self):
+        broker = _Broker(cash=10_000)
         self._order("first", side="buy", qty=6, price=1000, status="approved")
         result = evaluate_order_capacity(
-            api=_Broker(cash=10_000), connect=self.connect,
+            api=broker, connect=self.connect,
             account_key="A", symbol="005930", side="buy", quantity=5, price=1000,
         )
         self.assertFalse(result.allowed)
         self.assertEqual(result.locally_reserved_cash, 6000)
         self.assertEqual(result.approved_quantity, 4)
+        self.assertEqual(broker.fetch_balance_kwargs, [{"enrich_sellable": False}])
 
     def test_market_buy_uses_fresh_ask_with_configured_buffer(self):
         result = evaluate_order_capacity(
